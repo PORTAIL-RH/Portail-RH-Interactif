@@ -5,7 +5,7 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.Optional;
 
-public interface CollaborateurRepository extends MongoRepository<Collaborateur,String> {
-    Optional<Collaborateur> findByCode(String Code);
-
+public interface CollaborateurRepository extends MongoRepository<Collaborateur, String> {
+    Optional<Collaborateur> findByCode(String code);
+    Optional<Collaborateur> findByEmail(String email);
 }
