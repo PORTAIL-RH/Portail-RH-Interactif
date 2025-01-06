@@ -36,23 +36,23 @@ public class CollaborateurController {
                     .body("Les mots de passe ne correspondent pas.");
         }
 
-        // Vérification si le code est déjà utilisé
-        if (collaborateurRepository.findByCode(collaborateur.getCode()).isPresent()) {
+        // Vérification si l'email est déjà utilisé
+        if (collaborateurRepository.findByEmail(collaborateur.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Le code collaborateur est déjà utilisé.");
+                    .body("L'adresse e-mail est déjà utilisée.");
         }
 
         // Hashage du mot de passe
         String hashedPassword = bCryptPasswordEncoder.encode(collaborateur.getMotDePasse());
         collaborateur.setMotDePasse(hashedPassword);
-        collaborateur.setConfirmationMotDePasse(null); // Ne pas stocker la confirmation
+        collaborateur.setConfirmationMotDePasse(null); // Ne pas stocker la confirmation du mot de passe
 
         // Enregistrement dans la base de données
         try {
             collaborateurRepository.save(collaborateur);
         } catch (DuplicateKeyException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Erreur: Le code collaborateur doit être unique.");
+                    .body("Erreur: L'adresse e-mail doit être unique.");
         }
 
         // Génération du token avec JwtUtil
@@ -61,4 +61,31 @@ public class CollaborateurController {
         // Réponse avec le token
         return ResponseEntity.ok().body("Collaborateur enregistré avec succès ! Token : " + token);
     }
+    @PostMapping("/login")
+    public ResponseEntity<?> loginCollaborateur(@RequestBody Collaborateur collaborateur) {
+
+        // Vérification de l'existence du collaborateur par son code
+        Collaborateur existingCollaborateur = collaborateurRepository.findByCode(collaborateur.getCode())
+                .orElse(null);
+
+        if (existingCollaborateur == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Collaborateur non trouvé avec ce code.");
+        }
+
+        // Vérification du mot de passe
+        if (!bCryptPasswordEncoder.matches(collaborateur.getMotDePasse(), existingCollaborateur.getMotDePasse())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Mot de passe incorrect.");
+        }
+
+        // Génération du token JWT
+        String token = jwtUtil.generateToken(existingCollaborateur.getNomUtilisateur());
+
+        // Réponse avec le token
+        return ResponseEntity.ok().body("Connexion réussie ! Token : " + token);
+    }
+
+
+
 }

@@ -1,5 +1,6 @@
 package com.example.PortailRH.Model;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,6 +24,11 @@ public class Collaborateur {
 
     @NotBlank(message = "Le nom est obligatoire")
     private String nomUtilisateur;
+
+
+    @NotBlank(message = "Email is mandatory")
+    @Email(message = "Email should be valid")
+    private String email;
 
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
@@ -48,6 +54,14 @@ public class Collaborateur {
 
     public String getNomUtilisateur() {
         return nomUtilisateur;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public void setNomUtilisateur(String nomUtilisateur) {
