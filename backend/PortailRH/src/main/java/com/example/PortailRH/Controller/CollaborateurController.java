@@ -1,6 +1,5 @@
 package com.example.PortailRH.Controller;
 
-
 import com.example.PortailRH.Model.Collaborateur;
 import com.example.PortailRH.Repository.CollaborateurRepository;
 import com.example.PortailRH.Util.Util.JwtUtil;
@@ -9,12 +8,10 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/Collaborateur")
-@Validated
 public class CollaborateurController {
 
     @Autowired
@@ -75,8 +72,7 @@ public class CollaborateurController {
 
         // Vérification du mot de passe
         if (!bCryptPasswordEncoder.matches(collaborateur.getMotDePasse(), existingCollaborateur.getMotDePasse())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Mot de passe incorrect.");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Mot de passe incorrect.");
         }
 
         // Génération du token JWT
@@ -85,7 +81,4 @@ public class CollaborateurController {
         // Réponse avec le token
         return ResponseEntity.ok().body("Connexion réussie ! Token : " + token);
     }
-
-
-
 }

@@ -20,7 +20,7 @@ public class SecurityConfig {
     public org.springframework.security.web.DefaultSecurityFilterChain securityFilterChain(HttpSecurity http, WebConfig webConfig) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/Collaborateur/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Collaborateur/login", "/api/Collaborateur/register").permitAll()
 
                         .anyRequest().authenticated()
 
