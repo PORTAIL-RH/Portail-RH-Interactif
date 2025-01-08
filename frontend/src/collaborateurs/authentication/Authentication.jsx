@@ -136,7 +136,7 @@ const Authentication = () => {
             }
           }}
         >
-          <img src={loginImg} alt="Toggle action" className="login-toggle-img" />
+          <img src={loginImg} alt="Toggle action" className="img1" />
         </div>
       </div>
 
