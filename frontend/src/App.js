@@ -3,7 +3,7 @@ import { Routes, Route, } from 'react-router-dom';
 
 
 const Authentication = lazy(() => import('./collaborateurs/authentication/Authentication.jsx'));
-const Accueil = lazy(() => import('./admine/Accueil.jsx'));
+const Accueil = lazy(() => import('./admin/Accueil.jsx'));
 
 
 function App() {
