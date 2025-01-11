@@ -89,6 +89,14 @@
 			<artifactId>hibernate-validator</artifactId>
 			<version>8.0.1.Final</version>
 		</dependency>
+
+		<dependency>
+			<groupId>jakarta.servlet</groupId>
+			<artifactId>jakarta.servlet-api</artifactId>
+			<version>6.0.0</version> <!-- Or the version that matches your Spring Boot version -->
+			<scope>provided</scope>
+		</dependency>
+
 	</dependencies>
 
 	<build>

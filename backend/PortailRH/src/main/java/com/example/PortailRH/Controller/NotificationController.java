@@ -1,0 +1,29 @@
+package com.example.PortailRH.Controller;
+
+import com.example.PortailRH.Model.Notification;
+import com.example.PortailRH.Service.NotificationService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/notifications")
+public class NotificationController {
+
+    @Autowired
+    private NotificationService notificationService;
+
+    @GetMapping
+    public ResponseEntity<List<Notification>> getUnviewedNotifications() {
+        List<Notification> notifications = notificationService.getUnviewedNotifications();
+        return ResponseEntity.ok(notifications);
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> markAsViewed(@PathVariable String id) {
+        notificationService.markAsViewed(id);
+        return ResponseEntity.ok("Notification marked as viewed.");
+    }
+}

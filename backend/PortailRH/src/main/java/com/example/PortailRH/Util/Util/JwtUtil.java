@@ -69,4 +69,13 @@ public class JwtUtil {
             return true;
         }
     }
+
+    public boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token); // Check if the token is not expired
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

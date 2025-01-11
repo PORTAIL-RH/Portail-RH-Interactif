@@ -29,6 +29,7 @@ const Authentication = () => {
     try {
         const requestBody = {
             nomUtilisateur: formData.username.trim(),
+            code: formData.code,
             email: formData.email.trim(),
             motDePasse: formData.password.trim(),
             confirmationMotDePasse: formData.confirmPassword.trim() // ✅ Fixed field name
@@ -36,7 +37,7 @@ const Authentication = () => {
 
         console.log("Sign Up Data Sent:", JSON.stringify(requestBody)); // Log for debugging
 
-        const response = await fetch("http://localhost:8081/api/Collaborateur/register", {
+        const response = await fetch("http://localhost:8080/api/Collaborateur/register", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody)
@@ -66,7 +67,7 @@ const Authentication = () => {
 
       console.log("Login Data Sent:", JSON.stringify(requestBody)); // Log data to verify
 
-      const response = await fetch("http://localhost:8081/api/Collaborateur/login", {
+      const response = await fetch("http://localhost:8080/api/Collaborateur/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -104,17 +105,18 @@ const Authentication = () => {
             <input type="text" placeholder="Username" name="username" onChange={handleChange} />
           </div>
         )}
-        {/* Show 'code' input only for Login */}
-        {action === "Login" && (
+        {/* Show 'matricule' input  */}
+        
           <div className="input animated-input">
             <img src={code} alt="code icon" className="img" />
-            <input type="text" placeholder="Code" name="code" onChange={handleChange} />
+            <input type="text" placeholder="matricule" name="code" onChange={handleChange} />
           </div>
-        )}
+        {action === "Sign up" && (
         <div className="input animated-input">
           <img src={mail} alt="email icon" className="img" />
           <input type="email" placeholder="Email" name="email" onChange={handleChange} />
         </div>
+        )}
         <div className="input animated-input">
           <img src={pwd} alt="password icon" className="img" />
           <input type="password" placeholder="Password" name="password" onChange={handleChange} />
