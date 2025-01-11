@@ -42,16 +42,17 @@ public class CollaborateurController {
                     .body("L'adresse e-mail est déjà utilisée.");
         }
 
-        // Vérification si le code est déjà utilisé
-        if (collaborateurRepository.findByCode(collaborateur.getCode()).isPresent()) {
+        // Vérification si le matricule est déjà utilisé
+        if (collaborateurRepository.findByMatricule(collaborateur.getMatricule()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Le code est déjà utilisé.");
+                    .body("Le matricule est déjà utilisé.");
         }
 
         // Hashage du mot de passe
         String hashedPassword = bCryptPasswordEncoder.encode(collaborateur.getMotDePasse());
         collaborateur.setMotDePasse(hashedPassword);
         collaborateur.setConfirmationMotDePasse(null); // Clear confirmation password
+        collaborateur.setActive(false); // Set active to false on registration
 
         // Enregistrement dans la base de données
         collaborateurRepository.save(collaborateur);
@@ -59,24 +60,26 @@ public class CollaborateurController {
         // Création d'une notification
         notificationService.createNotification("Nouveau collaborateur enregistré : " + collaborateur.getNomUtilisateur());
 
-        // Génération du token avec JwtUtil
-        String token = jwtUtil.generateToken(collaborateur.getNomUtilisateur());
-
-        // Réponse avec le token
-        return ResponseEntity.ok().body("Collaborateur enregistré avec succès ! Token : " + token);
+        return ResponseEntity.ok().body("Collaborateur enregistré avec succès ! Votre compte est en attente d'activation.");
     }
 
     // Login Endpoint
     @PostMapping("/login")
     public ResponseEntity<?> loginCollaborateur(@RequestBody Collaborateur collaborateur) {
 
-        // Vérification de l'existence du collaborateur par son code
-        Collaborateur existingCollaborateur = collaborateurRepository.findByCode(collaborateur.getCode())
+        // Vérification de l'existence du collaborateur par son matricule
+        Collaborateur existingCollaborateur = collaborateurRepository.findByMatricule(collaborateur.getMatricule())
                 .orElse(null);
 
         if (existingCollaborateur == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Collaborateur non trouvé avec ce code.");
+                    .body("Collaborateur non trouvé avec ce matricule.");
+        }
+
+        // Vérification si le compte est actif
+        if (!existingCollaborateur.isActive()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Votre compte n'est pas encore actif.");
         }
 
         // Vérification du mot de passe
