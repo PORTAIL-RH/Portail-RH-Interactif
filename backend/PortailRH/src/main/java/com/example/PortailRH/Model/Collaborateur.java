@@ -18,16 +18,15 @@ public class Collaborateur {
     @Id
     private String id;
 
-    @NotBlank(message = "Code est obligatoire")
+    @NotBlank(message = "Matricule est obligatoire")
     @Indexed(unique = true)
-    private String code;
+    private String matricule;
 
     @NotBlank(message = "Le nom est obligatoire")
     private String nomUtilisateur;
 
-
-    @NotBlank(message = "Email is mandatory")
-    @Email(message = "Email should be valid")
+    @NotBlank(message = "Email est obligatoire")
+    @Email(message = "Email doit être valide")
     private String email;
 
     @NotBlank(message = "Le mot de passe est obligatoire")
@@ -36,6 +35,9 @@ public class Collaborateur {
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
     private String confirmationMotDePasse;
 
+    private boolean active;
+
+    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -44,16 +46,20 @@ public class Collaborateur {
         this.id = id;
     }
 
-    public String getCode() {
-        return code;
+    public String getMatricule() {
+        return matricule;
     }
 
-    public void setCode(String code) {
-        this.code = code;
+    public void setMatricule(String matricule) {
+        this.matricule = matricule;
     }
 
     public String getNomUtilisateur() {
         return nomUtilisateur;
+    }
+
+    public void setNomUtilisateur(String nomUtilisateur) {
+        this.nomUtilisateur = nomUtilisateur;
     }
 
     public String getEmail() {
@@ -62,10 +68,6 @@ public class Collaborateur {
 
     public void setEmail(String email) {
         this.email = email;
-    }
-
-    public void setNomUtilisateur(String nomUtilisateur) {
-        this.nomUtilisateur = nomUtilisateur;
     }
 
     public String getMotDePasse() {
@@ -82,5 +84,13 @@ public class Collaborateur {
 
     public void setConfirmationMotDePasse(String confirmationMotDePasse) {
         this.confirmationMotDePasse = confirmationMotDePasse;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 }
