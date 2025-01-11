@@ -20,4 +20,8 @@ WORKDIR /app
 # Copy the built JAR from the previous stage
 COPY --from=build /app/target/PortailRH-0.0.1-SNAPSHOT.jar app.jar
 EXPOSE 8080
+<<<<<<< HEAD
 ENTRYPOINT ["java", "-jar", "app.jar"]
+=======
+ENTRYPOINT ["java", "-jar", "app.jar"]
+>>>>>>> 7f08b07faf8cfe7cf0447ca1d1baa87f4943d3d9

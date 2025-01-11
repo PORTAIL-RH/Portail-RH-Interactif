@@ -2,16 +2,15 @@ package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.Collaborateur;
 import com.example.PortailRH.Repository.CollaborateurRepository;
+import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Util.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-
 @RequestMapping("/api/Collaborateur")
 public class CollaborateurController {
 
@@ -23,6 +22,9 @@ public class CollaborateurController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private NotificationService notificationService;
 
     // Register Endpoint
     @PostMapping("/register")
@@ -40,18 +42,22 @@ public class CollaborateurController {
                     .body("L'adresse e-mail est déjà utilisée.");
         }
 
+        // Vérification si le code est déjà utilisé
+        if (collaborateurRepository.findByCode(collaborateur.getCode()).isPresent()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Le code est déjà utilisé.");
+        }
+
         // Hashage du mot de passe
         String hashedPassword = bCryptPasswordEncoder.encode(collaborateur.getMotDePasse());
         collaborateur.setMotDePasse(hashedPassword);
-        collaborateur.setConfirmationMotDePasse(null); // Ne pas stocker la confirmation du mot de passe
+        collaborateur.setConfirmationMotDePasse(null); // Clear confirmation password
 
         // Enregistrement dans la base de données
-        try {
-            collaborateurRepository.save(collaborateur);
-        } catch (DuplicateKeyException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Erreur: L'adresse e-mail doit être unique.");
-        }
+        collaborateurRepository.save(collaborateur);
+
+        // Création d'une notification
+        notificationService.createNotification("Nouveau collaborateur enregistré : " + collaborateur.getNomUtilisateur());
 
         // Génération du token avec JwtUtil
         String token = jwtUtil.generateToken(collaborateur.getNomUtilisateur());
@@ -59,6 +65,8 @@ public class CollaborateurController {
         // Réponse avec le token
         return ResponseEntity.ok().body("Collaborateur enregistré avec succès ! Token : " + token);
     }
+
+    // Login Endpoint
     @PostMapping("/login")
     public ResponseEntity<?> loginCollaborateur(@RequestBody Collaborateur collaborateur) {
 

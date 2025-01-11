@@ -3,6 +3,8 @@ import { Routes, Route, } from 'react-router-dom';
 
 
 const Authentication = lazy(() => import('./collaborateurs/authentication/Authentication.jsx'));
+const Accueil = lazy(() => import('./admine/Accueil.jsx'));
+
 
 function App() {
  
@@ -14,6 +16,8 @@ function App() {
       <Routes>
           {/* <!-- Client Pages --> */}
           <Route path='/' element={<Authentication />} />
+          <Route path='/Accueil' element={<Accueil />} />
+
       </Routes>
       </Suspense>
     </div>
