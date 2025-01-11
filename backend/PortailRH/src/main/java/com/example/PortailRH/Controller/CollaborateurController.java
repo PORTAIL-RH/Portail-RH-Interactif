@@ -3,12 +3,14 @@ package com.example.PortailRH.Controller;
 import com.example.PortailRH.Model.Collaborateur;
 import com.example.PortailRH.Repository.CollaborateurRepository;
 import com.example.PortailRH.Service.NotificationService;
-import com.example.PortailRH.Util.Util.JwtUtil;
+import com.example.PortailRH.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/Collaborateur")
@@ -26,71 +28,65 @@ public class CollaborateurController {
     @Autowired
     private NotificationService notificationService;
 
-    // Register Endpoint
-    @PostMapping("/register")
-    public ResponseEntity<?> registerCollaborateur(@RequestBody Collaborateur collaborateur) {
 
-        // Vérification si les mots de passe correspondent
-        if (!collaborateur.getMotDePasse().equals(collaborateur.getConfirmationMotDePasse())) {
+    @PostMapping("/register")
+    public ResponseEntity<String> registerCollaborateur(@RequestBody Collaborateur collaborateur) {
+        // Password confirmation check
+        if (!collaborateur.isPasswordConfirmed()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Les mots de passe ne correspondent pas.");
         }
 
-        // Vérification si l'email est déjà utilisé
+        // Check if email already exists
         if (collaborateurRepository.findByEmail(collaborateur.getEmail()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("L'adresse e-mail est déjà utilisée.");
         }
 
-        // Vérification si le matricule est déjà utilisé
+        // Check if matricule already exists
         if (collaborateurRepository.findByMatricule(collaborateur.getMatricule()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Le matricule est déjà utilisé.");
         }
 
-        // Hashage du mot de passe
-        String hashedPassword = bCryptPasswordEncoder.encode(collaborateur.getMotDePasse());
-        collaborateur.setMotDePasse(hashedPassword);
-        collaborateur.setConfirmationMotDePasse(null); // Clear confirmation password
-        collaborateur.setActive(false); // Set active to false on registration
+        // Hash the password
+        collaborateur.setMotDePasse(bCryptPasswordEncoder.encode(collaborateur.getMotDePasse()));
+        collaborateur.setConfirmationMotDePasse(null); // Clear the confirmation password
+        collaborateur.setActive(false);  // Account is not active initially
+        collaborateur.setRole(Set.of("Collaborateur"));
 
-        // Enregistrement dans la base de données
+        // Save the collaborateur
         collaborateurRepository.save(collaborateur);
 
-        // Création d'une notification
-        notificationService.createNotification("Nouveau collaborateur enregistré : " + collaborateur.getNomUtilisateur());
+        // Generate JWT token (send token on successful registration)
+        String token = jwtUtil.generateToken(collaborateur.getEmail());
 
-        return ResponseEntity.ok().body("Collaborateur enregistré avec succès ! Votre compte est en attente d'activation.");
+        // Return success response with the token
+        return ResponseEntity.ok().body("Collaborateur enregistré avec succès. En attente d'activation. Token: " + token);
     }
 
     // Login Endpoint
     @PostMapping("/login")
     public ResponseEntity<?> loginCollaborateur(@RequestBody Collaborateur collaborateur) {
-
-        // Vérification de l'existence du collaborateur par son matricule
+        // Fetch the existing collaborateur based on matricule
         Collaborateur existingCollaborateur = collaborateurRepository.findByMatricule(collaborateur.getMatricule())
                 .orElse(null);
 
-        if (existingCollaborateur == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Collaborateur non trouvé avec ce matricule.");
-        }
-
-        // Vérification si le compte est actif
-        if (!existingCollaborateur.isActive()) {
+        // Check if collaborateur exists and is active
+        if (existingCollaborateur == null || !existingCollaborateur.isActive()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Votre compte n'est pas encore actif.");
+                    .body("Matricule introuvable ou compte inactif.");
         }
 
-        // Vérification du mot de passe
+        // Validate password
         if (!bCryptPasswordEncoder.matches(collaborateur.getMotDePasse(), existingCollaborateur.getMotDePasse())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Mot de passe incorrect.");
         }
 
-        // Génération du token JWT
-        String token = jwtUtil.generateToken(existingCollaborateur.getNomUtilisateur());
+        // Generate JWT token
+        String token = jwtUtil.generateToken(existingCollaborateur.getEmail());
 
-        // Réponse avec le token
+        // Return success response with the token
         return ResponseEntity.ok().body("Connexion réussie ! Token : " + token);
     }
 }

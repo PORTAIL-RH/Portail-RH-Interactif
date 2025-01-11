@@ -18,7 +18,7 @@ public class SecurityConfig {
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Autowired
-    private WebConfig webConfig;  // Ensure WebConfig is correctly injected
+    private WebConfig webConfig;
 
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
@@ -31,6 +31,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/Collaborateur/login", "/api/Collaborateur/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/roles/add").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/activate-user/{id}").permitAll()
                         .anyRequest().authenticated()
                 )
                 .csrf(csrf -> csrf.disable())
