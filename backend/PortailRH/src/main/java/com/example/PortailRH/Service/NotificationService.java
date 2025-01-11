@@ -26,11 +26,12 @@ public class NotificationService {
         return notificationRepository.findByViewedFalse();
     }
 
-    public void markAsViewed(String id) {
+    public boolean markAsViewed(String id) {
         Notification notification = notificationRepository.findById(id).orElse(null);
         if (notification != null) {
             notification.setViewed(true);
             notificationRepository.save(notification);
         }
+        return false;
     }
 }
