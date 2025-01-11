@@ -1,6 +1,6 @@
 package com.example.PortailRH.Config;
 
-import com.example.PortailRH.Util.Util.JwtUtil;
+import com.example.PortailRH.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,26 +25,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Extract the Authorization header from the request
+        // Skip authentication for specific endpoints
+        if (request.getRequestURI().startsWith("/api/Collaborateur/register") || request.getRequestURI().startsWith("/api/Collaborateur/login")) {
+            filterChain.doFilter(request, response);  // Let the request pass without authentication
+            return;
+        }
+
+        // Skip authentication for the admin activation endpoint
+        if (request.getRequestURI().startsWith("/api/admin/activate-user")) {
+            filterChain.doFilter(request, response);  // Let the request pass without authentication
+            return;
+        }
+
+        // Extract the Authorization header
         String authorizationHeader = request.getHeader("Authorization");
 
-        // Check if the header is present and starts with "Bearer "
+        // Check if the header starts with "Bearer "
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String token = authorizationHeader.substring(7); // Remove "Bearer " prefix
+            String token = authorizationHeader.substring(7); // Remove the "Bearer " prefix
 
-            // Validate the token and get the username (or whatever claim you need)
-            String username = jwtUtil.extractUsername(token);
+            try {
+                // Validate the token and extract the username
+                String username = jwtUtil.extractUsername(token);
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null && jwtUtil.isTokenValid(token, username)) {
-                // Set the user authentication in the security context
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                        username, null, null);
-                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null && jwtUtil.isTokenValid(token, username)) {
+                    // Add the authenticated user to the security context
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                            username, null, null); // You can add roles here if needed
+                    authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }
+            } catch (Exception e) {
+                // If an exception is thrown (e.g., token expired), return a 401 status
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.getWriter().write("Invalid or expired JWT token");
+                return;
             }
         }
 
-        // Continue the filter chain
+        // Continue the filter chain for other requests
         filterChain.doFilter(request, response);
     }
 }
