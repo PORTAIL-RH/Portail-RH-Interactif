@@ -9,7 +9,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-@Document(collection="Collaborateur")
+import java.util.Set;
+
+@Document(collection = "Collaborateur")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -32,12 +34,32 @@ public class Collaborateur {
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
 
+
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
-    private String confirmationMotDePasse;
+    private transient String confirmationMotDePasse;
 
-    private boolean active;
+    private boolean active = false;
+    private Set<String> role;
 
-    // Getters and Setters
+
+
+    /**
+     * Activates the account and assigns roles.
+     * @param roles Set of roles to assign.
+     */
+    public void activateCollaborateur(Set<String> roles) {
+        this.active = true;
+        this.role = roles;
+    }
+
+    /**
+     * Validates if the password and confirmation match.
+     * @return true if passwords match, false otherwise.
+     */
+    public boolean isPasswordConfirmed() {
+        return this.motDePasse != null && this.motDePasse.equals(this.confirmationMotDePasse);
+    }
+
     public String getId() {
         return id;
     }
@@ -78,19 +100,27 @@ public class Collaborateur {
         this.motDePasse = motDePasse;
     }
 
-    public String getConfirmationMotDePasse() {
-        return confirmationMotDePasse;
-    }
-
-    public void setConfirmationMotDePasse(String confirmationMotDePasse) {
-        this.confirmationMotDePasse = confirmationMotDePasse;
-    }
-
     public boolean isActive() {
         return active;
     }
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public Set<String> getRole() {
+        return role;
+    }
+
+    public void setRole(Set<String> role) {
+        this.role = role;
+    }
+
+    public String getConfirmationMotDePasse() {
+        return confirmationMotDePasse;
+    }
+
+    public void setConfirmationMotDePasse(String confirmationMotDePasse) {
+        this.confirmationMotDePasse = confirmationMotDePasse;
     }
 }
