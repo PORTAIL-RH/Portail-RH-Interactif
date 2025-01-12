@@ -21,11 +21,17 @@ public class NotificationService {
         notification.setViewed(false);
         notificationRepository.save(notification);
     }
+    // Fetch all notifications
+    public List<Notification> getAllNotifications() {
+        return notificationRepository.findAll();
+    }
 
+    // Fetch only unviewed notifications
+    /*
     public List<Notification> getUnviewedNotifications() {
         return notificationRepository.findByViewedFalse();
     }
-
+*/
     public boolean markAsViewed(String id) {
         Notification notification = notificationRepository.findById(id).orElse(null);
         if (notification != null) {

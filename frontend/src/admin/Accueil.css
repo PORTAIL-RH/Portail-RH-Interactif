@@ -152,6 +152,17 @@
   opacity: 0.6;
 }
 
+.notification-badge {
+  background-color: #ff3b3b; /* Red background */
+  color: #fff; /* White text */
+  font-size: 12px; /* Smaller text */
+  font-weight: bold;
+  border-radius: 50%; /* Circular badge */
+  padding: 4px 8px;
+  margin-left: 8px; /* Spacing from the text */
+  display: inline-block;
+}
+
 
 /* Animations */
 @keyframes fadeIn {

@@ -26,13 +26,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         // Skip authentication for specific endpoints
-        if (request.getRequestURI().startsWith("/api/Collaborateur/register") || request.getRequestURI().startsWith("/api/Collaborateur/login")) {
-            filterChain.doFilter(request, response);  // Let the request pass without authentication
-            return;
-        }
-
-        // Skip authentication for the admin activation endpoint
-        if (request.getRequestURI().startsWith("/api/admin/activate-user")) {
+        if (request.getRequestURI().startsWith("/api/Collaborateur/register") ||
+                request.getRequestURI().startsWith("/api/Collaborateur/login") ||
+                request.getRequestURI().startsWith("/api/notifications")) {  // Add /api/notifications
             filterChain.doFilter(request, response);  // Let the request pass without authentication
             return;
         }
@@ -66,4 +62,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Continue the filter chain for other requests
         filterChain.doFilter(request, response);
     }
+
 }

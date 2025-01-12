@@ -15,11 +15,20 @@ public class NotificationController {
     @Autowired
     private NotificationService notificationService;
 
+    // Fetch all notifications
+    @GetMapping
+    public ResponseEntity<List<Notification>> getAllNotifications() {
+        List<Notification> notifications = notificationService.getAllNotifications();
+        return ResponseEntity.ok(notifications);
+    }
+
+    // Fetch only unviewed notifications
+    /*
     @GetMapping
     public ResponseEntity<List<Notification>> getUnviewedNotifications() {
         List<Notification> notifications = notificationService.getUnviewedNotifications();
         return ResponseEntity.ok(notifications);
-    }
+    }*/
 
     @PostMapping("/{id}/view")
     public ResponseEntity<?> markAsViewed(@PathVariable String id) {
