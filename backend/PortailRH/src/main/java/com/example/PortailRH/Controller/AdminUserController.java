@@ -37,4 +37,10 @@ public class AdminUserController {
                     .body("Une erreur est survenue : " + e.getMessage());
         }
     }
+    // Verification endpoint
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam String email) {
+        // Logic to verify the email (you can set the user as verified or perform other actions)
+        return ResponseEntity.ok("Email vérifié avec succès !");
+    }
 }
