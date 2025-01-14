@@ -30,6 +30,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/Collaborateur/login", "/api/Collaborateur/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Collaborateur/all").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/roles/add").permitAll()

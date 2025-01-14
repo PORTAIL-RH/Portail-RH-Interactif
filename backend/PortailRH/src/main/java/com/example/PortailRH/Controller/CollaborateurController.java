@@ -65,6 +65,17 @@ public class CollaborateurController {
         return ResponseEntity.ok().body("Collaborateur enregistré avec succès. En attente d'activation. Token: " + token);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<?> getAllCollaborateurs() {
+        try {
+            return ResponseEntity.ok(collaborateurRepository.findAll());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la récupération des collaborateurs.");
+        }
+    }
+
+
     // Login Endpoint
     @PostMapping("/login")
     public ResponseEntity<?> loginCollaborateur(@RequestBody Collaborateur collaborateur) {
