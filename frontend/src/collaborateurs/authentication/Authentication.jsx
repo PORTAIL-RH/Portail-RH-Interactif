@@ -3,17 +3,17 @@ import "./Authentication.css";
 import profil from "../../assets/profil.png";
 import mail from "../../assets/mail.png";
 import pwd from "../../assets/pwd.png";
-import code from "../../assets/code.png";
+import matricule from "../../assets/code.png"; // Renamed import for clarity
 import loginImg from "../../assets/se-connecter.gif";
 
 const Authentication = () => {
   const [action, setAction] = useState("Login");
   const [formData, setFormData] = useState({
     username: "",
+    matricule: "", // Changed from 'code' to 'matricule'
     email: "",
     password: "",
-    confirmPassword: "",
-    code: ""
+    confirmPassword: ""
   });
 
   const handleChange = (e) => {
@@ -22,65 +22,63 @@ const Authentication = () => {
 
   const handleSignUp = async () => {
     if (formData.password.trim() !== formData.confirmPassword.trim()) {
-        alert("Passwords do not match");
-        return;
+      alert("Passwords do not match");
+      return;
     }
 
     try {
-        const requestBody = {
-            nomUtilisateur: formData.username.trim(),
-            code: formData.code,
-            email: formData.email.trim(),
-            motDePasse: formData.password.trim(),
-            confirmationMotDePasse: formData.confirmPassword.trim() // ✅ Fixed field name
-        };
+      const requestBody = {
+        nomUtilisateur: formData.username.trim(),
+        matricule: formData.matricule.trim(), // Changed from 'code' to 'matricule'
+        email: formData.email.trim(),
+        motDePasse: formData.password.trim(),
+        confirmationMotDePasse: formData.confirmPassword.trim()
+      };
 
-        console.log("Sign Up Data Sent:", JSON.stringify(requestBody)); // Log for debugging
+      console.log("Sign Up Data Sent:", JSON.stringify(requestBody)); // Log for debugging
 
-        const response = await fetch("http://localhost:8080/api/Collaborateur/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody)
-        });
+      const response = await fetch("http://localhost:8080/api/Collaborateur/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody)
+      });
 
-        const responseText = await response.text();
-        if (!response.ok) {
-            console.error("Server error:", responseText);
-            alert(`Error: ${responseText}`);
-        } else {
-            alert("Registration successful!");
-        }
+      const responseText = await response.text();
+      if (!response.ok) {
+        console.error("Server error:", responseText);
+        alert(`Error: ${responseText}`);
+      } else {
+        alert("Registration successful!");
+        setAction("Login"); // Switch to Login after successful registration
+      }
     } catch (error) {
-        alert("An error occurred while registering.");
-        console.error(error);
+      alert("An error occurred while registering.");
+      console.error(error);
     }
-};
-
-  
+  };
 
   const handleLogin = async () => {
     try {
       const requestBody = {
-        code: formData.code,
-        motDePasse: formData.password
+        matricule: formData.matricule.trim(), // Changed from 'code' to 'matricule'
+        motDePasse: formData.password.trim()
       };
 
       console.log("Login Data Sent:", JSON.stringify(requestBody)); // Log data to verify
 
       const response = await fetch("http://localhost:8080/api/Collaborateur/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
 
+      const responseText = await response.text();
       if (!response.ok) {
-        const errorData = await response.text();  // Change to text() for raw response
-        console.error("Server error:", errorData);
-        alert(`Error: ${errorData}`);  // Display error message
+        console.error("Server error:", responseText);
+        alert(`Error: ${responseText}`);
       } else {
         alert("Login successful!");
+        // Optionally, redirect the user or store the token
       }
     } catch (error) {
       alert("An error occurred while logging in.");
@@ -102,29 +100,57 @@ const Authentication = () => {
         {action === "Sign up" && (
           <div className="input animated-input">
             <img src={profil} alt="profile icon" className="img" />
-            <input type="text" placeholder="Username" name="username" onChange={handleChange} />
+            <input
+              type="text"
+              placeholder="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+            />
           </div>
         )}
-        {/* Show 'matricule' input  */}
-        
-          <div className="input animated-input">
-            <img src={code} alt="code icon" className="img" />
-            <input type="text" placeholder="matricule" name="code" onChange={handleChange} />
-          </div>
-        {action === "Sign up" && (
         <div className="input animated-input">
-          <img src={mail} alt="email icon" className="img" />
-          <input type="email" placeholder="Email" name="email" onChange={handleChange} />
+          <img src={matricule} alt="matricule icon" className="img" /> {/* Updated alt text */}
+          <input
+            type="text"
+            placeholder="Matricule"
+            name="matricule" // Changed from 'code' to 'matricule'
+            value={formData.matricule} // Changed from 'code' to 'matricule'
+            onChange={handleChange}
+          />
         </div>
+        {action === "Sign up" && (
+          <div className="input animated-input">
+            <img src={mail} alt="email icon" className="img" />
+            <input
+              type="email"
+              placeholder="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
         )}
         <div className="input animated-input">
           <img src={pwd} alt="password icon" className="img" />
-          <input type="password" placeholder="Password" name="password" onChange={handleChange} />
+          <input
+            type="password"
+            placeholder="Password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+          />
         </div>
         {action === "Sign up" && (
           <div className="input animated-input">
             <img src={pwd} alt="confirm password icon" className="img" />
-            <input type="password" placeholder="Confirm Password" name="confirmPassword" onChange={handleChange} />
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+            />
           </div>
         )}
 
