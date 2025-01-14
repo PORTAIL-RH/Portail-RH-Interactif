@@ -37,7 +37,7 @@ const Authentication = () => {
 
       console.log("Sign Up Data Sent:", JSON.stringify(requestBody)); // Log for debugging
 
-      const response = await fetch("http://localhost:8080/api/Collaborateur/register", {
+      const response = await fetch("http://localhost:8080/api/Personnel/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
@@ -66,7 +66,7 @@ const Authentication = () => {
 
       console.log("Login Data Sent:", JSON.stringify(requestBody)); // Log data to verify
 
-      const response = await fetch("http://localhost:8080/api/Collaborateur/login", {
+      const response = await fetch("http://localhost:8080/api/Personnel/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)

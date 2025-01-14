@@ -17,7 +17,7 @@ const Accueil = () => {
     const fetchCollaborators = async () => {
       try {
         // Fetch data from API
-        const response = await fetch("http://localhost:8080/api/Collaborateur/all", {
+        const response = await fetch("http://localhost:8080/api/Personnel/all", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
