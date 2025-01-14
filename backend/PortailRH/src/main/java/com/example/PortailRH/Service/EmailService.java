@@ -20,7 +20,7 @@ public class EmailService {
 
         helper.setTo(toEmail);
         helper.setSubject(subject);
-        helper.setText(body, true); // true indicates HTML format
+        helper.setText(body, true);
 
         javaMailSender.send(message);
     }

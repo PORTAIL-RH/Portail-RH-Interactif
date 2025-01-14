@@ -4,7 +4,6 @@ import com.example.PortailRH.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -28,39 +27,32 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Skip authentication for specific endpoints
         if (request.getRequestURI().startsWith("/api/Personnel/register") ||
                 request.getRequestURI().startsWith("/api/Personnel/login") ||
-                request.getRequestURI().startsWith("/api/notifications")) {  // Add /api/notifications
-            filterChain.doFilter(request, response);  // Let the request pass without authentication
+                request.getRequestURI().startsWith("/api/notifications")) {
+            filterChain.doFilter(request, response);
             return;
         }
 
         // Extract the Authorization header
         String authorizationHeader = request.getHeader("Authorization");
 
-        // Check if the header starts with "Bearer "
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-            String token = authorizationHeader.substring(7); // Remove the "Bearer " prefix
+            String token = authorizationHeader.substring(7);
 
             try {
-                // Validate the token and extract the username
+                // Validate the token and set authentication
                 String username = jwtUtil.extractUsername(token);
-
-                if (username != null && SecurityContextHolder.getContext().getAuthentication() == null && jwtUtil.isTokenValid(token, username)) {
-                    // Add the authenticated user to the security context
+                if (username != null && jwtUtil.isTokenValid(token, username)) {
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                            username, null, null); // You can add roles here if needed
-                    authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            username, null, null);
                     SecurityContextHolder.getContext().setAuthentication(authenticationToken);
                 }
             } catch (Exception e) {
-                // If an exception is thrown (e.g., token expired), return a 401 status
                 response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 response.getWriter().write("Invalid or expired JWT token");
                 return;
             }
         }
 
-        // Continue the filter chain for other requests
         filterChain.doFilter(request, response);
     }
-
 }
