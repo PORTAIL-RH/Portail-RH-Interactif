@@ -2,30 +2,35 @@ package com.example.PortailRH.Model;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.validation.constraints.Pattern;
+import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.Set;
 
-@Document(collection = "Collaborateur")
+@Document(collection = "Personnel")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Collaborateur {
+public class Personnel {
 
     @Id
     private String id;
 
     @NotBlank(message = "Matricule est obligatoire")
+    @Pattern(regexp = "^\\d{5}$", message = "Le matricule doit être composé de 5 chiffres")
     @Indexed(unique = true)
     private String matricule;
 
+
     @NotBlank(message = "Le nom est obligatoire")
-    private String nomUtilisateur;
+    private String nom;
+
+    @Getter @Setter
+    @NotBlank(message = "Le prénom est obligatoire")
+    private String prenom;
 
     @NotBlank(message = "Email est obligatoire")
     @Email(message = "Email doit être valide")
@@ -34,14 +39,11 @@ public class Collaborateur {
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
 
-
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
     private transient String confirmationMotDePasse;
 
     private boolean active = false;
     private Set<String> role;
-
-
 
     /**
      * Activates the account and assigns roles.
@@ -76,12 +78,20 @@ public class Collaborateur {
         this.matricule = matricule;
     }
 
-    public String getNomUtilisateur() {
-        return nomUtilisateur;
+    public String getNom() {
+        return nom;
     }
 
-    public void setNomUtilisateur(String nomUtilisateur) {
-        this.nomUtilisateur = nomUtilisateur;
+    public void setNom(String nom) {
+        this.nom = nom;
+    }
+
+    public String getPrenom() {
+        return prenom;
+    }
+
+    public void setPrenom(String prenom) {
+        this.prenom = prenom;
     }
 
     public String getEmail() {

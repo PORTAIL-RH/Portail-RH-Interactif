@@ -1,8 +1,9 @@
 package com.example.PortailRH.Service;
 
-import com.example.PortailRH.Model.Collaborateur;
+import com.example.PortailRH.Model.Personnel;
 import com.example.PortailRH.Model.Role;
-import com.example.PortailRH.Repository.CollaborateurRepository;
+
+import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.RoleRepository;
 import jakarta.mail.MessagingException;
 import org.springframework.stereotype.Service;
@@ -13,19 +14,19 @@ import java.util.stream.Collectors;
 @Service
 public class AdminUserService {
 
-    private final CollaborateurRepository collaborateurRepository;
+    private final PersonnelRepository personnelRepository;
     private final RoleRepository roleRepository;
     private final EmailService emailService;  // Inject the email service
 
-    public AdminUserService(CollaborateurRepository collaborateurRepository, RoleRepository roleRepository, EmailService emailService) {
-        this.collaborateurRepository = collaborateurRepository;
+    public AdminUserService(PersonnelRepository personnelRepository, RoleRepository roleRepository, EmailService emailService) {
+        this.personnelRepository = personnelRepository;
         this.roleRepository = roleRepository;
         this.emailService = emailService;
     }
 
     public void activateCollaborateur(String id, Set<String> roleLibelles) throws MessagingException {
         // Find the collaborator by ID
-        Collaborateur collaborateur = collaborateurRepository.findById(id)
+        Personnel personnel = personnelRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Collaborateur non trouvé"));
 
         // Get roles based on the role labels provided
@@ -35,16 +36,16 @@ public class AdminUserService {
                 .collect(Collectors.toSet());
 
         // Activate the collaborator and assign the roles
-        collaborateur.activateCollaborateur(roles.stream().map(Role::getLibelle).collect(Collectors.toSet()));
+        personnel.activateCollaborateur(roles.stream().map(Role::getLibelle).collect(Collectors.toSet()));
 
         // Save the updated collaborator
-        collaborateurRepository.save(collaborateur);
+        personnelRepository.save(personnel);
 
         // Send verification email
         String emailSubject = "Verification de votre compte";
-        String emailBody = "<p>Bonjour " + collaborateur.getNomUtilisateur() + ",</p>" +
-                "<p>Votre compte a été activé avec succès. vous pouvez se connecter maintenant en utilisant votre matricule :  " +collaborateur.getMatricule()+ "</p>"+ "<p>votre role est : "+collaborateur.getRole()+"</p>";
+        String emailBody = "<p>Bonjour " + personnel.getPrenom()+ ",</p>" +
+                "<p>Votre compte a été activé avec succès. vous pouvez se connecter maintenant en utilisant votre matricule :  " + personnel.getMatricule()+ "</p>"+ "<p>votre role est : "+ personnel.getRole()+"</p>";
 
-        emailService.sendVerificationEmail(collaborateur.getEmail(), emailSubject, emailBody);
+        emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
     }
 }

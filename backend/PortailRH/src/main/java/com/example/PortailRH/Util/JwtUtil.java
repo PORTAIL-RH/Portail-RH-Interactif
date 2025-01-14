@@ -12,6 +12,7 @@ import java.util.Base64;
 import java.util.Date;
 
 @Component
+
 public class JwtUtil {
 
     @Value("${jwt.secret}") // Load the secret key from application.properties
