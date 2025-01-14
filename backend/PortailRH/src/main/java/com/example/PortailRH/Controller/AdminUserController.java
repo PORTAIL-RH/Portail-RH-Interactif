@@ -21,7 +21,7 @@ public class AdminUserController {
     /**
      * Activer un collaborateur avec des rôles
      */
-    @PostMapping("/activate-user/{id}")
+    @PostMapping("/activate-personnel/{id}")
     public ResponseEntity<String> activateCollaborateur(
             @PathVariable String id,
             @RequestBody Set<String> roleNames) {  // Receives a set of role names

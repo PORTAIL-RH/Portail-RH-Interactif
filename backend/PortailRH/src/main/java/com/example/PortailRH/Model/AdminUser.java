@@ -33,23 +33,5 @@ public class AdminUser {
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
 
-    private Set<String> roles = new HashSet<>();
 
-    private boolean active = false;  // Default to false until activated
-
-    // Method to assign a role
-    public void assignRole(String role) {
-        this.roles.add(role);
-    }
-
-    // Method to activate the user
-    public void activateUser(Set<String> roles) {
-        this.active = true;
-        this.roles.addAll(roles);  // Add the roles to the user
-    }
-
-    // Method to deactivate a user
-    public void deactivateUser() {
-        this.active = false;
-    }
 }
