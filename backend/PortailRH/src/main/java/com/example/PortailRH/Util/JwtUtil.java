@@ -12,7 +12,6 @@ import java.util.Base64;
 import java.util.Date;
 
 @Component
-
 public class JwtUtil {
 
     @Value("${jwt.secret}") // Load the secret key from application.properties
@@ -26,35 +25,26 @@ public class JwtUtil {
 
     // Extract the username from the token
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
-    }
-
-    // Extract the expiration date from the token
-    public Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    // Extract a specific claim from the token
-    private <T> T extractClaim(String token, ClaimsResolver<T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.resolve(claims);
-    }
-
-    // Extract all claims from the token
-    private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
-                .getBody();
+                .getBody()
+                .getSubject();
     }
 
     // Check if the token is expired
     public boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
+        Date expiration = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+        return expiration.before(new Date());
     }
 
-    // Check if the token is valid
+    // Validate the token
     public boolean isTokenValid(String token, String username) {
         return (username.equals(extractUsername(token)) && !isTokenExpired(token));
     }
@@ -67,10 +57,5 @@ public class JwtUtil {
                 .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // 10 hours expiration
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
-    }
-
-    // Interface for resolving a claim
-    public interface ClaimsResolver<T> {
-        T resolve(Claims claims);
     }
 }
