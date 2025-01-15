@@ -1,54 +1,97 @@
 import React, { useState, useEffect } from "react";
 import "./Accueil.css";
-import bellIcon from "../assets/bell.png"; // Notification bell icon
+import bellIcon from "../assets/bell.png";
 import { format } from "date-fns"; // Install via `npm install date-fns`
 
 const Accueil = () => {
-  const [notifications, setNotifications] = useState([]); // State for notifications
-  const [error, setError] = useState(""); // State for error messages (optional)
-  const [activeSection, setActiveSection] = useState("home"); // State for active section
-  const [collaborators, setCollaborators] = useState([]);
-  const [staffError, setStaffError] = useState(""); // For staff fetch errors
-  
+  const [notifications, setNotifications] = useState([]);
+  const [error, setError] = useState("");
+  const [activeSection, setActiveSection] = useState("home");
+  const [personnel, setPersonnel] = useState([]); // Renamed to personnel
+  const [staffError, setStaffError] = useState("");
+  const [roles, setRoles] = useState([]); // State for roles
 
-
-  //Fetch Collaborators
+  // Fetch Roles
   useEffect(() => {
-    const fetchCollaborators = async () => {
+    const fetchRoles = async () => {
       try {
-        // Fetch data from API
+        const response = await fetch("http://localhost:8080/api/roles", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setRoles(data || []); // Set roles in state
+        } else {
+          console.error(`Failed to fetch roles. Status: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Error fetching roles:", error);
+      }
+    };
+
+    fetchRoles();
+  }, []);
+
+  // Fetch Personnel
+  useEffect(() => {
+    const fetchPersonnel = async () => {
+      try {
         const response = await fetch("http://localhost:8080/api/Personnel/all", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
           },
         });
-  
-        console.log("Response Status:", response.status); // Debugging log
-  
+
         if (response.ok) {
           const data = await response.json();
-          console.log("Collaborators Data:", data); // Debugging log
-          setCollaborators(data || []);
-          setStaffError(null); // Clear errors
+          setPersonnel(data || []); // Renamed to personnel
+          setStaffError(null);
         } else {
-          // Handle different status codes
-          setStaffError(`Failed to fetch collaborators. Status: ${response.status}`);
+          setStaffError(`Failed to fetch personnel. Status: ${response.status}`);
         }
       } catch (error) {
-        // Handle other errors
-        setStaffError(error.message || "Error fetching collaborators. Please try again later.");
-        console.error("Error Fetching Collaborators:", error);
+        setStaffError(error.message || "Error fetching personnel. Please try again later.");
       }
     };
-  
+
     if (activeSection === "staff") {
-      fetchCollaborators();
+      fetchPersonnel(); // Renamed to fetchPersonnel
     }
   }, [activeSection]);
-  
-  
-  
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const token = localStorage.getItem("authToken");
+
+        const response = await fetch("http://localhost:8080/api/notifications", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data || []);
+        } else {
+          setError(`Failed to fetch notifications. Status: ${response.status}`);
+        }
+      } catch (error) {
+        setError("Error fetching notifications. Please try again later.");
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
   // Function to mark a notification as read
   const markAsRead = async (id) => {
     try {
@@ -76,41 +119,66 @@ const Accueil = () => {
     }
   };
 
-  // Fetch notifications on mount
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const token = localStorage.getItem("authToken");
-
-        const response = await fetch("http://localhost:8080/api/notifications", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setNotifications(data || []);
-        } else {
-          setError(`Failed to fetch notifications. Status: ${response.status}`);
-        }
-      } catch (error) {
-        setError("Error fetching notifications. Please try again later.");
-        console.error(error);
-      }
-    };
-
-    fetchNotifications();
-  }, []);
-
   // Calculate unviewed notifications count
   const unviewedCount = notifications.filter((notification) => !notification.viewed).length;
 
+  // Handle role change
+  const handleRoleChange = async (e, personnelId) => {
+    const newRole = e.target.value;
+
+    try {
+      const response = await fetch(`http://localhost:8080/api/roles/update/${personnelId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (response.ok) {
+        const updatedPersonnel = personnel.map((person) =>
+          person.id === personnelId
+            ? { ...person, role: newRole }
+            : person
+        );
+        setPersonnel(updatedPersonnel); // Renamed to setPersonnel
+      } else {
+        console.error("Failed to update role.");
+      }
+    } catch (error) {
+      console.error("Error updating role:", error);
+    }
+  };
+
+  // Handle personnel validation (e.g., activating a user)
+  const handleValidate = async (personnelId) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/activate-personnel/${personnelId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
+        },
+      });
+
+      if (response.ok) {
+        const updatedPersonnel = personnel.map((person) =>
+          person.id === personnelId
+            ? { ...person, active: true }
+            : person
+        );
+        setPersonnel(updatedPersonnel); // Renamed to setPersonnel
+      } else {
+        console.error("Failed to validate personnel.");
+      }
+    } catch (error) {
+      console.error("Error validating personnel:", error);
+    }
+  };
+
   return (
     <div className="accueil-container">
-      {/* Sidebar */}
       <nav className="sidebar">
         <div className="sidebar-logo">Admin</div>
         <ul className="sidebar-links">
@@ -119,12 +187,10 @@ const Accueil = () => {
           </li>
           <li onClick={() => setActiveSection("notifications")} className={activeSection === "notifications" ? "active" : ""}>
             Notifications
-            {unviewedCount > 0 && (
-              <span className="notification-badge">{unviewedCount}</span>
-            )}
+            {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
           </li>
           <li onClick={() => setActiveSection("staff")} className={activeSection === "staff" ? "active" : ""}>
-            staff
+            Personnels
           </li>
           <li onClick={() => setActiveSection("about")} className={activeSection === "about" ? "active" : ""}>
             About
@@ -132,17 +198,24 @@ const Accueil = () => {
         </ul>
       </nav>
 
-      {/* Main Content */}
       <div className="content">
-      {/* Dashboard */}
         {activeSection === "home" && (
           <div className="main-content">
             <h1>Welcome to the Dashboard</h1>
             <p>Manage your activities efficiently with MyApp.</p>
+            <div className="stats">
+              <div className="stat-item">
+                <h3>Personnel</h3>
+                <p>{personnel.length} Members</p>
+              </div>
+              <div className="stat-item">
+                <h3>Notifications</h3>
+                <p>{unviewedCount} Unread</p>
+              </div>
+            </div>
           </div>
         )}
 
-      {/* notifications */}
         {activeSection === "notifications" && (
           <div className="notification-section">
             <h2>Notifications</h2>
@@ -152,18 +225,13 @@ const Accueil = () => {
                 <div
                   key={notification.id}
                   className={`notification ${notification.viewed ? "read" : "unread"}`}
+                  onClick={() => markAsRead(notification.id)}  // Mark notification as read on click
                 >
                   <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
                   <p>{notification.message}</p>
                   <span className="notification-timestamp">
                     {format(new Date(notification.timestamp), "yyyy-MM-dd HH:mm")}
-                    &nbsp;
                   </span>
-                  {!notification.viewed && (
-                    <button onClick={() => markAsRead(notification.id)}>
-                      Mark as Read
-                    </button>
-                  )}
                 </div>
               ))
             ) : (
@@ -172,12 +240,11 @@ const Accueil = () => {
           </div>
         )}
 
-      {/* staff */}
-      {activeSection === "staff" && (
+        {activeSection === "staff" && (
           <div className="staff-section">
             <h2>Staff Members</h2>
             {staffError && <p className="error-message">{staffError}</p>}
-            {collaborators.length > 0 ? (
+            {personnel.length > 0 ? (
               <table className="staff-table">
                 <thead>
                   <tr>
@@ -187,26 +254,36 @@ const Accueil = () => {
                     <th>Matricule</th>
                     <th>Status</th>
                     <th>Role</th>
-                    <th>validation</th>
+                    <th>Validation</th>
                   </tr>
                 </thead>
                 <tbody>
-                  
-                {collaborators.map((collaborator) => (
-                <tr key={collaborator.id}>
-                  <td>{collaborator.id}</td>
-                  <td>{collaborator.nomUtilisateur}</td>
-                  <td>{collaborator.email}</td>
-                  <td>{collaborator.matricule}</td>
-                  <td>{collaborator.active ? "Active" : "Inactive"}</td>
+                  {personnel.map((person) => (
+                    <tr key={person.id}>
+                      <td>{person.id}</td>
+                      <td>{person.prenom}</td>
+                      <td>{person.email}</td>
+                      <td>{person.matricule}</td>
+                      <td>{person.active ? "Active" : "Inactive"}</td>
                       <td>
-                        {collaborator.role}
+                        <select
+                          value={person.role}
+                          onChange={(e) => handleRoleChange(e, person.id)}
+                        >
+                          {roles.map((role) => (
+                            <option key={role.libelle} value={role.libelle}>
+                              {role.libelle}
+                            </option>
+                          ))}
+                        </select>
                       </td>
-                      <td><button class="button">active</button>
+                      <td>
+                        {!person.active && (
+                          <button onClick={() => handleValidate(person.id)}>Validate</button>
+                        )}
                       </td>
-
                     </tr>
-                    ))}
+                  ))}
                 </tbody>
               </table>
             ) : (
@@ -215,12 +292,10 @@ const Accueil = () => {
           </div>
         )}
 
-
-      {/* about */}
         {activeSection === "about" && (
           <div className="about-section">
             <h2>About</h2>
-            <p>Learn more about MyApp and its features.</p>
+            <p>Information about the platform goes here.</p>
           </div>
         )}
       </div>
