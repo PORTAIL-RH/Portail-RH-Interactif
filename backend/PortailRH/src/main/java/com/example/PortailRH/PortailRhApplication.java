@@ -12,7 +12,7 @@ import java.util.Properties;
 @SpringBootApplication
 public class PortailRhApplication {
 
-	private static final Dotenv dotenv = Dotenv.configure().directory("C:/Users/MSI/Desktop/Portail-RH-Interactif/backend/PortailRH").load();
+	private static final Dotenv dotenv = Dotenv.configure().directory("./").load();
 
 	public static void main(String[] args) {
 		SpringApplication.run(PortailRhApplication.class, args);
