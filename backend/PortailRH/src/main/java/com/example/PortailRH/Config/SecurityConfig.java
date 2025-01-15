@@ -34,6 +34,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/roles/add").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/roles").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/admin/activate-personnel/{id}").permitAll()
                         .anyRequest().authenticated()
                 )
