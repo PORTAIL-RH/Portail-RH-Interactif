@@ -31,6 +31,12 @@ public class RoleController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Rôle ajouté avec succès : " + role.getLibelle());
     }
+    @GetMapping("/test-role/{libelle}")
+    public ResponseEntity<?> testRole(@PathVariable String libelle) {
+        return roleRepository.findByLibelle(libelle)
+                .map(role -> ResponseEntity.ok("Rôle trouvé : " + role.getLibelle()))
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Rôle non trouvé"));
+    }
 
     /**
      * Récupérer tous les rôles

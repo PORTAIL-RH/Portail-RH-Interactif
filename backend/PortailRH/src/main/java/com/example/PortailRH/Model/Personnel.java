@@ -42,6 +42,24 @@ public class Personnel {
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
     private transient String confirmationMotDePasse;
 
+    @NotBlank(message = "La date de naissance est obligatoire")
+    private String date_naiss;
+
+    @NotBlank(message = "Le numéro de téléphone est obligatoire")
+    private String telephone;
+
+    @NotBlank(message = "Le numéro de CIN est obligatoire")
+    private String CIN;
+
+    @NotBlank(message = "La situation est obligatoire")
+    @Pattern(regexp = "mariée|célibataire", message = "La situation doit être 'mariée' ou 'célibataire'")
+    private String situation;
+
+    @NotBlank(message = "Le nombre d'enfants est obligatoire ")
+    private String nbr_enfants;
+
+    @NotBlank(message = "La date d'embauche est obligatoire")
+    private String date_embauche;
     private boolean active = false;
     private Set<String> role;
 
