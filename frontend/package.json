@@ -10,6 +10,7 @@
     "bootstrap": "^5.3.3",
     "cra-template": "1.2.0",
     "date-fns": "^4.1.0",
+    "lucide-react": "^0.473.0",
     "portail-rh": "file:",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.7",
