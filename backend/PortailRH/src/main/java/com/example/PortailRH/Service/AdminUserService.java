@@ -50,12 +50,37 @@ public class AdminUserService {
         personnel.activateCollaborateur(role.getLibelle());
         personnelRepository.save(personnel);
 
-        // 5. Send verification email
-        String emailSubject = "Vérification de votre compte";
+        // 5. Send professional verification email
+        String emailSubject = "Activation de votre compte chez ArabSoft";
         String emailBody = "<p>Bonjour " + personnel.getPrenom() + ",</p>" +
-                "<p>Votre compte a été activé avec succès. Vous pouvez vous connecter maintenant en utilisant votre matricule : "
-                + personnel.getMatricule() + ".</p>" +
-                "<p>Votre rôle est : " + role.getLibelle() + ".</p>";
+                "<p>Nous sommes heureux de vous informer que votre compte a été activé avec succès par l'administrateur de la société ArabSoft.</p>" +
+                "<p>Vous pouvez maintenant vous connecter en utilisant votre matricule : " + personnel.getMatricule() + ".</p>" +
+                "<p>Votre rôle est : " + role.getLibelle() + ".</p>" +
+                "<p>Nous vous souhaitons plein de succès dans vos nouvelles fonctions.</p>" +
+                "<p>Cordialement,</p>" +
+                "<p>L'équipe ArabSoft</p>";
+        emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
+    }
+
+    /**
+     * Deactivate the collaborator by ID
+     */
+    public void desactivateCollaborateur(String id) throws MessagingException {
+        Personnel personnel = personnelRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Collaborateur introuvable"));
+
+        // Deactivate the collaborator
+        personnel.desactivateCollaborateur(personnel.getRole());
+        personnelRepository.save(personnel);
+
+        // Send professional deactivation email
+        String emailSubject = "Désactivation de votre compte chez ArabSoft";
+        String emailBody = "<p>Bonjour " + personnel.getPrenom() + ",</p>" +
+                "<p>Nous vous remercions pour votre collaboration avec ArabSoft. Votre compte a été désactivé avec succès par l'administrateur.</p>" +
+                "<p>Nous vous souhaitons tout le meilleur pour l'avenir et espérons avoir l'occasion de collaborer à nouveau avec vous.</p>" +
+                "<p>Cordialement,</p>" +
+                "<p>L'équipe ArabSoft</p>";
         emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
     }
 }
+

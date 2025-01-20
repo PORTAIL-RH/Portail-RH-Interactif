@@ -31,6 +31,7 @@ public class RoleController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Rôle ajouté avec succès : " + role.getLibelle());
     }
+
     @GetMapping("/test-role/{libelle}")
     public ResponseEntity<?> testRole(@PathVariable String libelle) {
         return roleRepository.findByLibelleIgnoreCase(libelle)
@@ -59,6 +60,28 @@ public class RoleController {
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Rôle introuvable.");
+        }
+    }
+
+    /**
+     * Mettre à jour un rôle existant
+     */
+    @PutMapping("/update/{libelle}")
+    public ResponseEntity<String> updateRole(@PathVariable String libelle, @Valid @RequestBody Role updatedRole) {
+        Optional<Role> existingRoleOpt = roleRepository.findByLibelleIgnoreCase(libelle);
+
+        if (existingRoleOpt.isPresent()) {
+            Role existingRole = existingRoleOpt.get();
+
+            // Update the role properties
+            existingRole.setLibelle(updatedRole.getLibelle());
+
+            // Save the updated role
+            roleRepository.save(existingRole);
+            return ResponseEntity.ok("Rôle mis à jour avec succès : " + updatedRole.getLibelle());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Rôle introuvable pour mise à jour.");
         }
     }
 }
