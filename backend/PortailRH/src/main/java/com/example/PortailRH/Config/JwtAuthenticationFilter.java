@@ -27,6 +27,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Skip authentication for specific endpoints
         if (request.getRequestURI().startsWith("/api/Personnel/register") ||
                 request.getRequestURI().startsWith("/api/Personnel/login") ||
+                request.getRequestURI().startsWith("/api/admin/activate-personnel") ||
                 request.getRequestURI().startsWith("/api/notifications")) {
             filterChain.doFilter(request, response);
             return;

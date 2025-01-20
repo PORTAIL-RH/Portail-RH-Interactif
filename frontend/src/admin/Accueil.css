@@ -84,7 +84,38 @@
   margin-bottom: 20px;
   animation: fadeIn 0.5s ease-in-out;
 }
+.notification.unread p {
+  font-weight: bold;
+}
+.stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
 
+.stat-item {
+  background-color: #f4f4f4;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  width: 45%;
+}
+
+.stat-item h3 {
+  font-size: 1.5em;
+  margin-bottom: 10px;
+}
+
+.stat-item p {
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+
+/* Style for read notifications */
+.notification.read p {
+  font-weight: normal;
+}
 .notification-section h2 {
   color: #4c00b4;
   margin-bottom: 20px;
