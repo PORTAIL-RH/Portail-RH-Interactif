@@ -1,10 +1,16 @@
-HELP.md
+# Ignore node_modules
+/node_modules/
+
+# Ignore all files in the cache directory
+/node_modules/.cache/
+
+# Ignore build and target directories for various IDEs and environments
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
-/node_modules
 
+# Ignore specific IDE files
 ### STS ###
 .apt_generated
 .classpath
@@ -26,9 +32,15 @@ target/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
+/build/
+/!**/src/main/**/build/
+/!**/src/test/**/build/
 
 ### VS Code ###
 .vscode/
+
+# Ignore specific files from cache in node_modules
+/node_modules/.cache/default-development
+0.pack
+index.pack
+index.pack.old

@@ -23,7 +23,7 @@ public class RoleController {
      */
     @PostMapping("/add")
     public ResponseEntity<String> addRole(@Valid @RequestBody Role role) {
-        if (roleRepository.findByLibelle(role.getLibelle()).isPresent()) {
+        if (roleRepository.findByLibelleIgnoreCase(role.getLibelle()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Ce rôle existe déjà.");
         }
@@ -33,7 +33,7 @@ public class RoleController {
     }
     @GetMapping("/test-role/{libelle}")
     public ResponseEntity<?> testRole(@PathVariable String libelle) {
-        return roleRepository.findByLibelle(libelle)
+        return roleRepository.findByLibelleIgnoreCase(libelle)
                 .map(role -> ResponseEntity.ok("Rôle trouvé : " + role.getLibelle()))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Rôle non trouvé"));
     }
@@ -52,7 +52,7 @@ public class RoleController {
     @DeleteMapping("/delete/{libelle}")
     @Transactional
     public ResponseEntity<String> deleteRole(@PathVariable String libelle) {
-        Optional<Role> role = roleRepository.findByLibelle(libelle);
+        Optional<Role> role = roleRepository.findByLibelleIgnoreCase(libelle);
         if (role.isPresent()) {
             roleRepository.delete(role.get());
             return ResponseEntity.ok("Rôle supprimé avec succès : " + libelle);
