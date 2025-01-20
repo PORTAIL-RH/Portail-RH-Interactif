@@ -37,6 +37,23 @@ public class AdminUserController {
         }
     }
 
+    /**
+     * Désactiver un collaborateur par son ID
+     */
+    @PostMapping("/desactivate-personnel/{id}")
+    public ResponseEntity<String> desactivateCollaborateur(@PathVariable String id) {
+        try {
+            // Deactivate the collaborator
+            adminUserService.desactivateCollaborateur(id);
+            return ResponseEntity.ok("Collaborateur désactivé avec succès !");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Une erreur est survenue : " + e.getMessage());
+        }
+    }
+
     // Verification endpoint
     @GetMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam String email) {

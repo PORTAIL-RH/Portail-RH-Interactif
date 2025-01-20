@@ -28,6 +28,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (request.getRequestURI().startsWith("/api/Personnel/register") ||
                 request.getRequestURI().startsWith("/api/Personnel/login") ||
                 request.getRequestURI().startsWith("/api/admin/activate-personnel") ||
+                request.getRequestURI().startsWith("/api/admin/desactivate-personnel") ||
+
                 request.getRequestURI().startsWith("/api/notifications")) {
             filterChain.doFilter(request, response);
             return;

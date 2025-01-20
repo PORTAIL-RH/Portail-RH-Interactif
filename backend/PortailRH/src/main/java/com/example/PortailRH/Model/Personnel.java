@@ -71,6 +71,10 @@ public class Personnel {
         this.active = true;
         this.role = roles;
     }
+    public void desactivateCollaborateur(String roles) {
+        this.active = false;
+        this.role = null;
+    }
 
     /**
      * Validates if the password and confirmation match.
