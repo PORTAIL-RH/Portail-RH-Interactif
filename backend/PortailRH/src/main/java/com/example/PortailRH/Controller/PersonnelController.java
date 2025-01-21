@@ -55,7 +55,6 @@ public class PersonnelController {
         personnel.setMotDePasse(bCryptPasswordEncoder.encode(personnel.getMotDePasse()));
         personnel.setConfirmationMotDePasse(null);
         personnel.setActive(false);
-        personnel.setRole(Set.of("Collaborateur"));
 
         personnelRepository.save(personnel);
         notificationService.createNotification("Un nouveau Personnel enregistré : " + personnel.getNom() + " " + personnel.getPrenom());

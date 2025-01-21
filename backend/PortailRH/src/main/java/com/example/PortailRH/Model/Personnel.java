@@ -61,15 +61,19 @@ public class Personnel {
     @NotBlank(message = "La date d'embauche est obligatoire")
     private String date_embauche;
     private boolean active = false;
-    private Set<String> role;
+    private String role;
 
     /**
      * Activates the account and assigns roles.
      * @param roles Set of roles to assign.
      */
-    public void activateCollaborateur(Set<String> roles) {
+    public void activateCollaborateur(String roles) {
         this.active = true;
         this.role = roles;
+    }
+    public void desactivateCollaborateur(String roles) {
+        this.active = false;
+        this.role = null;
     }
 
     /**
@@ -136,11 +140,11 @@ public class Personnel {
         this.active = active;
     }
 
-    public Set<String> getRole() {
+    public String getRole() {
         return role;
     }
 
-    public void setRole(Set<String> role) {
+    public void setRole(String role) {
         this.role = role;
     }
 

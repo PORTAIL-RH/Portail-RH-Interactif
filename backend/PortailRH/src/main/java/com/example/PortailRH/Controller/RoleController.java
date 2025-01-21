@@ -23,7 +23,7 @@ public class RoleController {
      */
     @PostMapping("/add")
     public ResponseEntity<String> addRole(@Valid @RequestBody Role role) {
-        if (roleRepository.findByLibelle(role.getLibelle()).isPresent()) {
+        if (roleRepository.findByLibelleIgnoreCase(role.getLibelle()).isPresent()) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Ce rôle existe déjà.");
         }
@@ -31,9 +31,10 @@ public class RoleController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("Rôle ajouté avec succès : " + role.getLibelle());
     }
+
     @GetMapping("/test-role/{libelle}")
     public ResponseEntity<?> testRole(@PathVariable String libelle) {
-        return roleRepository.findByLibelle(libelle)
+        return roleRepository.findByLibelleIgnoreCase(libelle)
                 .map(role -> ResponseEntity.ok("Rôle trouvé : " + role.getLibelle()))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Rôle non trouvé"));
     }
@@ -52,13 +53,35 @@ public class RoleController {
     @DeleteMapping("/delete/{libelle}")
     @Transactional
     public ResponseEntity<String> deleteRole(@PathVariable String libelle) {
-        Optional<Role> role = roleRepository.findByLibelle(libelle);
+        Optional<Role> role = roleRepository.findByLibelleIgnoreCase(libelle);
         if (role.isPresent()) {
             roleRepository.delete(role.get());
             return ResponseEntity.ok("Rôle supprimé avec succès : " + libelle);
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Rôle introuvable.");
+        }
+    }
+
+    /**
+     * Mettre à jour un rôle existant
+     */
+    @PutMapping("/update/{libelle}")
+    public ResponseEntity<String> updateRole(@PathVariable String libelle, @Valid @RequestBody Role updatedRole) {
+        Optional<Role> existingRoleOpt = roleRepository.findByLibelleIgnoreCase(libelle);
+
+        if (existingRoleOpt.isPresent()) {
+            Role existingRole = existingRoleOpt.get();
+
+            // Update the role properties
+            existingRole.setLibelle(updatedRole.getLibelle());
+
+            // Save the updated role
+            roleRepository.save(existingRole);
+            return ResponseEntity.ok("Rôle mis à jour avec succès : " + updatedRole.getLibelle());
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Rôle introuvable pour mise à jour.");
         }
     }
 }

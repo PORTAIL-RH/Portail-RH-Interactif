@@ -37,6 +37,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/roles").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/admin/activate-personnel/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/desactivate-personnel/{id}").permitAll()
+
                         .anyRequest().authenticated()
                 )
                 .csrf(csrf -> csrf.disable())
