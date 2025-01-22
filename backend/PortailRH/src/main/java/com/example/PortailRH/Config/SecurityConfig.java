@@ -30,14 +30,19 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/Personnel/login", "/api/Personnel/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/update").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/all").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unread").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/roles/add").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/roles").permitAll()
 
+
                         .requestMatchers(HttpMethod.POST, "/api/admin/activate-personnel/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admin/desactivate-personnel/{id}").permitAll()
+
 
                         .anyRequest().authenticated()
                 )

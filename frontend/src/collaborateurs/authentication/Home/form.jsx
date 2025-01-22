@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './form.css';
 
 const Form = () => {
@@ -11,8 +12,8 @@ const Form = () => {
     nbrEnfants: '',
     cin: '',
   });
-
   const [errors, setErrors] = useState({});
+  const [submitMessage, setSubmitMessage] = useState('');
 
   const calculateProgress = () => {
     const filledFields = Object.values(formData).filter(
@@ -54,16 +55,35 @@ const Form = () => {
   const getProgressBarColor = () => {
     const colorStep = Math.floor(progress / 10);
     const colors = [
-      '#d4a5d1', '#c78bb5', '#b77199', '#a6577d', '#9d4470', // shades of purple
+      '#d4a5d1', '#c78bb5', '#b77199', '#a6577d', '#9d4470', 
       '#913a63', '#842f56', '#782541', '#6b1b2d', '#4c215e'
     ];
     return colors[colorStep];
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
-      console.log('Formulaire soumis:', formData);
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          setSubmitMessage('Utilisateur non identifié.');
+          return;
+        }
+
+        const response = await axios.post(
+          'http://localhost:8080/api/Personnel/update', 
+          { ...formData, userId }
+        );
+
+        if (response.status === 200) {
+          setSubmitMessage('Informations enregistrées avec succès.');
+        } else {
+          setSubmitMessage('Une erreur est survenue.');
+        }
+      } catch (error) {
+        setSubmitMessage('Erreur lors de l\'enregistrement : ' + error.message);
+      }
     }
   };
 
@@ -72,20 +92,13 @@ const Form = () => {
       <div className="form-box">
         <h2 className="form-title">Informations Personnelles</h2>
 
-        {/* Instructions text */}
-        <p className="instructions-text">
-          Pour accéder à votre compte, vous devez compléter ces étapes : 
-          <br />
-        </p>
-
-        {/* Progress Bar */}
         <div className="progress-container">
           <div className="progress-bar">
             <div
               className="progress-fill"
               style={{
                 width: `${progress}%`,
-                backgroundColor: getProgressBarColor(), 
+                backgroundColor: getProgressBarColor(),
               }}
             ></div>
           </div>
@@ -171,7 +184,7 @@ const Form = () => {
               placeholder="Entrez le CIN"
               className={`form-input ${errors.cin ? 'error' : ''}`}
             />
-            {errors.cin && <span className="error-message">Le CIN doit contenir exactement 8 chiffres.</span>}
+            {errors.cin && <p className="error-message">{errors.cin}</p>}
           </div>
 
           <button
@@ -179,12 +192,13 @@ const Form = () => {
             className={`submit-button ${progress === 100 ? 'complete' : 'incomplete'}`}
             disabled={progress !== 100}
             style={{
-              backgroundColor: getProgressBarColor(), // Apply dynamic color to submit button as well
+              backgroundColor: getProgressBarColor(),
             }}
           >
             Soumettre
           </button>
         </form>
+        {submitMessage && <p className="submit-message">{submitMessage}</p>}
       </div>
     </div>
   );

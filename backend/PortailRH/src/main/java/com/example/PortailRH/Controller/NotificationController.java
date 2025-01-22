@@ -22,14 +22,12 @@ public class NotificationController {
         return ResponseEntity.ok(notifications);
     }
 
-    // Fetch only unviewed notifications
-    /*
-    @GetMapping
+    // Fetch only unread (unviewed) notifications
+    @GetMapping("/unread")
     public ResponseEntity<List<Notification>> getUnviewedNotifications() {
         List<Notification> notifications = notificationService.getUnviewedNotifications();
         return ResponseEntity.ok(notifications);
-    }*/
-
+    }
     @PostMapping("/{id}/view")
     public ResponseEntity<?> markAsViewed(@PathVariable String id) {
         notificationService.markAsViewed(id);
