@@ -4,6 +4,8 @@ import { Routes, Route, } from 'react-router-dom';
 
 const Authentication = lazy(() => import('./collaborateurs/authentication/Authentication.jsx'));
 const Accueil = lazy(() => import('./admin/Accueil.jsx'));
+const Form = lazy(() => import('./collaborateurs/authentication/form.jsx'));
+
 
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
           {/* <!-- Client Pages --> */}
           <Route path='/' element={<Authentication />} />
           <Route path='/Accueil' element={<Accueil />} />
+          <Route path='/Form' element={<Form />} />
 
       </Routes>
       </Suspense>
