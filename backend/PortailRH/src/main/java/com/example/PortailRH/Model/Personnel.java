@@ -51,12 +51,15 @@ public class Personnel {
     @NotBlank(message = "Le numéro de CIN est obligatoire")
     private String CIN;
 
+    @NotBlank(message = "Le sexe est obligatoire")
+    private String sexe;
+
     @NotBlank(message = "La situation est obligatoire")
     @Pattern(regexp = "mariée|célibataire", message = "La situation doit être 'mariée' ou 'célibataire'")
     private String situation;
 
     @NotBlank(message = "Le nombre d'enfants est obligatoire ")
-    private String nbr_enfants;
+    private int nbr_enfants;
 
     @NotBlank(message = "La date d'embauche est obligatoire")
     private String date_embauche;
@@ -71,6 +74,7 @@ public class Personnel {
         this.active = true;
         this.role = roles;
     }
+
     public void desactivateCollaborateur(String roles) {
         this.active = false;
         this.role = null;
@@ -154,5 +158,61 @@ public class Personnel {
 
     public void setConfirmationMotDePasse(String confirmationMotDePasse) {
         this.confirmationMotDePasse = confirmationMotDePasse;
+    }
+
+    public String getDate_naiss() {
+        return date_naiss;
+    }
+
+    public void setDate_naiss(String date_naiss) {
+        this.date_naiss = date_naiss;
+    }
+
+    public String getTelephone() {
+        return telephone;
+    }
+
+    public void setTelephone(String telephone) {
+        this.telephone = telephone;
+    }
+
+    public String getCIN() {
+        return CIN;
+    }
+
+    public void setCIN(String CIN) {
+        this.CIN = CIN;
+    }
+
+    public String getSexe() {
+        return sexe;
+    }
+
+    public void setSexe(String sexe) {
+        this.sexe = sexe;
+    }
+
+    public String getSituation() {
+        return situation;
+    }
+
+    public void setSituation(String situation) {
+        this.situation = situation;
+    }
+
+    public int getNbr_enfants() {
+        return nbr_enfants;
+    }
+
+    public void setNbr_enfants(int nbr_enfants) {
+        this.nbr_enfants = nbr_enfants;
+    }
+
+    public String getDate_embauche() {
+        return date_embauche;
+    }
+
+    public void setDate_embauche(String date_embauche) {
+        this.date_embauche = date_embauche;
     }
 }

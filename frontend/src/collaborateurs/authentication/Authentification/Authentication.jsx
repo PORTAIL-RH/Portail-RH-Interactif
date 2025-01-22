@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import "./Authentication.css";
-import profil from "../../assets/profil.png";
-import mail from "../../assets/mail.png";
-import pwd from "../../assets/pwd.png";
-import matricule from "../../assets/code.png"; // Renamed import for clarity
-import loginImg from "../../assets/se-connecter.gif";
+import { useNavigate } from "react-router-dom";
+import profil from "../../../assets/profil.png";
+import mail from "../../../assets/mail.png";
+import pwd from "../../../assets/pwd.png";
+import matricule from "../../../assets/code.png"; 
+import loginImg from "../../../assets/se-connecter.gif";
 
 const Authentication = () => {
   const [action, setAction] = useState("Login");
   const [formData, setFormData] = useState({
+    id:"",
     username: "",
-    matricule: "", // Changed from 'code' to 'matricule'
+    matricule: "", 
     email: "",
     password: "",
     confirmPassword: ""
@@ -25,24 +27,27 @@ const Authentication = () => {
       alert("Passwords do not match");
       return;
     }
-
+  
     try {
       const requestBody = {
         nomUtilisateur: formData.username.trim(),
-        matricule: formData.matricule.trim(), // Changed from 'code' to 'matricule'
+        matricule: formData.matricule.trim(),
         email: formData.email.trim(),
         motDePasse: formData.password.trim(),
-        confirmationMotDePasse: formData.confirmPassword.trim()
+        confirmationMotDePasse: formData.confirmPassword.trim(),
+        nom: formData.nom.trim(), // Adding the 'nom' field
+        prenom: formData.prenom.trim(), // Adding the 'prenom' field
+        role: "collaborateur" // Add default role as "collaborateur"
       };
-
+  
       console.log("Sign Up Data Sent:", JSON.stringify(requestBody)); // Log for debugging
-
+  
       const response = await fetch("http://localhost:8080/api/Personnel/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody)
       });
-
+  
       const responseText = await response.text();
       if (!response.ok) {
         console.error("Server error:", responseText);
@@ -56,35 +61,56 @@ const Authentication = () => {
       console.error(error);
     }
   };
+  const navigate = useNavigate();
+
 
   const handleLogin = async () => {
     try {
       const requestBody = {
-        matricule: formData.matricule.trim(), // Changed from 'code' to 'matricule'
-        motDePasse: formData.password.trim()
+        matricule: formData.matricule.trim(),
+        motDePasse: formData.password.trim(),
       };
-
-      console.log("Login Data Sent:", JSON.stringify(requestBody)); // Log data to verify
-
+  
+      console.log("Login Data Sent:", JSON.stringify(requestBody));
+  
       const response = await fetch("http://localhost:8080/api/Personnel/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
-
-      const responseText = await response.text();
-      if (!response.ok) {
-        console.error("Server error:", responseText);
-        alert(`Error: ${responseText}`);
+  
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Parsed Response:", responseData);
+  
+        const { token, id } = responseData;  // Get 'id' from the response
+  
+        if (token && id) {
+          // Store the token and the id in localStorage
+          localStorage.setItem('authToken', token);
+          localStorage.setItem('userId', id);  // Store the 'id' of the personnel
+  
+          alert("Login successful!");
+          navigate("/form");
+        } else {
+          console.error("Token or ID not found in the response.");
+          alert("Invalid response data.");
+        }
       } else {
-        alert("Login successful!");
-        // Optionally, redirect the user or store the token
+        const errorText = await response.text();
+        alert(`Error: ${errorText}`);
       }
     } catch (error) {
+      console.error("An error occurred during login:", error);
       alert("An error occurred while logging in.");
-      console.error(error);
     }
   };
+  
+  
+  
+  
+  
+  
 
   return (
     <div className="container">

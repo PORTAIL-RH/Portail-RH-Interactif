@@ -37,6 +37,7 @@ public class AdminUserController {
         }
     }
 
+
     /**
      * Désactiver un collaborateur par son ID
      */
