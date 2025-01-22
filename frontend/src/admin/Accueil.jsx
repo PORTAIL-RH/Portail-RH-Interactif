@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "./Accueil.css";
 import bellIcon from "../assets/bell.png";
+import bellIcon1 from "../assets/bell1.png";
+
 import { format } from "date-fns"; // Install via `npm install date-fns`
 
 const Accueil = () => {
@@ -179,16 +181,26 @@ const Accueil = () => {
 
   return (
     <div className="accueil-container">
+      <nav className="navbar">
+        <div className="navbar-logo">Admin</div>
+        <div 
+          onClick={() => setActiveSection("notifications")} 
+          className={activeSection === "notifications" ? "active" : ""} 
+        >
+          {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+          <img src={bellIcon1} alt="Bell Icon" className="icon-notif"/>
+        </div>
+      </nav>
+
       <nav className="sidebar">
-        <div className="sidebar-logo">Admin</div>
         <ul className="sidebar-links">
           <li onClick={() => setActiveSection("home")} className={activeSection === "home" ? "active" : ""}>
             Home
           </li>
-          <li onClick={() => setActiveSection("notifications")} className={activeSection === "notifications" ? "active" : ""}>
+          {/*<li onClick={() => setActiveSection("notifications")} className={activeSection === "notifications" ? "active" : ""}>
             Notifications
             {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
-          </li>
+          </li>*/}
           <li onClick={() => setActiveSection("staff")} className={activeSection === "staff" ? "active" : ""}>
             Personnels
           </li>

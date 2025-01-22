@@ -5,6 +5,7 @@
   height: 100vh;
   background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
   overflow: hidden;
+  padding-top: 70px; 
 }
 
 /* Sidebar Styles */
@@ -17,18 +18,35 @@
   padding: 20px;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
+  
 }
+
+/* navbar Styles */
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: #4c00b4;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 1000;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); /* Optional: Add shadow to make navbar stand out */
+}
+
 
 .sidebar:hover {
   transform: translateX(0);
 }
 
-.sidebar-logo {
+.navbar-logo {
   font-size: 1.8em;
   font-weight: bold;
-  margin-bottom: 20px;
-  text-align: center;
   color: #fff;
+  margin-left: 1%;
 }
 
 .sidebar-links {
@@ -139,7 +157,7 @@
 
 .notification img {
   width: 30px;
-  margin-right: 10px;
+  margin-right: 20px;
 }
 
 .notification p {
@@ -189,8 +207,8 @@
   font-size: 12px; /* Smaller text */
   font-weight: bold;
   border-radius: 50%; /* Circular badge */
-  padding: 4px 8px;
-  margin-left: 8px; /* Spacing from the text */
+  padding: 2px 5px;
+  margin-left: 20px; /* Spacing from the text */
   display: inline-block;
 }
 
@@ -219,6 +237,10 @@
   background-color: #f1f1f1;
 }
 
+.icon-notif{
+  width: 40px;
+  margin-right: 10%
+}
 
 /* Animations */
 @keyframes fadeIn {
