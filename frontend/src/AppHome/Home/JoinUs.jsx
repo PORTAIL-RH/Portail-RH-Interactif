@@ -1,0 +1,236 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import './JoinUs.css';
+import logo from '../../assets/logo.png';
+import { Link } from 'react-router-dom';
+import ShinyText from './ShinyText';
+const Form = () => {
+  const [progress, setProgress] = useState(0);
+  const [formData, setFormData] = useState({
+    sexe: '',
+    dateNaissance: '',
+    situation: '',
+    phone: '',
+    nbrEnfants: '',
+    cin: '',
+  });
+  const [errors, setErrors] = useState({});
+  const [submitMessage, setSubmitMessage] = useState('');
+
+  const calculateProgress = () => {
+    const filledFields = Object.values(formData).filter(
+      (field) => field !== '' && field !== '0'
+    ).length;
+    return Math.round((filledFields / Object.keys(formData).length) * 100);
+  };
+
+  useEffect(() => {
+    setProgress(calculateProgress());
+  }, [formData]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.sexe) newErrors.sexe = 'Le sexe est requis.';
+    if (!formData.dateNaissance) newErrors.dateNaissance = 'La date de naissance est requise.';
+    if (!formData.situation) newErrors.situation = 'La situation est requise.';
+    if (!formData.phone || !/^\d{8,}$/.test(formData.phone)) {
+      newErrors.phone = 'Entrez un numéro de téléphone valide.';
+    }
+    if (formData.nbrEnfants < 0) newErrors.nbrEnfants = 'Le nombre d\'enfants doit être supérieur ou égal à 0.';
+    if (!formData.cin || !/^\d{8}$/.test(formData.cin)) {
+      newErrors.cin = 'Entrez un CIN valide (8 chiffres).';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const getProgressBarColor = () => {
+    const colorStep = Math.floor(progress / 10);
+    const colors = [
+        '#add8e6', // Light Blue
+        '#87ceeb', // Sky Blue
+        '#4682b4', // Steel Blue
+        '#5f9ea0', // Cadet Blue
+        '#6495ed', // Cornflower Blue
+        '#1e90ff', // Dodger Blue
+        '#4169e1', // Royal Blue
+        '#0000ff', // Blue
+        '#0000cd', // Medium Blue
+        '#00008b'  // Dark Blue
+      ];
+      
+    return colors[colorStep];
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (validateForm()) {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
+          setSubmitMessage('Utilisateur non identifié.');
+          return;
+        }
+
+        const response = await axios.post(
+          'http://localhost:8080/api/newCondidat', 
+          { ...formData, userId }
+        );
+
+        if (response.status === 200) {
+          setSubmitMessage('Informations enregistrées avec succès.');
+        } else {
+          setSubmitMessage('Une erreur est survenue.');
+        }
+      } catch (error) {
+        setSubmitMessage('Erreur lors de l\'enregistrement : ' + error.message);
+      }
+    }
+  };
+
+  return (
+<div>   
+     <div className="headerj">
+    <div className="logoj">
+    <img src={logo} alt="Accueil" />
+    </div>
+    <div className="nav-linksj">
+      <Link to="/CompanyHome" className="nav-linkj">Home</Link>
+      <span className="nav-linkj">À propos</span>
+      <span className="nav-linkj">Nos Services</span>
+      <span className="nav-linkj">Contactez-nous</span>
+      <Link to="/Form" className="nav-linkj">Rejoignez-nous</Link>
+
+    </div>
+    <div >
+    <ShinyText text="Se Connecter" disabled={false} speed={1.5} className='sign-in-buttonj' />
+    </div>
+  </div>
+    <div className="form-container">
+      <div className="form-box">
+        <h2 className="form-title">Informations Personnelles</h2>
+
+        <div className="progress-container">
+          <div className="progress-bar">
+            <div
+              className="progress-fill"
+              style={{
+                width: `${progress}%`,
+                backgroundColor: getProgressBarColor(),
+              }}
+            ></div>
+          </div>
+          <p className="progress-text">{progress}% Complété</p>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">Sexe</label>
+            <select
+              name="sexe"
+              value={formData.sexe}
+              onChange={handleChange}
+              className={`form-select ${errors.sexe ? 'error' : ''}`}
+            >
+              <option value="">Sélectionner...</option>
+              <option value="M">Homme</option>
+              <option value="F">Femme</option>
+            </select>
+            {errors.sexe && <p className="error-message">{errors.sexe}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Date de naissance</label>
+            <input
+              type="date"
+              name="dateNaissance"
+              value={formData.dateNaissance}
+              onChange={handleChange}
+              className={`form-input ${errors.dateNaissance ? 'error' : ''}`}
+            />
+            {errors.dateNaissance && <p className="error-message">{errors.dateNaissance}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Situation</label>
+            <select
+              name="situation"
+              value={formData.situation}
+              onChange={handleChange}
+              className={`form-select ${errors.situation ? 'error' : ''}`}
+            >
+              <option value="">Sélectionner...</option>
+              <option value="marie">Marié</option>
+              <option value="celib">Célibataire</option>
+              <option value="divorce">Divorcé</option>
+            </select>
+            {errors.situation && <p className="error-message">{errors.situation}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Téléphone</label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="Entrez le numéro de téléphone"
+              className={`form-input ${errors.phone ? 'error' : ''}`}
+            />
+            {errors.phone && <p className="error-message">{errors.phone}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Nombre d'enfants</label>
+            <input
+              type="number"
+              name="nbrEnfants"
+              value={formData.nbrEnfants}
+              onChange={handleChange}
+              className={`form-input ${errors.nbrEnfants ? 'error' : ''}`}
+            />
+            {errors.nbrEnfants && <p className="error-message">{errors.nbrEnfants}</p>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">CIN</label>
+            <input
+              type="text"
+              name="cin"
+              value={formData.cin}
+              onChange={handleChange}
+              placeholder="Entrez le CIN"
+              className={`form-input ${errors.cin ? 'error' : ''}`}
+            />
+            {errors.cin && <p className="error-message">{errors.cin}</p>}
+          </div>
+
+          <button
+            type="submit"
+            className={`submit-button ${progress === 100 ? 'complete' : 'incomplete'}`}
+            disabled={progress !== 100}
+            style={{
+              backgroundColor: getProgressBarColor(),
+            }}
+          >
+            Soumettre
+          </button>
+        </form>
+        {submitMessage && <p className="submit-message">{submitMessage}</p>}
+      </div>
+    </div>    </div>
+
+  );
+};
+
+export default Form;

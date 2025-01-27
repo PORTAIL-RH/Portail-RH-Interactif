@@ -1,0 +1,114 @@
+/* New styling for the notification popover */
+.notification-popover {
+    position: absolute;
+    top: 60px;
+    right:20px;
+    width: 500px;
+    max-height: 400px;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 9999;
+    overflow-y: auto;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  .notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .notification-header h2 {
+    color: #4c00b4;
+    font-size: 1.2em;
+    margin: 0;
+  }
+  
+  .notification-badge {
+    background-color: #ff3b3b;
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 50%;
+    padding: 5px 10px;
+  }
+  
+  .notification-list {
+    margin-top: 20px;
+  }
+  
+  .notification {
+    display: flex;
+    align-items: center;
+    background: #f7f7f7;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .notification:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .notification img {
+    width: 30px;
+    margin-right: 20px;
+  }
+  
+  .notification p {
+    margin: 0;
+    color: #333;
+    font-size: 1em;
+  }
+  
+  .notification-timestamp {
+    font-size: 0.8em;
+    color: gray;
+    margin-top: 5px;
+  }
+  
+  .notification.unread {
+    background-color: #f9f9f9;
+    border-left: 5px solid blue;
+    font-weight: bold;
+  }
+  
+  .notification.read {
+    background-color: #ffffff;
+    opacity: 0.6;
+  }
+  .view-more-button {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #4c00b4;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 10px;
+  }
+  
+  .view-more-button:hover {
+    background-color: #3a0099;
+  }
+  
+  /* Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  

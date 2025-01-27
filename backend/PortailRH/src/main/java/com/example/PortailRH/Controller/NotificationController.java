@@ -33,4 +33,19 @@ public class NotificationController {
         notificationService.markAsViewed(id);
         return ResponseEntity.ok("Notification marked as viewed.");
     }
+
+    // Fetch all notifications count
+    @GetMapping("/nbr")
+    public ResponseEntity<Integer> getTotalNotificationsnb() {
+        List<Notification> notifications = notificationService.getAllNotifications();
+        return ResponseEntity.ok(notifications.size()); // Return the count
+    }
+
+    // Fetch only unread (unviewed) notifications count
+    @GetMapping("/unreadnbr")
+    public ResponseEntity<Integer> getUnviewedNotificationsnb() {
+        List<Notification> notifications = notificationService.getUnviewedNotifications();
+        return ResponseEntity.ok(notifications.size()); // Return the count
+    }
+
 }

@@ -10,5 +10,5 @@ import java.util.Optional;
 public interface PersonnelRepository extends MongoRepository<Personnel, String> {
     Optional<Personnel> findByMatricule(String code);
     Optional<Personnel> findByEmail(String email);
-    Optional<Personnel> findById(String id);
+    Optional<Personnel> findById(String id_user);
 }

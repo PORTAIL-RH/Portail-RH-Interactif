@@ -29,19 +29,47 @@ public class SecurityConfig {
     public org.springframework.security.web.DefaultSecurityFilterChain securityFilterChain(HttpSecurity http, WebConfig webConfig) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
+                        //personnel endpoints
                         .requestMatchers(HttpMethod.POST, "/api/Personnel/login", "/api/Personnel/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/Personnel/update").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/all").permitAll()
+                        .requestMatchers(HttpMethod.POST, "api/Personnel/addWithMatriculeAndEmail").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/Personnel/updateAllFields/{id}").permitAll()
 
+                        //notification endpoints
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unread").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unreadnbr").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/nbr").permitAll()
+
+
+                        //roles endpoints
+
                         .requestMatchers(HttpMethod.POST, "/api/roles/add").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/roles").permitAll()
-
+                        //admin endpoints
 
                         .requestMatchers(HttpMethod.POST, "/api/admin/activate-personnel/{id}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/admin/desactivate-personnel/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admin/Login").permitAll()
+
+
+                        //demandeConge endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/all").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/demande-conge/create").authenticated()
+
+                        //demandeformation endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/themes/create").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()
+
+
+
+
+
 
 
                         .anyRequest().authenticated()

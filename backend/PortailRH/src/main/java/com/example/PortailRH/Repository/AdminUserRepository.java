@@ -10,5 +10,8 @@ import java.util.Optional;
 public interface AdminUserRepository extends MongoRepository<AdminUser, String> {
 
     Optional<AdminUser> findById(String id);
+    Optional<AdminUser> findByMatricule(String code);
+    Optional<AdminUser> findByEmail(String email); // Add this method
+
 
 }

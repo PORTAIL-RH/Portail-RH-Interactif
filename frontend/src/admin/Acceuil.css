@@ -1,93 +1,138 @@
-/* General Container */
-.accueil-container {
+/* General Container - No animation here */
+.accueil-containerp {
   font-family: "Roboto", sans-serif;
   display: flex;
   height: 100vh;
   background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+  padding-top: 70px;
   overflow: hidden;
-  padding-top: 70px; 
 }
+
 /* Content Area */
-.content {
+.contentp {
   flex: 1;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  gap: 30px;
+  overflow: auto;
 }
 
-/* Main Content */
-.main-content {
+/* Main Content - No animation here */
+.main-contentp {
   text-align: center;
-  padding: 20px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  animation: fadeIn 0.8s ease-in-out;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.main-contentp h1 {
+  font-size: 2.5rem;
+  color: #440e52;
+  margin-bottom: 20px;
+}
+
+.main-contentp p {
+  font-size: 1.2rem;
+  color: #555;
+  margin-top: 10px;
+}
+
+/* Personnel Section - Apply fade-in animation here */
+.personnel-section {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 30px;
+  opacity: 0; /* Start as invisible */
+  animation: fadeInContainer 1s ease-in-out forwards; /* Apply animation */
+}
+
+/* Notifications Section - Apply fade-in animation here */
+.notifications-section {
+  background-color: #ffffff;
+  padding: 40px;
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  margin-top: 30px;
+  opacity: 0; /* Start as invisible */
+  animation: fadeInContainer 1s ease-in-out forwards; /* Apply animation */
 }
 
 .notifications-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
 }
 
+.personnel-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 30px;
+  margin-top: 30px;
+}
+
+/* Animation for fading in the cards */
+.personnel-card,
 .notification-card {
   background-color: #ffffff;
   padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  opacity: 0; /* Start as invisible */
+  animation: fadeInCards 1s ease-in-out forwards;
+  animation-delay: 0.2s; /* Delay for each card */
 }
 
+/* Animation to fade in cards */
+@keyframes fadeInCards {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.personnel-card:hover,
 .notification-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
+.personnel-card h3,
 .notification-card h3 {
   margin: 0;
-  font-size: 1.2em;
+  font-size: 1.5rem;
   color: #440e52;
 }
 
+.personnel-card p,
 .notification-card p {
-  font-size: 1em;
+  font-size: 1.2rem;
   color: #333;
   margin-top: 10px;
 }
 
-.personal-number-container {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 10px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  margin-top: 20px;
+.activated-personnel {
+  background-color: #e0f7fa;
 }
 
-.personal-number-container h3 {
-  margin: 0;
-  font-size: 1.2em;
-  color: #440e52;
+.non-activated-personnel {
+  background-color: #fce4ec;
 }
 
-.personal-number-container p {
-  font-size: 1.2em;
-  color: #333;
-  font-weight: bold;
+/* Animation for fading in the container */
+@keyframes fadeInContainer {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
