@@ -8,12 +8,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #441752;
+  background-color: #a68cc4;
   padding: 20px 20px;
   color: white;
   font-family: Arial, sans-serif;
   box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000; /* Ensure it stays above other elements */
+  z-index: 1000;
 }
 
 .navbar-text {
@@ -27,19 +27,19 @@
 }
 
 .icon-notif {
-  width: 24px;
-  height: 24px;
+  width: 35px;
+  height: 35px;
   margin-right:30px;
 }
 
 .notification-badge {
-  background-color: #ff3b3b; /* Red background */
-  color: #fff; /* White text */
-  font-size: 12px; /* Smaller text */
+  background-color: #ff3b3b; 
+  color: #fff; 
+  font-size: 12px; 
   font-weight: bold;
-  border-radius: 50%; /* Circular badge */
+  border-radius: 50%; 
   padding: 2px 5px;
-  margin-left: 20px; /* Spacing from the text */
+  margin-left: 20px; 
   display: inline-block;
 }
 

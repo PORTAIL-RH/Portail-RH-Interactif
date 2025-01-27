@@ -1,0 +1,91 @@
+/* General form styling */
+.autorisation-form {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem auto;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .autorisation-form h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    color: #333;
+  }
+  
+  /* Label styling */
+  .autorisation-form label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: #555;
+  }
+  
+  /* Input and textarea styling */
+  .autorisation-form input,
+  .autorisation-form textarea {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 1.2rem;
+    transition: border-color 0.3s;
+  }
+  
+  .autorisation-form input:focus,
+  .autorisation-form textarea:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
+  }
+  
+  /* File input styling */
+  .autorisation-form input[type="file"] {
+    padding: 0.5rem;
+    border: 1px dashed #ccc;
+    background: #f9f9f9;
+    cursor: pointer;
+  }
+  
+  /* Button styling */
+  .autorisation-form button {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .autorisation-form button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Responsive layout */
+  .autorisation-form .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .autorisation-form .row > div {
+    flex: 1 1 calc(50% - 1rem); /* Two columns */
+  }
+  
+  @media (max-width: 768px) {
+    .autorisation-form .row > div {
+      flex: 1 1 100%; /* Full width for smaller screens */
+    }
+  }
+  
