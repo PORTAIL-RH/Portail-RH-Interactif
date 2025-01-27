@@ -66,7 +66,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()
 
+                        //demandeautorisation endpoints
 
+                        .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
 
 
 
