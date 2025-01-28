@@ -1,0 +1,92 @@
+.accueil-containerajpp {
+    display: flex;
+    height: 100vh;
+    background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+    padding-top: 70px;
+  }
+
+  .personnel-form-container {
+    width: 100%;
+    max-width: auto; 
+    margin: 50px ;
+    background-color: #ffffff;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  h2 {
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: #380634;
+    margin-bottom: 20px;
+  }
+  
+  .personnel-form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+
+  
+  input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    transition: border-color 0.3s ease;
+  }
+  
+  input:focus {
+    outline: none;
+    border-color: #9b49af;
+    background-color: #ffffff;
+  }
+  
+  button.submit-btn {
+    padding: 14px 25px;
+    font-size: 1rem;
+    background-color: #0e135f;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  button.submit-btn:hover {
+    background-color: #672c6e;
+  }
+  
+  button.submit-btn:active {
+    background-color: #672c6e;
+  }
+
+  
+
+  @media (max-width: 768px) {
+    .personnel-form-container {
+      padding: 15px;
+      margin: 20px;
+    }
+  
+    h2 {
+      font-size: 1.6rem;
+    }
+  
+    .submit-btn {
+      padding: 12px 20px;
+    }
+  
+    .form-group {
+      margin-bottom: 5px;
+    }
+  }
+  

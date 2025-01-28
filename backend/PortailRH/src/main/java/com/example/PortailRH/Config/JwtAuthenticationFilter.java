@@ -24,13 +24,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        // Skip authentication for specific endpoints
-        if (request.getRequestURI().startsWith("/api/Personnel/register") ||
-                request.getRequestURI().startsWith("/api/Personnel/login") ||
-                request.getRequestURI().startsWith("/api/admin/activate-personnel") ||
-                request.getRequestURI().startsWith("/api/admin/desactivate-personnel") ||
+        String requestURI = request.getRequestURI();
+        System.out.println("Request URI: " + requestURI);
 
-                request.getRequestURI().startsWith("/api/notifications")) {
+        // Skip authentication for specific endpoints
+        if (requestURI.startsWith("/api/Personnel/register") ||
+                requestURI.startsWith("/api/Personnel/login") ||
+                requestURI.startsWith("/api/admin/register") ||
+                requestURI.startsWith("/api/demande-formation/create") ||
+                requestURI.startsWith("/api/titres/create") ||
+                requestURI.startsWith("/api/types/create") ||
+
+
+                requestURI.startsWith("api/Personnel/addWithMatriculeAndEmail")||
+                requestURI.startsWith("/api/admin/Login") ||
+                requestURI.startsWith("/api/admin/activate-personnel") ||
+                requestURI.startsWith("/api/admin/desactivate-personnel") ||
+                requestURI.startsWith("/api//updateAllFields/{id}")||
+                requestURI.startsWith("/api/notifications")) {
+            System.out.println("Skipping JWT filter for: " + requestURI); // Log skipped URIs
             filterChain.doFilter(request, response);
             return;
         }
@@ -55,7 +67,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
         }
-
+        System.out.println("Request URI: " + requestURI);
         filterChain.doFilter(request, response);
-    }
-}
+    }}

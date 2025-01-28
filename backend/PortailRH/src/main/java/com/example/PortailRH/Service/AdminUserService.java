@@ -1,10 +1,15 @@
 package com.example.PortailRH.Service;
 
+import com.example.PortailRH.Model.AdminUser;
 import com.example.PortailRH.Model.Personnel;
 import com.example.PortailRH.Model.Role;
+import com.example.PortailRH.Repository.AdminUserRepository;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.RoleRepository;
+import com.example.PortailRH.Util.JwtUtil;
 import jakarta.mail.MessagingException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -14,11 +19,26 @@ public class AdminUserService {
     private final PersonnelRepository personnelRepository;
     private final RoleRepository roleRepository;
     private final EmailService emailService;
+    private  BCryptPasswordEncoder passwordEncoder;
+    @Autowired
+    private  AdminUserRepository adminUserRepository;
+    @Autowired
+    private JwtUtil jwtUtil;
 
-    public AdminUserService(PersonnelRepository personnelRepository, RoleRepository roleRepository, EmailService emailService) {
+
+    @Autowired
+    public AdminUserService(PersonnelRepository personnelRepository,
+                            RoleRepository roleRepository,
+                            EmailService emailService,
+                            AdminUserRepository adminUserRepository,
+                            BCryptPasswordEncoder passwordEncoder,
+    JwtUtil jwtUtil) {
         this.personnelRepository = personnelRepository;
         this.roleRepository = roleRepository;
         this.emailService = emailService;
+        this.adminUserRepository = adminUserRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil=jwtUtil;
     }
 
     public void activateCollaborateur(String id, String roleLibelle) throws MessagingException {
@@ -82,5 +102,17 @@ public class AdminUserService {
                 "<p>L'équipe ArabSoft</p>";
         emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
     }
-}
+
+
+    /**
+     * Register a new Admin User
+     */
+    public void registerAdminUser(AdminUser adminUser) {
+        if (adminUserRepository.findByEmail(adminUser.getEmail()).isPresent()) {
+            throw new IllegalArgumentException("Email already exists!");
+        }
+        adminUser.setMotDePasse(passwordEncoder.encode(adminUser.getMotDePasse())); // Encrypt password
+        adminUserRepository.save(adminUser);
+    }}
+
 
