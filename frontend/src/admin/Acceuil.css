@@ -3,7 +3,7 @@
   font-family: "Roboto", sans-serif;
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+  background: linear-gradient(135deg, #e6e6ff, #c8cbf0);
   padding-top: 70px;
   overflow: hidden;
 }
@@ -29,7 +29,7 @@
 
 .main-contentp h1 {
   font-size: 2.5rem;
-  color: #440e52;
+  color: #0e135f;
   margin-bottom: 20px;
 }
 
@@ -109,7 +109,7 @@
 .notification-card h3 {
   margin: 0;
   font-size: 1.5rem;
-  color: #440e52;
+  color: #0e135f;
 }
 
 .personnel-card p,
@@ -120,11 +120,11 @@
 }
 
 .activated-personnel {
-  background-color: #e0f7fa;
+  background-color: #e0e8fa;
 }
 
 .non-activated-personnel {
-  background-color: #fce4ec;
+  background-color: #cdcbdd;
 }
 
 /* Animation for fading in the container */

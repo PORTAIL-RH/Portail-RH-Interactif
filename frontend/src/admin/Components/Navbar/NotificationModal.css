@@ -21,7 +21,7 @@
   }
   
   .notification-header h2 {
-    color: #4c00b4;
+    color: #0f1450;
     font-size: 1.2em;
     margin: 0;
   }
@@ -86,7 +86,7 @@
     display: block;
     width: 100%;
     padding: 10px;
-    background-color: #4c00b4;
+    background-color: #0e135f;
     color: white;
     border: none;
     border-radius: 5px;
@@ -97,7 +97,7 @@
   }
   
   .view-more-button:hover {
-    background-color: #3a0099;
+    background-color: #0e135f;
   }
   
   /* Animation */
