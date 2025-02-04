@@ -1,7 +1,7 @@
 /* Sidebar Styles */
 .sidebar {
   width: 280px;
-  background: #A888B5;
+  background: #000220;
   color: white;
   display: flex;
   flex-direction: column;
@@ -52,7 +52,7 @@
 }
 
 .sidebar-links li:hover {
-  background-color: #441e97a8;
+  background-color: #0e135f;
   color: #fff;
 }
 
@@ -62,7 +62,7 @@
   top: 50%;
   left: 100%;
   transform: translateY(-50%);
-  background-color: #A888B5;
+  background-color: #8889b5;
   color: white;
   border: none;
   font-size: 20px;

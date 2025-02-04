@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface DemandeAutorisationRepository extends MongoRepository<DemandeAutorisation, String> {
-    // Vous pouvez ajouter des méthodes personnalisées si nécessaire
+    // No file upload method should be here
 }

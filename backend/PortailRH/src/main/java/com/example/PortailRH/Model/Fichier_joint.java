@@ -1,37 +1,47 @@
 package com.example.PortailRH.Model;
-import lombok.Data;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-@Data
-@Document(collection = "fichiers_joints")
+
+@Document(collection = "fichiers_joints") // Collection MongoDB
 public class Fichier_joint {
     @Id
     private String id;
     private String filename;
-    private String path;
-    private String contentType;
+    private String fileType;
+    private byte[] data;
+
+    public Fichier_joint() {}
+
     public String getId() {
         return id;
     }
+
     public void setId(String id) {
         this.id = id;
     }
+
     public String getFilename() {
         return filename;
     }
+
     public void setFilename(String filename) {
         this.filename = filename;
     }
-    public String getPath() {
-        return path;
+
+    public String getFileType() {
+        return fileType;
     }
-    public void setPath(String path) {
-        this.path = path;
+
+    public void setFileType(String fileType) {
+        this.fileType = fileType;
     }
-    public String getContentType() {
-        return contentType;
+
+    public byte[] getData() {
+        return data;
     }
-    public void setContentType(String contentType) {
-        this.contentType = contentType;
+
+    public void setData(byte[] data) {
+        this.data = data;
     }
 }

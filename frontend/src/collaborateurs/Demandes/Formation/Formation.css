@@ -16,13 +16,16 @@
   
   .form h2 {
     text-align: center;
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 1.5rem;
+    color: #a3610b;
+    margin-bottom: 2rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
+    text-decoration: underline;
+    margin-top: -10px;
   }
+
   
   .form label {
     display: block;
@@ -57,19 +60,20 @@
   }
   
   .form button {
-    background-color: #007bff;
-    color: white;
-    padding: 0.8rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
+    background-color: #9c4701;
+  color: white;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+  width: 100%;
   }
   
   .form button:hover {
-    background-color: #0056b3;
+    background-color: #b96f31;
   }
   
   .form button:active {

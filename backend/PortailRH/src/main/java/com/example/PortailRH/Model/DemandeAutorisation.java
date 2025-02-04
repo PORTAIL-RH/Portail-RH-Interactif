@@ -1,6 +1,5 @@
 package com.example.PortailRH.Model;
 
-
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -9,10 +8,12 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 @Data
 @Document(collection = "Demandes_Autorisation")
 public class DemandeAutorisation {
+
     @Id
     private String id_libre_demande;
 
@@ -29,13 +30,15 @@ public class DemandeAutorisation {
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
-    @DBRef(lazy = true) // Relation avec les fichiers joints
-    private Collection<Fichier_joint> Files = new ArrayList<>();
+    //@DBRef(lazy = true) // Lazy relationship with attached files
+    //private Collection<Fichier_joint> files = new ArrayList<>();
+    private List<Fichier_joint> files = new ArrayList<>();
 
     private Date heureSortie;
     private Date heureRetour;
-    private String cod_autorisation;
+    private String codAutorisation;
 
+    // Getters and Setters
 
     public String getId_libre_demande() {
         return id_libre_demande;
@@ -118,11 +121,11 @@ public class DemandeAutorisation {
     }
 
     public Collection<Fichier_joint> getFiles() {
-        return Files;
+        return files;
     }
 
-    public void setFiles(Collection<Fichier_joint> files) {
-        Files = files;
+    public void setFiles(List<Fichier_joint> files) {
+        this.files = files;
     }
 
     public Date getHeureSortie() {
@@ -141,11 +144,11 @@ public class DemandeAutorisation {
         this.heureRetour = heureRetour;
     }
 
-    public String getCod_autorisation() {
-        return cod_autorisation;
+    public String getCodAutorisation() {
+        return codAutorisation;
     }
 
-    public void setCod_autorisation(String cod_autorisation) {
-        this.cod_autorisation = cod_autorisation;
+    public void setCodAutorisation(String codAutorisation) {
+        this.codAutorisation = codAutorisation;
     }
 }
