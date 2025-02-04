@@ -1,49 +1,57 @@
+/* Form Wrapper */
 .form {
   background: #ffffff;
-  padding: 100px;
+  padding: 40px;
   border-radius: 12px;
   width: 100%;
-  max-width: 600px;
+  max-width: 700px;
   margin: 3rem auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+/* Hover Effect */
 .form:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.2);
 }
 
+/* Form Heading */
 .form h2 {
   text-align: center;
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 1.5rem;
+  color: #a3610b;
+  margin-bottom: 2rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  text-decoration: underline;
 }
 
+/* Label Styling */
 .form label {
   display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: #555;
-  font-size: 1rem;
+  margin-bottom: 0.8rem;
+  font-weight: 600;
+  color: #444;
+  font-size: 1.1rem;
+  text-transform: capitalize;
 }
 
+/* Input Fields */
 .form input,
 .form textarea {
   width: 100%;
-  padding: 0.8rem;
-  margin-bottom: 1.2rem;
+  padding: 12px;
+  margin-bottom: 1.5rem;
   border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
   background-color: #f7f7f7;
-  transition: all 0.3s ease;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
+/* Focus Input Fields */
 .form input:focus,
 .form textarea:focus {
   outline: none;
@@ -51,62 +59,82 @@
   background-color: #fff;
 }
 
+/* File Input Styling */
 .form input[type="file"] {
-  padding: 0.4rem;
+  padding: 10px;
   background-color: #f7f7f7;
+  border-radius: 10px;
 }
 
+/* Submit Button */
 .form button {
-  background-color: #007bff;
+  background-color: #9c4701;
   color: white;
-  padding: 0.8rem 1.5rem;
+  padding: 12px 20px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 1rem;
-  font-weight: bold;
+  font-size: 1.1rem;
+  font-weight: 600;
   transition: background-color 0.3s ease;
+  width: 100%;
 }
 
+/* Button Hover */
 .form button:hover {
-  background-color: #0056b3;
+  background-color: #b96f31;
 }
 
+/* Button Active */
 .form button:active {
   background-color: #004085;
 }
 
-.form .file-label {
-  font-weight: 500;
-  color: #555;
-  margin-bottom: 0.2rem;
-}
-
+/* File Input Wrapper */
 .form .file-input-wrapper {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .form .file-input-wrapper input[type="file"] {
   width: 100%;
 }
 
-@media (max-width: 600px) {
+/* Error Message Styling */
+.error-message {
+  color: #e74c3c;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Time Picker Group */
+.form-time {
+  display: flex;
+  justify-content: space-between;
+}
+
+.time-group {
+  width: 48%;
+}
+
+/* Responsive Styling */
+@media (max-width: 768px) {
   .form {
     padding: 1.5rem;
     max-width: 100%;
   }
 
   .form h2 {
-    font-size: 1.6rem;
+    font-size: 1.8rem;
   }
 
   .form input,
   .form textarea,
   .form button {
-    font-size: 0.9rem;
+    font-size: 1rem;
   }
-    
 }

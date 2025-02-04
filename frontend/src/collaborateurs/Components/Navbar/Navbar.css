@@ -1,24 +1,51 @@
 .navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #333;
-    color: white;
-    padding: 1rem;
-  }
-  
-  .navbar-logo {
-    font-size: 1.5rem;
-    font-weight: bold;
-  }
-  
-  .navbar-links a {
-    color: white;
-    text-decoration: none;
-    margin-left: 1rem;
-  }
-  
-  .navbar-links a:hover {
-    text-decoration: underline;
-  }
-  
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #000220;
+  color: white;
+  padding: 1rem 2rem;
+  z-index: 1000;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-logo {
+  font-size: 1.9rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-links a {
+  color: white;
+  text-decoration: none;
+  margin-left: 1.5rem;
+  font-size: 1.2rem;
+  padding: 0.5rem 0.5rem;
+  transition: all 0.3s ease-in-out;
+  border-radius: 5px;
+}
+
+.navbar-links a:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.Déconnexion{
+  margin-right: 2.8rem;
+}
+.navbar-links .Déconnexion:hover {
+  background-color: #C0392B;
+}
+
+/* Pour éviter que le contenu soit caché sous la navbar */
+body {
+  padding-top: 80px;
+}

@@ -16,7 +16,7 @@ const Navbar = () => {
       <div className="navbar-logo">Portail RH</div>
       <div className="navbar-links">
         <a href="/profile">Profil</a>
-        <a href="/" onClick={handleLogout}>Déconnexion</a>
+        <a href="/" className="Déconnexion" onClick={handleLogout}>Déconnexion</a>
       </div>
     </nav>
   );

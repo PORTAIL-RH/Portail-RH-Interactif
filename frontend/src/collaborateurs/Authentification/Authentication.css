@@ -1,6 +1,6 @@
 /* General Styles */
 .body {
-  background: linear-gradient(#000000, #42006c);
+  background: linear-gradient(#000000, #000433);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -31,7 +31,7 @@
 }
 
 .auth-text {
-  color: #3c009d;
+  color: #000220;
   font-size: 48px;
   font-weight: 700;
   animation: pulse 1.5s infinite ease-in-out;
@@ -40,14 +40,14 @@
 .auth-underline {
   width: 61px;
   height: 6px;
-  background: #4c00b4;
+  background: #000220;
   border-radius: 9px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
 .auth-underline:hover {
-  background: #3c009d;
+  background: #000220;
 }
 
 .auth-inputs {
@@ -101,7 +101,7 @@
   width: 180px;
   height: 50px;
   color: #fff;
-  background: #4c00b4;
+  background: #000220;
   border-radius: 50px;
   font-size: 19px;
   font-weight: 700;
@@ -112,14 +112,14 @@
 
 .auth-submit:hover {
   transform: scale(1.05);
-  background: #3c009d;
+  background: #000220;
 }
 
 .auth-switch-button {
   font-size: 18px;
   font-weight: bold;
   color: #fff;
-  background-color: #4c00b4; /* purple background */
+  background-color: #000220; /* purple background */
   padding: 10px 20px;
   border-radius: 25px;
   cursor: pointer;
@@ -128,7 +128,7 @@
 }
 
 .auth-switch-button:hover {
-  background-color: #3c009d; /* darker purple on hover */
+  background-color: #000220; /* darker purple on hover */
   transform: scale(1.05);
 }
 

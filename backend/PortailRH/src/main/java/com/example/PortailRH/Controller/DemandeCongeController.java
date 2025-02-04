@@ -84,6 +84,7 @@ public class DemandeCongeController {
 
 
     // 6. Ajouter un fichier joint à une demande
+    /*
     @PostMapping("/{id}/fichiers")
     public ResponseEntity<DemandeConge> uploadFile(
             @PathVariable String id,
@@ -117,7 +118,7 @@ public class DemandeCongeController {
             return ResponseEntity.notFound().build();
         }
     }
-
+*/
 
 
 
