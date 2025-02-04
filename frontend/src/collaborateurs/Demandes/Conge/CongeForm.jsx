@@ -7,7 +7,7 @@ const CongeForm = () => {
   const [formData, setFormData] = useState({
     dateDebut: '',
     dateFin: '',
-    nbrJours: '',
+    nbrJours: 0,
     matPers: '', // This will be filled by the userId from localStorage
     texteDemande: '',
     snjTempDep: '',
@@ -17,6 +17,7 @@ const CongeForm = () => {
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSidebarToggle = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -33,10 +34,10 @@ const CongeForm = () => {
       const startDate = new Date(formData.dateDebut);
       const endDate = new Date(formData.dateFin);
       const timeDiff = endDate - startDate;
-      const dayDiff = timeDiff / (1000 * 3600 * 24); // Convertir en jours
+      const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Convertir en jours
       setFormData((prevData) => ({
         ...prevData,
-        nbrJours: dayDiff + 1, // Ajouter 1 pour inclure le jour de début
+        nbrJours: dayDiff,
       }));
     }
   }, [formData.dateDebut, formData.dateFin]);
@@ -47,25 +48,22 @@ const CongeForm = () => {
     // Get user ID (mat_pers) and token from localStorage
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-    console.log('User ID:', userId);
-    console.log('Auth Token:', authToken);
   
     if (!authToken || !userId) {
-      console.error('Missing token or user ID');
+      setError('Missing token or user ID');
       return;
     }
-    console.log('Authorization Header:', `Bearer ${authToken}`);
 
     // Prepare the form data as JSON
     const requestBody = {
-      dateDebut: formData.dateDebut,
-      dateFin: formData.dateFin,
+      dateDebut: new Date(formData.dateDebut),
+      dateFin: new Date(formData.dateFin),
       texteDemande: formData.texteDemande,
       snjTempDep: formData.snjTempDep,
       snjTempRetour: formData.snjTempRetour,
-      dateReprisePrev: formData.dateReprisePrev,
+      dateReprisePrev: new Date(formData.dateReprisePrev),
       codeSoc: formData.codeSoc,
-      matPers: userId, // Add userId as matPers
+      matPers: { id: userId }, // Structure matPers as an object with id
       nbrJours: formData.nbrJours,
     };
   
@@ -74,7 +72,7 @@ const CongeForm = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `${authToken}`
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify(requestBody), // Send JSON body
       });
@@ -82,11 +80,16 @@ const CongeForm = () => {
       if (response.ok) {
         const result = await response.json();
         console.log('Form submitted successfully:', result);
+        setError(''); // Clear any previous errors
+        // Optionally, you can redirect the user or show a success message
       } else {
-        console.error('Error submitting form:', response.status, response.statusText);
+        const errorData = await response.json();
+        console.error('Error submitting form:', errorData);
+        setError('Error submitting form: ' + (errorData.message || response.statusText));
       }
     } catch (error) {
       console.error('Error submitting form:', error);
+      setError('Error submitting form: ' + error.message);
     }
   };
 
@@ -102,6 +105,8 @@ const CongeForm = () => {
       <div className="content">
         <form className="form" onSubmit={handleSubmit}>
           <h2>Demande de Congé</h2>
+
+          {error && <div className="error-message">{error}</div>}
 
           {/* Date Début & Fin */}
           <label>
