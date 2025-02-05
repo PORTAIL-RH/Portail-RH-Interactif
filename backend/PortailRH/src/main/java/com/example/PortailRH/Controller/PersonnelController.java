@@ -150,6 +150,7 @@ public class PersonnelController {
         try {
             String matricule = payload.get("matricule");
             String email = payload.get("email");
+            String codeSoc = payload.get("code_soc");  // Extract code_soc from payload
 
             // Validate matricule format (exactly 5 digits)
             if (matricule == null || !matricule.matches("^\\d{5}$")) {
@@ -171,10 +172,16 @@ public class PersonnelController {
                 return ResponseEntity.badRequest().body(Map.of("message", "Le matricule est déjà utilisé."));
             }
 
+            // Check if code_soc is provided
+            if (codeSoc == null || codeSoc.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Le code société est obligatoire."));
+            }
+
             // Create and save the new personnel
             Personnel newPersonnel = new Personnel();
             newPersonnel.setMatricule(matricule);
             newPersonnel.setEmail(email);
+            newPersonnel.setCode_soc(codeSoc);  // Set the code_soc
             newPersonnel.setActive(false);
             personnelRepository.save(newPersonnel);
 

@@ -11,9 +11,6 @@ const AutorisationForm = () => {
     heureRetour: '',
     codeSoc: '',
     texteDemande: '',
-    typeDemande: '',
-    reponseChef: 'I', 
-    reponseRH: 'I', 
     cod_autorisation: '',
   });
 
@@ -36,29 +33,25 @@ const AutorisationForm = () => {
     e.preventDefault();
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
+    const codeSoc = localStorage.getItem('codeSoc');
 
+    
     if (!authToken || !userId) {
       setError('Missing token or user ID');
       return;
     }
 
-    const requestData = {
-      dateDebut: formData.dateDebut,
-      dateFin: formData.dateFin,
-      heureSortie: formData.heureSortie,
-      heureRetour: formData.heureRetour,
-      codeSoc: formData.codeSoc,
-      texteDemande: formData.texteDemande,
-      typeDemande: formData.typeDemande,
-      reponseChef: formData.reponseChef,
-      reponseRH: formData.reponseRH,
-      cod_autorisation: formData.cod_autorisation,
-      matPers: { id: userId },
-    };
-
+    // Create FormData object
     const formDataToSend = new FormData();
-    formDataToSend.append('demande', new Blob([JSON.stringify(requestData)], { type: 'application/json' }));
-    
+    formDataToSend.append('dateDebut', formData.dateDebut);
+    formDataToSend.append('dateFin', formData.dateFin);
+    formDataToSend.append('heureSortie', formData.heureSortie);
+    formDataToSend.append('heureRetour', formData.heureRetour);
+    formDataToSend.append('codeSoc', formData.codeSoc);
+    formDataToSend.append('texteDemande', formData.texteDemande);
+    formDataToSend.append('codAutorisation', formData.cod_autorisation);
+    formDataToSend.append('matPersId', userId);
+
     if (file) {
       formDataToSend.append('file', file);
     }
@@ -72,14 +65,27 @@ const AutorisationForm = () => {
         body: formDataToSend,
       });
 
-      const result = await response.json();
+      const contentType = response.headers.get('content-type');
       if (!response.ok) {
-        setError('Error submitting form: ' + result.message);
+        if (contentType && contentType.includes('application/json')) {
+          const errorResult = await response.json();
+          setError('Error submitting form: ' + (errorResult.message || 'Unknown error'));
+        } else {
+          const errorText = await response.text();
+          setError('Error submitting form: ' + errorText);
+        }
         return;
       }
 
-      console.log('Form submitted successfully:', result);
-      setError('');
+      if (contentType && contentType.includes('application/json')) {
+        const result = await response.json();
+        console.log('Form submitted successfully:', result);
+        setError('');
+      } else {
+        const resultText = await response.text();
+        console.log('Form submitted successfully:', resultText);
+        setError('');
+      }
     } catch (error) {
       console.error('Error submitting form:', error);
       setError('Error submitting form: ' + error.message);
@@ -112,14 +118,8 @@ const AutorisationForm = () => {
                 <label htmlFor="heureRetour" className="form-label">Heure Retour</label>
                 <input type="time" id="heureRetour" name="heureRetour" className="form-control" value={formData.heureRetour} onChange={handleChange} required />
               </div>
-              <div className="col-md-6">
-                <label htmlFor="codeSoc" className="form-label">Code Société</label>
-                <input type="text" id="codeSoc" name="codeSoc" className="form-control" value={formData.codeSoc} onChange={handleChange} required />
-              </div>
-              <div className="col-md-6">
-                <label htmlFor="typeDemande" className="form-label">Type de Demande</label>
-                <input id="typeDemande" name="typeDemande" className="form-control" value={formData.typeDemande} onChange={handleChange} required />
-              </div>
+        
+             
               <div className="col-md-12">
                 <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
                 <textarea id="texteDemande" name="texteDemande" className="form-control" value={formData.texteDemande} onChange={handleChange} required></textarea>
