@@ -123,13 +123,14 @@ public class DemandeFormation {
         this.reponseRH = reponseRH;
     }
 
-    public Collection<Fichier_joint> getPdfFiles() {
+    public Collection<Fichier_joint> getFiles() {
         return Files;
     }
 
-    public void setPdfFiles(Collection<Fichier_joint> pdfFiles) {
-        this.Files = pdfFiles;
+    public void setFiles(Collection<Fichier_joint> files) {
+        this.Files = files;
     }
+
 
     public com.example.PortailRH.Model.titre getTitre() {
         return titre;

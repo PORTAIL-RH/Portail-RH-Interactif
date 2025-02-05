@@ -8,12 +8,15 @@ const CongeForm = () => {
     dateDebut: '',
     dateFin: '',
     nbrJours: 0,
-    matPers: '', // This will be filled by the userId from localStorage
+    matPers: '', 
     texteDemande: '',
     snjTempDep: '',
     snjTempRetour: '',
     dateReprisePrev: '',
     codeSoc: '',
+    file: null, 
+    typeDemande: 'conge', 
+
   });
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -28,55 +31,71 @@ const CongeForm = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Calcul du nombre de jours en fonction des dates
+  const handleFileChange = (e) => {
+    setFormData({ ...formData, file: e.target.files[0] }); // Store the selected file
+  };
+
   useEffect(() => {
     if (formData.dateDebut && formData.dateFin) {
       const startDate = new Date(formData.dateDebut);
       const endDate = new Date(formData.dateFin);
+  
+      if (endDate < startDate) {
+        setError('La date de fin ne peut pas être antérieure à la date de début.');
+        return;
+      }
+  
       const timeDiff = endDate - startDate;
-      const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Convertir en jours
+      const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Convert to days
       setFormData((prevData) => ({
         ...prevData,
         nbrJours: dayDiff,
       }));
+      setError(''); 
     }
   }, [formData.dateDebut, formData.dateFin]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
+
     // Get user ID (mat_pers) and token from localStorage
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-  
+    const codeSoc = localStorage.getItem('codeSoc'); 
+
     if (!authToken || !userId) {
       setError('Missing token or user ID');
       return;
     }
 
-    // Prepare the form data as JSON
-    const requestBody = {
-      dateDebut: new Date(formData.dateDebut),
-      dateFin: new Date(formData.dateFin),
-      texteDemande: formData.texteDemande,
-      snjTempDep: formData.snjTempDep,
-      snjTempRetour: formData.snjTempRetour,
-      dateReprisePrev: new Date(formData.dateReprisePrev),
-      codeSoc: formData.codeSoc,
-      matPers: { id: userId }, // Structure matPers as an object with id
-      nbrJours: formData.nbrJours,
-    };
-  
+    // Create FormData object
+    const formDataToSend = new FormData();
+    formDataToSend.append('dateDebut', formData.dateDebut);
+    formDataToSend.append('dateFin', formData.dateFin);
+    formDataToSend.append('texteDemande', formData.texteDemande);
+    formDataToSend.append('snjTempDep', formData.snjTempDep);
+    formDataToSend.append('snjTempRetour', formData.snjTempRetour);
+    formDataToSend.append('dateReprisePrev', formData.dateReprisePrev);
+    formDataToSend.append('codeSoc', codeSoc || '');
+    formDataToSend.append('matPersId', userId); 
+    formDataToSend.append('nbrJours', formData.nbrJours.toString());
+    formDataToSend.append('typeDemande', formData.typeDemande);
+
+    // Append the file if it exists
+    if (formData.file) {
+      formDataToSend.append('file', formData.file);
+    }
+
     try {
+      console.log('Sending request to backend...');
       const response = await fetch('http://localhost:8080/api/demande-conge/create', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
+          'Authorization': `Bearer ${authToken}`,
         },
-        body: JSON.stringify(requestBody), // Send JSON body
+        body: formDataToSend, // Send FormData
       });
-  
+
       if (response.ok) {
         const result = await response.json();
         console.log('Form submitted successfully:', result);
@@ -192,14 +211,15 @@ const CongeForm = () => {
             />
           </label>
 
-          {/* Nouveau champ : code société */}
+          {/* File upload */}
           <label>
-            Code société:
-            <textarea
-              name="codeSoc"
-              value={formData.codeSoc}
-              onChange={handleChange}
-            ></textarea>
+            Upload File:
+            <input
+              type="file"
+              name="file"
+              onChange={handleFileChange}
+              required // Make file upload mandatory if needed
+            />
           </label>
 
           <button type="submit">Soumettre</button>

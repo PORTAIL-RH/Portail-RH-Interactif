@@ -30,9 +30,8 @@ public class DemandeAutorisation {
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
-    //@DBRef(lazy = true) // Lazy relationship with attached files
-    //private Collection<Fichier_joint> files = new ArrayList<>();
-    private List<Fichier_joint> files = new ArrayList<>();
+    @DBRef(lazy = true) // Relation avec les fichiers joints
+    private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
     private Date heureSortie;
     private Date heureRetour;
@@ -121,11 +120,11 @@ public class DemandeAutorisation {
     }
 
     public Collection<Fichier_joint> getFiles() {
-        return files;
+        return Files;
     }
 
-    public void setFiles(List<Fichier_joint> files) {
-        this.files = files;
+    public void setFiles(Collection<Fichier_joint> files) {
+        this.Files = files;
     }
 
     public Date getHeureSortie() {

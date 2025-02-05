@@ -65,7 +65,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/themes/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/themes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/titres").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/types").permitAll()
                         //demandeautorisation endpoints
 
                         .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
