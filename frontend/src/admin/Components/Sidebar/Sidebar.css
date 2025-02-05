@@ -1,5 +1,6 @@
 /* Sidebar Styles */
 .sidebar {
+  position: fixed;
   width: 280px;
   background: #000220;
   color: white;
