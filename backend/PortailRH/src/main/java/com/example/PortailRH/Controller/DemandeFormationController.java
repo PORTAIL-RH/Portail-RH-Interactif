@@ -1,17 +1,22 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.DemandeFormation;
-import com.example.PortailRH.Model.theme;
-import com.example.PortailRH.Model.titre;
-import com.example.PortailRH.Model.type;
+import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.ThemeRepository;
 import com.example.PortailRH.Repository.TitreRepository;
 import com.example.PortailRH.Repository.TypeRepository;
 import com.example.PortailRH.Service.DemandeFormationService;
+import com.example.PortailRH.Service.FichierJointService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
+import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 @RestController
 @RequestMapping("/api/demande-formation")
@@ -29,62 +34,75 @@ public class DemandeFormationController {
     @Autowired
     private DemandeFormationService demandeFormationService;
 
-    /**
-     * Récupère les types associés à un titre.
-     *
-     * @param titreId L'ID du titre
-     * @return Liste des types associés
-     */
-    @GetMapping("/types/{titreId}")
-    public List<type> getTypesForTitre(@PathVariable String titreId) {
-        titre titre = titreRepository.findById(titreId).orElse(null);
-        if (titre != null) {
-            return titre.getTypes();  // Retourne les types associés à ce titre
+    @Autowired
+    private FichierJointService fichierJointService;
+
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createDemandeFormation(
+            @RequestParam("dateDebut") String dateDebut,
+            @RequestParam("dateFin") String dateFin,
+            @RequestParam("typeDemande") String typeDemande,
+            @RequestParam("texteDemande") String texteDemande,
+            @RequestParam("titre") String titreId,
+            @RequestParam("type") String typeId,
+            @RequestParam("theme") String themeId,
+            @RequestParam("annee_f") String annee_f,
+            @RequestParam("codeSoc") String codeSoc,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("matPersId") String matPersId) {
+
+        try {
+            // Validate and parse dates
+            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+            Date startDate = dateFormat.parse(dateDebut);
+            Date endDate = dateFormat.parse(dateFin);
+
+            if (startDate.after(endDate)) {
+                return new ResponseEntity<>("La date de début doit être avant la date de fin.", HttpStatus.BAD_REQUEST);
+            }
+
+            // Handle the file upload
+            Fichier_joint fichier = fichierJointService.saveFile(file);
+
+            // Create the demande formation
+            DemandeFormation demandeFormation = new DemandeFormation();
+            demandeFormation.setDateDebut(startDate);
+            demandeFormation.setDateFin(endDate);
+            demandeFormation.setTypeDemande(typeDemande);
+            demandeFormation.setTexteDemande(texteDemande);
+            demandeFormation.setCodeSoc(codeSoc);
+            demandeFormation.setAnnee_f(annee_f);
+
+            // Set the Personnel object based on matPersId
+            Personnel matPers = new Personnel();
+            matPers.setId(matPersId);
+            demandeFormation.setMatPers(matPers);
+
+            // Set the titre, type, and theme
+            titre titre = titreRepository.findById(titreId)
+                    .orElseThrow(() -> new RuntimeException("Titre non trouvé"));
+            type type = typeRepository.findById(typeId)
+                    .orElseThrow(() -> new RuntimeException("Type non trouvé"));
+            theme theme = themeRepository.findById(themeId)
+                    .orElseThrow(() -> new RuntimeException("Thème non trouvé"));
+
+            demandeFormation.setTitre(titre);
+            demandeFormation.setType(type);
+            demandeFormation.setTheme(theme);
+
+            // Associate the file with the request
+            demandeFormation.getFiles().add(fichier);
+
+            // Save the request
+            DemandeFormation createdDemande = demandeFormationService.createDemandeFormation(demandeFormation);
+            return new ResponseEntity<>(createdDemande, HttpStatus.CREATED);
+
+        } catch (ParseException e) {
+            return new ResponseEntity<>("Format de date invalide.", HttpStatus.BAD_REQUEST);
+        } catch (IOException e) {
+            return new ResponseEntity<>("Erreur lors du traitement du fichier.", HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (RuntimeException e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
-        return null;
-    }
-
-    /**
-     * Récupère les thèmes associés à un type.
-     *
-     * @param typeId L'ID du type
-     * @return Liste des thèmes associés
-     */
-    @GetMapping("/themes/{typeId}")
-    public List<theme> getThemesForType(@PathVariable String typeId) {
-        type type = typeRepository.findById(typeId).orElse(null);
-        if (type != null) {
-            return type.getThemes();  // Retourne les thèmes associés à ce type
-        }
-        return null;
-    }
-
-    /**
-     * Récupère tous les titres disponibles.
-     *
-     * @return Liste des titres disponibles
-     */
-    @GetMapping("/titres")
-    public List<titre> getAllTitres() {
-        return titreRepository.findAll();
-    }
-
-    /**
-     * Crée une nouvelle demande de formation.
-     *
-     * @param demandeFormation Les données de la demande de formation
-     * @return La demande de formation créée
-     */
-    @PostMapping("/create")
-    public DemandeFormation createDemandeFormation(@RequestBody DemandeFormation demandeFormation) {
-        // Validation des données
-        if (demandeFormation.getMatPers() == null || demandeFormation.getCodeSoc() == null) {
-            throw new IllegalArgumentException("Les informations nécessaires sont manquantes.");
-        }
-
-        // Appel au service pour enregistrer la demande de formation
-        DemandeFormation createdDemande = demandeFormationService.createDemandeFormation(demandeFormation);
-
-        return createdDemande;
     }
 }

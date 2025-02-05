@@ -24,16 +24,13 @@ public class DemandeConge {
 
     @DBRef
     private Personnel matPers;
-    private String codeSoc;
     private String texteDemande;
 
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
     @DBRef(lazy = true) // Relation avec les fichiers joints
-    private Collection<Fichier_joint> Files = new ArrayList<>();
-
-
+    private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
     private String snjTempDep;
     private String snjTempRetour;
@@ -102,12 +99,17 @@ public class DemandeConge {
         this.matPers = matPers;
     }
 
+    // CodeSoc will be derived dynamically from Personnel object
     public String getCodeSoc() {
-        return codeSoc;
+        return matPers != null ? matPers.getCode_soc() : null;
     }
 
-    public void setCodeSoc(String codeSoc) {
-        this.codeSoc = codeSoc;
+    public String getId_libre_demande() {
+        return id_libre_demande;
+    }
+
+    public void setId_libre_demande(String id_libre_demande) {
+        this.id_libre_demande = id_libre_demande;
     }
 
     public String getTexteDemande() {
@@ -134,12 +136,12 @@ public class DemandeConge {
         this.reponseRH = reponseRH;
     }
 
-    public Collection<Fichier_joint> getPdfFiles() {
+    public Collection<Fichier_joint> getFiles() {
         return Files;
     }
 
-    public void setPdfFiles(Collection<Fichier_joint> pdfFiles) {
-        this.Files = pdfFiles;
+    public void setFiles(Collection<Fichier_joint> files) {
+        this.Files = files;
     }
 
     public String getSnjTempDep() {
@@ -173,4 +175,5 @@ public class DemandeConge {
     public void setNbrJours(int nbrJours) {
         this.nbrJours = nbrJours;
     }
+
 }

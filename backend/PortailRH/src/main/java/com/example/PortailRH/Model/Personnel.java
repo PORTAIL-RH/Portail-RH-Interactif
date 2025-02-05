@@ -8,12 +8,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Set;
-
 @Document(collection = "Personnel")
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
+@AllArgsConstructor // Lombok annotation to generate a constructor with all fields
 public class Personnel {
 
     @Id
@@ -24,11 +21,9 @@ public class Personnel {
     @Indexed(unique = true)
     private String matricule;
 
-
     @NotBlank(message = "Le nom est obligatoire")
     private String nom;
 
-    @Getter @Setter
     @NotBlank(message = "Le prénom est obligatoire")
     private String prenom;
 
@@ -38,6 +33,9 @@ public class Personnel {
 
     @NotBlank(message = "Le mot de passe est obligatoire")
     private String motDePasse;
+
+    @NotBlank(message = "Le code société est obligatoire")
+    private String code_soc;
 
     @NotBlank(message = "La confirmation du mot de passe est obligatoire")
     private transient String confirmationMotDePasse;
@@ -58,13 +56,20 @@ public class Personnel {
     @Pattern(regexp = "mariée|célibataire", message = "La situation doit être 'mariée' ou 'célibataire'")
     private String situation;
 
-    @NotBlank(message = "Le nombre d'enfants est obligatoire ")
     private int nbr_enfants;
 
     @NotBlank(message = "La date d'embauche est obligatoire")
     private String date_embauche;
+
     private boolean active = false;
     private String role;
+
+    public Personnel() {
+    }
+    // Custom constructor for creating a Personnel object with only the matricule
+    public Personnel(String matricule) {
+        this.matricule = matricule;
+    }
 
     /**
      * Activates the account and assigns roles.
@@ -134,6 +139,14 @@ public class Personnel {
 
     public void setMotDePasse(String motDePasse) {
         this.motDePasse = motDePasse;
+    }
+
+    public String getCode_soc() {
+        return code_soc;
+    }
+
+    public void setCode_soc(String code_soc) {
+        this.code_soc = code_soc;
     }
 
     public boolean isActive() {
