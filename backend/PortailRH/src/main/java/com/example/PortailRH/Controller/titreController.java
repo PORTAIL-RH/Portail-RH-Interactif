@@ -1,7 +1,10 @@
 package com.example.PortailRH.Controller;
 
+import com.example.PortailRH.Model.theme;
 import com.example.PortailRH.Model.titre;
 import com.example.PortailRH.Model.type;
+import com.example.PortailRH.Repository.AdminUserRepository;
+import com.example.PortailRH.Repository.ThemeRepository;
 import com.example.PortailRH.Repository.TitreRepository;
 import com.example.PortailRH.Repository.TypeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,21 +24,27 @@ public class titreController {
 
     @Autowired
     private TypeRepository typeRepository;
+    @Autowired
+    private ThemeRepository themeRepository;
+
+
 
     /**
-     * Récupère tous les titres.
+     * Get all titres.
      *
-     * @return Liste des titres
+     * @return List of titres
      */
     @GetMapping("/")
-    public List<titre> getAllTitres() {
-        return titreRepository.findAll();
+    public ResponseEntity<List<titre>> getAllTitres() {
+        List<titre> titres = titreRepository.findAll();
+        return new ResponseEntity<>(titres, HttpStatus.OK);
     }
 
     /**
-     * Récupère un titre par son ID.
+     * Get a titre by ID.
      *
-
+     * @param id The ID of the titre
+     * @return The titre object if found, or 404 NOT FOUND
      */
     @GetMapping("/{id}")
     public ResponseEntity<titre> getTitreById(@PathVariable String id) {
@@ -47,6 +56,7 @@ public class titreController {
         }
     }
 
+
     /**
      * Crée un nouveau titre avec ses types associés.
      *
@@ -54,19 +64,71 @@ public class titreController {
      */
     @PostMapping("/create")
     public ResponseEntity<titre> createTitre(@RequestBody titre newTitre) {
-        // Si des types sont inclus dans le titre, on vérifie leur existence dans la base
+        // Check and create missing types
         if (newTitre.getTypes() != null) {
             for (type t : newTitre.getTypes()) {
                 Optional<type> existingType = typeRepository.findById(t.getId());
                 if (!existingType.isPresent()) {
-                    return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+                    // If the type doesn't exist, save it to the repository
+                    typeRepository.save(t);
+                }
+                // Check and create themes if they don't exist
+                if (t.getThemes() != null) {
+                    for (theme th : t.getThemes()) {
+                        AdminUserRepository ThemeRepository;
+                        Optional<theme> existingTheme = themeRepository.findById(th.getId());
+                        if (!existingTheme.isPresent()) {
+                            themeRepository.save(th);
+                        }
+                    }
                 }
             }
         }
 
+        // Save the new titre with the types and themes
         titre savedTitre = titreRepository.save(newTitre);
         return new ResponseEntity<>(savedTitre, HttpStatus.CREATED);
     }
+    /**
+     * Get types associated with a titre.
+     *
+     * @param id The ID of the titre
+     * @return List of types
+     */
+    @GetMapping("/{id}/types")
+    public ResponseEntity<List<type>> getTypesByTitreId(@PathVariable String id) {
+        Optional<titre> t = titreRepository.findById(id);
+        if (t.isPresent()) {
+            return new ResponseEntity<>(t.get().getTypes(), HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
+     * Get themes for a specific type in a titre.
+     *
+     * @param titreId The ID of the titre
+     * @param typeId  The ID of the type
+     * @return List of themes
+     */
+    @GetMapping("/{titreId}/types/{typeId}/themes")
+    public ResponseEntity<List<theme>> getThemesByTitreAndType(@PathVariable String titreId, @PathVariable String typeId) {
+        Optional<titre> t = titreRepository.findById(titreId);
+        if (t.isPresent()) {
+            Optional<type> ty = t.get().getTypes().stream()
+                    .filter(tp -> tp.getId().equals(typeId))
+                    .findFirst();
+            if (ty.isPresent()) {
+                return new ResponseEntity<>(ty.get().getThemes(), HttpStatus.OK);
+            } else {
+                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            }
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
 
     /**
       Met à jour un titre existant avec ses types associés.

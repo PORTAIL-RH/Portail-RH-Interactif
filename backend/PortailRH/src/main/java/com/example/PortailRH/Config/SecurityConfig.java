@@ -66,8 +66,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/themes").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/titres").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/titres/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/titres", "/api/titres/").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/types").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/titres/{id}/types").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/titres/{titreId}/types/{typeId}/themes").permitAll()
+
                         //demandeautorisation endpoints
 
                         .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
