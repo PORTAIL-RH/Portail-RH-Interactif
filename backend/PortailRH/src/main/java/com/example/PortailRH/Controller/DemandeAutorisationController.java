@@ -85,6 +85,7 @@ public class DemandeAutorisationController {
             return new ResponseEntity<>("Erreur lors du traitement du fichier.", HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
     // Endpoint pour récupérer toutes les demandes d'autorisation
     @GetMapping
     public ResponseEntity<List<DemandeAutorisation>> getAllDemandes() {
@@ -119,4 +120,17 @@ public class DemandeAutorisationController {
         }
         return ResponseEntity.notFound().build();
     }
+
+    @GetMapping("/personnel/{matPersId}")
+    public ResponseEntity<List<DemandeAutorisation>> getDemandesByPersonnelId(@PathVariable String matPersId) {
+        // Find all demands where the matPers.id matches the provided matPersId
+        List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPersId(matPersId);
+
+        if (demandes.isEmpty()) {
+            return ResponseEntity.noContent().build(); // Return 204 No Content if no demands are found
+        }
+
+        return ResponseEntity.ok(demandes); // Return the list of demands
+    }
+
 }
