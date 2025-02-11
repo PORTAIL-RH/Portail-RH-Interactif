@@ -4,7 +4,7 @@ import com.example.PortailRH.Model.DemandeAutorisation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
+
 @Repository
 public interface DemandeAutorisationRepository extends MongoRepository<DemandeAutorisation, String> {
-    // No file upload method should be here
 }
