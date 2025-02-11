@@ -57,7 +57,7 @@ const AutorisationForm = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-autorisation/create', {
+      const response = await fetch('http://localhost:8080/api/demande-formation/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -124,10 +124,12 @@ const AutorisationForm = () => {
                 <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
                 <textarea id="texteDemande" name="texteDemande" className="form-control" value={formData.texteDemande} onChange={handleChange} required></textarea>
               </div>
+
               <div className="col-md-12">
                 <label htmlFor="file" className="form-label">Fichier Joint</label>
                 <input type="file" id="file" name="file" className="form-control" onChange={handleFileChange} />
               </div>
+
             </div>
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>
