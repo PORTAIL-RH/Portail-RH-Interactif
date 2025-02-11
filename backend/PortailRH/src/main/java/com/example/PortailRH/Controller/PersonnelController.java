@@ -253,4 +253,24 @@ public class PersonnelController {
 
 
 
+
+    // Retrieve personnel by ID
+    @GetMapping("/byId/{id}")
+    public ResponseEntity<?> getPersonnelById(@PathVariable String id) {
+        try {
+            // Find the personnel by ID
+            Personnel personnel = personnelRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Personnel non trouvé avec l'ID : " + id));
+
+            return ResponseEntity.ok(personnel);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la récupération du personnel : " + ex.getMessage());
+        }
+    }
+
+
+
+
+
 }

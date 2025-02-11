@@ -35,6 +35,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/all").permitAll()
                         .requestMatchers(HttpMethod.POST, "api/Personnel/addWithMatriculeAndEmail").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/Personnel/updateAllFields/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/byId/{id}").permitAll()
 
                         //notification endpoints
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
@@ -59,6 +60,7 @@ public class SecurityConfig {
                         //demandeConge endpoints
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/all").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demande-conge/create").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge").permitAll()
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
@@ -75,7 +77,8 @@ public class SecurityConfig {
                         //demandeautorisation endpoints
 
                         .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/personnel/{matPersId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation").permitAll()
 
 
 
