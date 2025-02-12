@@ -35,6 +35,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-autorisation/create") ||
                 requestURI.startsWith("/api/Personnel/all") ||
                 requestURI.startsWith("/api/demande-autorisation/personnel/{matPersId}") ||
+                requestURI.startsWith("/api/demande-conge/personnel/{matPersId}") ||
+                requestURI.startsWith("/api/demande-formation/personnel/{matPersId}") ||
+
                 requestURI.startsWith("/api/demande-autorisation") ||
                 requestURI.startsWith("/api/demande-conge") ||
                 requestURI.startsWith("/api/titres") ||
@@ -44,6 +47,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/types/create") ||
                 requestURI.startsWith("/api/titres/") ||
                 requestURI.startsWith("/api/titres/{id}/types") ||
+                requestURI.startsWith("/api/types/{id}/themes") ||
+
                 requestURI.startsWith("/api/titres/{titreId}/types/{typeId}/themes") ||
 
 

@@ -139,4 +139,12 @@ public class DemandeCongeController {
             return ResponseEntity.ok("Demande mise à jour avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
+    @GetMapping("/personnel/{matPersId}")
+    public ResponseEntity<List<DemandeConge>> getDemandesByPersonnelId(@PathVariable String matPersId) {
+        List<DemandeConge> demandes = demandeCongeRepository.findByMatPersId(matPersId);
+        if (demandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(demandes);
+    }
 }

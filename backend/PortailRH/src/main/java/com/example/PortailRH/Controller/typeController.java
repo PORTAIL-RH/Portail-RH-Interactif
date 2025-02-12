@@ -7,6 +7,9 @@ import com.example.PortailRH.Repository.ThemeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.ui.context.Theme;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,7 +30,7 @@ public class typeController {
      *
      * @return Liste des types
      */
-    @GetMapping("/")
+    @GetMapping
     public List<type> getAllTypes() {
         return typeRepository.findAll();
     }
@@ -47,6 +50,7 @@ public class typeController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+
 
     /**
      * Crée un nouveau type avec ses thèmes associés.
