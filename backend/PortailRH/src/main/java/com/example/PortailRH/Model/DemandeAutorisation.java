@@ -33,8 +33,8 @@ public class DemandeAutorisation {
     @DBRef(lazy = true) // Relation avec les fichiers joints
     private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
-    private Date heureSortie;
-    private Date heureRetour;
+    private String heureSortie;
+    private String heureRetour;
     private String codAutorisation;
 
     // Getters and Setters
@@ -127,19 +127,19 @@ public class DemandeAutorisation {
         this.Files = files;
     }
 
-    public Date getHeureSortie() {
+    public String getHeureSortie() {
         return heureSortie;
     }
 
-    public void setHeureSortie(Date heureSortie) {
+    public void setHeureSortie(String heureSortie) {
         this.heureSortie = heureSortie;
     }
 
-    public Date getHeureRetour() {
+    public String getHeureRetour() {
         return heureRetour;
     }
 
-    public void setHeureRetour(Date heureRetour) {
+    public void setHeureRetour(String heureRetour) {
         this.heureRetour = heureRetour;
     }
 

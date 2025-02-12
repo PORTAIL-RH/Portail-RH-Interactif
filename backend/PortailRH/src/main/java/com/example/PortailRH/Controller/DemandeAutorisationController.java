@@ -34,15 +34,15 @@ public class DemandeAutorisationController {
             @RequestParam("dateDebut") String dateDebut,
             @RequestParam("dateFin") String dateFin,
             @RequestParam("texteDemande") String texteDemande,
-            @RequestParam("heureSortie") String heureSortie,
-            @RequestParam("heureRetour") String heureRetour,
+            @RequestParam("heureSortie") String heureSortie, // Déjà en String
+            @RequestParam("heureRetour") String heureRetour, // Déjà en String
             @RequestParam("codAutorisation") String codAutorisation,
             @RequestParam("codeSoc") String codeSoc,
             @RequestParam("file") MultipartFile file,
             @RequestParam("matPersId") String matPersId) {
 
         try {
-            // Validate and parse dates
+            // Valider et parser les dates
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(dateDebut);
             Date endDate = dateFormat.parse(dateFin);
@@ -51,36 +51,36 @@ public class DemandeAutorisationController {
                 return new ResponseEntity<>("La date de début doit être avant la date de fin.", HttpStatus.BAD_REQUEST);
             }
 
-            // Handle the file upload
+            // Gérer le fichier joint
             Fichier_joint fichier = fichierJointService.saveFile(file);
 
-            // Create the demande d'autorisation
+            // Créer la demande d'autorisation
             DemandeAutorisation demande = new DemandeAutorisation();
             demande.setDateDebut(startDate);
             demande.setDateFin(endDate);
-            demande.setTypeDemande("autorisation"); // Automatically set typeDemande to "autorisation"
+            demande.setTypeDemande("autorisation"); // Définir automatiquement le type de demande
             demande.setTexteDemande(texteDemande);
-            demande.setHeureSortie(new SimpleDateFormat("HH:mm").parse(heureSortie));
-            demande.setHeureRetour(new SimpleDateFormat("HH:mm").parse(heureRetour));
+            demande.setHeureSortie(heureSortie); // Déjà en String
+            demande.setHeureRetour(heureRetour); // Déjà en String
             demande.setCodAutorisation(codAutorisation);
             demande.setCodeSoc(codeSoc);
 
-            // Set the Personnel object based on matPersId
+            // Associer le personnel
             Personnel matPers = new Personnel();
-            matPers.setId(matPersId);  // You need to find this Personnel by ID if needed
+            matPers.setId(matPersId); // Associer l'ID du personnel
             demande.setMatPers(matPers);
 
-            // Associate the file with the request (if any)
+            // Associer le fichier joint (si présent)
             if (fichier != null) {
                 demande.setFiles(List.of(fichier));
             }
 
-            // Save the request
+            // Sauvegarder la demande
             demandeAutorisationRepository.save(demande);
             return new ResponseEntity<>("Demande d'autorisation créée avec succès", HttpStatus.CREATED);
 
         } catch (ParseException e) {
-            return new ResponseEntity<>("Format de date ou heure invalide.", HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>("Format de date invalide.", HttpStatus.BAD_REQUEST);
         } catch (IOException e) {
             return new ResponseEntity<>("Erreur lors du traitement du fichier.", HttpStatus.INTERNAL_SERVER_ERROR);
         }

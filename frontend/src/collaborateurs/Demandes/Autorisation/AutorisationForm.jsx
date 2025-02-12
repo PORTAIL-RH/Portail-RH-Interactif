@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import './AutorisationForm.css';
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const AutorisationForm = () => {
   const [formData, setFormData] = useState({
@@ -35,9 +37,8 @@ const AutorisationForm = () => {
     const authToken = localStorage.getItem('authToken');
     const codeSoc = localStorage.getItem('codeSoc');
 
-    
     if (!authToken || !userId) {
-      setError('Missing token or user ID');
+      toast.error('Missing token or user ID');
       return;
     }
 
@@ -57,7 +58,7 @@ const AutorisationForm = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-formation/create', {
+      const response = await fetch('http://localhost:8080/api/demande-autorisation/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -69,10 +70,10 @@ const AutorisationForm = () => {
       if (!response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const errorResult = await response.json();
-          setError('Error submitting form: ' + (errorResult.message || 'Unknown error'));
+          toast.error('Error submitting form: ' + (errorResult.message || 'Unknown error'));
         } else {
           const errorText = await response.text();
-          setError('Error submitting form: ' + errorText);
+          toast.error('Error submitting form: ' + errorText);
         }
         return;
       }
@@ -80,15 +81,17 @@ const AutorisationForm = () => {
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
         console.log('Form submitted successfully:', result);
+        toast.success('Demande d\'autorisation soumise avec succès !');
         setError('');
       } else {
         const resultText = await response.text();
         console.log('Form submitted successfully:', resultText);
+        toast.success('Demande d\'autorisation soumise avec succès !');
         setError('');
       }
     } catch (error) {
       console.error('Error submitting form:', error);
-      setError('Error submitting form: ' + error.message);
+      toast.error('Error submitting form: ' + error.message);
     }
   };
 
@@ -101,40 +104,116 @@ const AutorisationForm = () => {
           <form onSubmit={handleSubmit} className="autorisation-form container p-4 shadow rounded">
             <h2 className="text-center mb-4">Autorisation Form</h2>
             {error && <div className="alert alert-danger">{error}</div>}
-            <div className="row g-3">
-              <div className="col-md-6">
+
+            {/* Ligne pour Date Début et Date Fin */}
+            <div className="form-row">
+              <div>
                 <label htmlFor="dateDebut" className="form-label">Date Début</label>
-                <input type="date" id="dateDebut" name="dateDebut" className="form-control" value={formData.dateDebut} onChange={handleChange} required />
+                <input
+                  type="date"
+                  id="dateDebut"
+                  name="dateDebut"
+                  className="form-control"
+                  value={formData.dateDebut}
+                  onChange={handleChange}
+                  required
+                />
               </div>
-              <div className="col-md-6">
+              <div>
                 <label htmlFor="dateFin" className="form-label">Date Fin</label>
-                <input type="date" id="dateFin" name="dateFin" className="form-control" value={formData.dateFin} onChange={handleChange} required />
+                <input
+                  type="date"
+                  id="dateFin"
+                  name="dateFin"
+                  className="form-control"
+                  value={formData.dateFin}
+                  onChange={handleChange}
+                  required
+                />
               </div>
-              <div className="col-md-6">
-                <label htmlFor="heureSortie" className="form-label">Heure Sortie</label>
-                <input type="time" id="heureSortie" name="heureSortie" className="form-control" value={formData.heureSortie} onChange={handleChange} required />
-              </div>
-              <div className="col-md-6">
-                <label htmlFor="heureRetour" className="form-label">Heure Retour</label>
-                <input type="time" id="heureRetour" name="heureRetour" className="form-control" value={formData.heureRetour} onChange={handleChange} required />
-              </div>
-        
-             
-              <div className="col-md-12">
-                <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
-                <textarea id="texteDemande" name="texteDemande" className="form-control" value={formData.texteDemande} onChange={handleChange} required></textarea>
-              </div>
-
-              <div className="col-md-12">
-                <label htmlFor="file" className="form-label">Fichier Joint</label>
-                <input type="file" id="file" name="file" className="form-control" onChange={handleFileChange} />
-              </div>
-
             </div>
+
+            {/* Ligne pour Heure Sortie et Heure Retour */}
+            <div className="form-row">
+              <div>
+                <label htmlFor="heureSortie" className="form-label">Sortie</label>
+                <select
+                  type="time"
+                  id="heureSortie"
+                  name="heureSortie"
+                  className="form-control"
+                  value={formData.heureSortie}
+                  onChange={handleChange}
+                  required
+                  >
+                  <option value="">Choisissez un horaire</option>
+                  <option value="Matin">Matin</option>
+                  <option value="Soir">Soir</option>
+                </select>
+              </div>
+
+
+              <div>
+                <label htmlFor="heureRetour" className="form-label">Retour</label>
+                <select
+                  type="time"
+                  id="heureRetour"
+                  name="heureRetour"
+                  className="form-control"
+                  value={formData.heureRetour}
+                  onChange={handleChange}
+                  required
+                  >
+                  <option value="">Choisissez un horaire</option>
+                  <option value="Matin">Matin</option>
+                  <option value="Soir">Soir</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Texte de la Demande */}
+            <div className="full-width">
+              <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
+              <textarea
+                id="texteDemande"
+                name="texteDemande"
+                className="form-control"
+                value={formData.texteDemande}
+                onChange={handleChange}
+                required
+              ></textarea>
+            </div>
+
+            {/* Fichier Joint */}
+            <div className="full-width">
+              <label htmlFor="file" className="form-label">Fichier Joint</label>
+              <input
+                type="file"
+                id="file"
+                name="file"
+                className="form-control"
+                onChange={handleFileChange}
+              />
+            </div>
+
+            {/* Bouton de soumission */}
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>
         </div>
       </div>
+
+      {/* Toast Container */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };
