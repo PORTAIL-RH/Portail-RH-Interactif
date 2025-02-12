@@ -20,6 +20,8 @@ public class WebConfig implements WebMvcConfigurer {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:8081",
+
+                "http://172.20.10.7:8081",
                 "http://192.168.1.32:8081",  // Expo development server
                 "http://192.168.1.32:9070",  // Backend server
                 "exp://192.168.1.32:8081"    // Expo URL

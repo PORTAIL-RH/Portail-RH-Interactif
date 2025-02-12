@@ -12,11 +12,10 @@ const FormationForm = () => {
     titre: '',
     type: '',
     theme: '',
-    annee_f:'',
+    annee_f: '',
     codeSoc: '',
     matPers: '',
     file: null,
-    
   });
 
   const [errors, setErrors] = useState({});
@@ -29,23 +28,6 @@ const FormationForm = () => {
   const [error, setError] = useState(null);
 
   const [file, setFile] = useState(null);
-
-  
-
-  // Function to adapt API data to the expected format
-  const adapterDonneesAPI = (data) => {
-    return data.map((titre) => ({
-      ...titre,
-      types: titre.types?.map((type) => ({
-        ...type,
-        nom: type.type, // Map "type" field to "nom" for frontend compatibility
-        themes: type.themes?.map((theme) => ({
-          ...theme,
-          nom: theme.theme, // Map "theme" field to "nom" for frontend compatibility
-        })) || [],
-      })) || [],
-    }));
-  };
 
   useEffect(() => {
     fetchTitres();
@@ -62,10 +44,20 @@ const FormationForm = () => {
       }
       const data = await response.json();
 
-      const adaptedData = adapterDonneesAPI(data);
+      const adaptedData = data.map((titre) => ({
+        ...titre,
+        types: titre.types?.map((type) => ({
+          ...type,
+          nom: type.type,
+          themes: type.themes?.map((theme) => ({
+            ...theme,
+            nom: theme.theme,
+          })) || [],
+        })) || [],
+      }));
+
       setTitres(adaptedData);
 
-      // Map types and themes for cascading dropdowns
       const typesMap = {};
       const themesMap = {};
 
@@ -77,7 +69,7 @@ const FormationForm = () => {
       });
 
       setTypes(typesMap);
-      setThemes(themesMap);
+      setThemes(themesMap[formData.type] || []);
     } catch (err) {
       setError('Erreur lors du chargement des données');
       console.error(err);
@@ -96,9 +88,8 @@ const FormationForm = () => {
     setErrors({ ...errors, [name]: '' });
   };
 
-
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]); // Store the selected file
+    setFile(e.target.files[0]);
   };
 
   const validateForm = () => {
@@ -108,44 +99,54 @@ const FormationForm = () => {
     if (formData.dateDebut && formData.dateFin && formData.dateDebut > formData.dateFin) {
       newErrors.dateFin = 'Date Fin doit être postérieure à Date Début';
     }
-    if (!formData.typeDemande) newErrors.typeDemande = 'Type de demande est requis';
     if (!formData.texteDemande) newErrors.texteDemande = 'Texte Demande est requis';
-    if (!formData.file) newErrors.file = 'Fichier Joint est requis';
-
+    if (!file) newErrors.file = 'Fichier Joint est requis';
+  
     setErrors(newErrors);
+    console.log("Validation errors:", newErrors); // Debugging line
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submission triggered"); // Debugging line
+  
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
     const codeSoc = localStorage.getItem('codeSoc');
-
-    
+  
     if (!authToken || !userId) {
       setError('Missing token or user ID');
       return;
     }
-
-    // Create FormData object
+  
+    // Set typeDemande to "formation" before validation
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      typeDemande: "formation",
+    }));
+  
+    if (!validateForm()) {
+      return;
+    }
+  
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('dateFin', formData.dateFin);
-    formDataToSend.append('typeDemande', formData.typeDemande);
+    formDataToSend.append('typeDemande', "formation");
     formDataToSend.append('texteDemande', formData.texteDemande);
     formDataToSend.append('titre', formData.titre);
     formDataToSend.append('type', formData.type);
     formDataToSend.append('theme', formData.theme);
-
     formDataToSend.append('annee_f', formData.annee_f);
-    formDataToSend.append('codeSoc', formData.codeSoc);
+    formDataToSend.append('codeSoc', codeSoc);
     formDataToSend.append('matPersId', userId);
-
-    if (file) {
-      formDataToSend.append('file', file);
+    formDataToSend.append('file', file);
+  
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(key, value); // Debugging line
     }
-
+  
     try {
       const response = await fetch('http://localhost:8080/api/demande-formation/create', {
         method: 'POST',
@@ -154,41 +155,43 @@ const FormationForm = () => {
         },
         body: formDataToSend,
       });
-
+  
+      console.log("Response status:", response.status); // Debugging line
       const contentType = response.headers.get('content-type');
       if (!response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const errorResult = await response.json();
+          console.error("Server error:", errorResult); // Debugging line
           setError('Error submitting form: ' + (errorResult.message || 'Unknown error'));
         } else {
           const errorText = await response.text();
+          console.error("Server error:", errorText); // Debugging line
           setError('Error submitting form: ' + errorText);
         }
         return;
       }
-
+  
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
-        console.log('Form submitted successfully:', result);
+        console.log('Form submitted successfully:', result); // Debugging line
         setError('');
       } else {
         const resultText = await response.text();
-        console.log('Form submitted successfully:', resultText);
+        console.log('Form submitted successfully:', resultText); // Debugging line
         setError('');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Error submitting form:', error); // Debugging line
       setError('Error submitting form: ' + error.message);
     }
   };
 
   const handleTypeChange = (e) => {
     const selectedType = e.target.value;
-    setFormData({ ...formData, type: selectedType, theme: '' }); // Réinitialisez 'theme'
-  
-    // Chargez les thèmes liés au type sélectionné
+    setFormData({ ...formData, type: selectedType, theme: '' });
+
     if (formData.titre && types[formData.titre]) {
-      const typeObject = types[formData.titre].find((type) => type.nom === selectedType);
+      const typeObject = types[formData.titre].find((type) => type.id === selectedType);
       if (typeObject) {
         setThemes(typeObject.themes || []);
       } else {
@@ -221,41 +224,25 @@ const FormationForm = () => {
             {errors.dateFin && <span className="error">{errors.dateFin}</span>}
           </div>
 
-          {/* Dropdown pour les titres */}
           <div className="form-group">
             <label>Titre de la formation:</label>
-            <select
-              name="titre"
-              value={formData.titre}
-              onChange={handleChange}
-              required
-            >
+            <select name="titre" value={formData.titre} onChange={handleChange} required>
               <option value="">Sélectionnez un titre</option>
-              {titres
-                .filter(titre =>
-                  !formData.typeDemande || titre.types?.some(type => type.nom === formData.typeDemande)
-                )
-                .map(titre => (
-                  <option key={titre.id} value={titre.id}>
-                    {titre.titre}
-                  </option>
-                ))}
+              {titres.map(titre => (
+                <option key={titre.id} value={titre.id}>
+                  {titre.titre}
+                </option>
+              ))}
             </select>
             {errors.titre && <span className="error">{errors.titre}</span>}
           </div>
 
-          {/* Dropdown pour les types */}
           <div className="form-group">
             <label>Type de demande:</label>
-            <select
-              name="type"
-              value={formData.type}
-              onChange={handleTypeChange}
-              required
-            >
+            <select name="type" value={formData.type} onChange={handleTypeChange} required>
               <option value="">Sélectionnez un type</option>
               {types[formData.titre]?.map((type) => (
-                <option key={type.id} value={type.nom}>
+                <option key={type.id} value={type.id}>
                   {type.type}
                 </option>
               ))}
@@ -263,15 +250,9 @@ const FormationForm = () => {
             {errors.type && <span className="error">{errors.type}</span>}
           </div>
 
-          {/* Dropdown pour les thèmes */}
           <div className="form-group">
             <label>Thème de la formation:</label>
-            <select
-              name="theme"
-              value={formData.theme}
-              onChange={handleChange}
-              required
-            >
+            <select name="theme" value={formData.theme} onChange={handleChange} required>
               <option value="">Sélectionnez un thème</option>
               {Array.isArray(themes) && themes.map((theme) => (
                 <option key={theme.id} value={theme.id}>
@@ -288,9 +269,10 @@ const FormationForm = () => {
             {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
           </div>
 
-          <div className="col-md-12">
-                <label htmlFor="file" className="form-label">Fichier Joint</label>
-                <input type="file" id="file" name="file" className="form-control" onChange={handleFileChange} />
+          <div className="form-group">
+            <label>Fichier Joint:</label>
+            <input type="file" name="file" onChange={handleFileChange} required />
+            {errors.file && <span className="error">{errors.file}</span>}
           </div>
 
           <button type="submit" className="submit-button">Soumettre</button>
