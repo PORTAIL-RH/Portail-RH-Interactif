@@ -43,9 +43,10 @@
   width: 100%;
 }
 
-/* Input and textarea styling */
+/* Input, textarea, and select styling */
 .autorisation-form input,
-.autorisation-form textarea {
+.autorisation-form textarea,
+.autorisation-form select {
   width: 100%;
   padding: 12px;
   margin-bottom: 1.5rem;
@@ -54,19 +55,50 @@
   font-size: 1.1rem;
   background-color: #f7f7f7;
   transition: border-color 0.3s ease, background-color 0.3s ease;
+  appearance: none; /* Remove default arrow for select */
 }
 
 .autorisation-form input:focus,
-.autorisation-form textarea:focus {
+.autorisation-form textarea:focus,
+.autorisation-form select:focus {
   border-color: #007bff;
   outline: none;
   box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
 }
 
+/* Custom dropdown arrow for select */
+.autorisation-form select {
+  background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23444" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 8px 10px;
+}
+
+/* Style for options */
+.autorisation-form select option {
+  padding: 10px;
+}
+
+/* Container for form fields */
+.autorisation-form .form-row {
+  display: flex;
+  gap: 1rem;
+  width: 100%;
+}
+
+.autorisation-form .form-row > div {
+  flex: 1; /* Each field takes equal space */
+}
+
+/* Full-width fields */
+.autorisation-form .full-width {
+  width: 100%;
+}
+
 /* Button styling */
 .autorisation-form button {
   width: 100%;
-  max-width: 500px; /* Limite la largeur du bouton */
+  max-width: 500px; /* Limit button width */
   padding: 0.8rem;
   font-size: 1rem;
   font-weight: 600;
@@ -83,22 +115,53 @@
   background-color: #b96f31;
 }
 
-/* Container for form fields */
-.autorisation-form .row {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
+/* Style for select with icons */
+.autorisation-form .form-row .select-with-icon {
+  position: relative;
 }
 
-.autorisation-form .row > div {
-  width: 100%;
-  max-width: 500px; /* Limite la largeur des champs de saisie */
-  margin: 0 auto;
+.autorisation-form .form-row .select-with-icon i {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: #444;
 }
 
+.autorisation-form .form-row .select-with-icon select {
+  padding-left: 30px; /* Space for icon */
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
-  .autorisation-form .row > div {
-    width: 100%; /* Full width for smaller screens */
+  .autorisation-form .form-row {
+    flex-direction: column; /* Vertical layout on small screens */
+  }
+
+  .autorisation-form {
+    padding: 1.5rem;
+    margin: 1rem auto;
+  }
+
+  .autorisation-form h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .autorisation-form label {
+    font-size: 1rem;
+  }
+
+  .autorisation-form input,
+  .autorisation-form textarea,
+  .autorisation-form select {
+    font-size: 1rem;
+    padding: 10px;
+  }
+
+  .autorisation-form button {
+    font-size: 0.9rem;
+    padding: 0.7rem;
   }
 }

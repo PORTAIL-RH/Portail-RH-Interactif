@@ -40,7 +40,8 @@
 
 /* Input Fields */
 .form input,
-.form textarea {
+.form textarea,
+.form select {
   width: 100%;
   padding: 12px;
   margin-bottom: 1.5rem;
@@ -53,10 +54,12 @@
 
 /* Focus Input Fields */
 .form input:focus,
-.form textarea:focus {
+.form textarea:focus,
+.form select:focus {
   outline: none;
   border-color: #007bff;
   background-color: #fff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.25);
 }
 
 /* File Input Styling */
@@ -111,6 +114,7 @@
 
   .form input,
   .form textarea,
+  .form select,
   .form button {
     font-size: 1rem;
   }

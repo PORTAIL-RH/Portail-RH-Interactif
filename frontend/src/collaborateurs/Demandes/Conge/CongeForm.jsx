@@ -166,25 +166,34 @@ const CongeForm = () => {
             </label>
           </div>
 
-          {/* Ligne pour Heure Début, Heure Fin et Date de reprise prévue */}
+          {/* Ligne pour Sortie, Retour et Date de reprise prévue */}
+          {/* Ligne pour Sortie et Retour */}
           <div className="form-row">
             <label>
-              Heure Début:
-              <input
-                type="time"
+              Sortie:
+              <select
                 name="snjTempDep"
                 value={formData.snjTempDep}
                 onChange={handleChange}
-              />
+                required
+              >
+                <option value="">Choisissez un horaire</option>
+                <option value="Matin">Matin</option>
+                <option value="Soir">Soir</option>
+              </select>
             </label>
             <label>
-              Heure Fin:
-              <input
-                type="time"
+              Retour:
+              <select
                 name="snjTempRetour"
                 value={formData.snjTempRetour}
                 onChange={handleChange}
-              />
+                required
+              >
+                <option value="">Choisissez un horaire</option>
+                <option value="Matin">Matin</option>
+                <option value="Soir">Soir</option>
+              </select>
             </label>
             <label>
               Date de reprise prévue:
