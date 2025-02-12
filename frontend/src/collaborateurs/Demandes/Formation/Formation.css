@@ -1,66 +1,67 @@
 .form {
-    background: #ffffff;
-    padding: 100px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 600px;
-    margin: 3rem auto;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  
-  .form:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  }
-  
-  .form h2 {
-    text-align: center;
-    font-size: 2rem;
-    font-weight: 600;
-    color: #a3610b;
-    margin-bottom: 2rem;
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    text-decoration: underline;
-    margin-top: -10px;
-  }
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px; /* Augmenter la largeur maximale */
+  margin: 3rem auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
-  
-  .form label {
-    display: block;
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: #555;
-    font-size: 1rem;
-  }
-  
-  .form input,
-  .form textarea {
-    width: 100%;
-    padding: 0.8rem;
-    margin-bottom: 1.2rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 1rem;
-    background-color: #f7f7f7;
-    transition: all 0.3s ease;
-  }
-  
-  .form input:focus,
-  .form textarea:focus {
-    outline: none;
-    border-color: #007bff;
-    background-color: #fff;
-  }
-  
-  .form input[type="file"] {
-    padding: 0.4rem;
-    background-color: #f7f7f7;
-  }
-  
-  .form button {
-    background-color: #9c4701;
+.form:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+}
+
+.form h2 {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #a3610b;
+  margin-bottom: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-decoration: underline;
+  margin-top: -10px;
+}
+
+.form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #555;
+  font-size: 1rem;
+}
+
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  padding: 0.8rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #f7f7f7;
+  transition: all 0.3s ease;
+}
+
+.form input:focus,
+.form textarea:focus,
+.form select:focus {
+  outline: none;
+  border-color: #007bff;
+  background-color: #fff;
+}
+
+.form input[type="file"] {
+  padding: 0.4rem;
+  background-color: #f7f7f7;
+}
+
+.form button {
+  background-color: #9c4701;
   color: white;
   padding: 12px 20px;
   border: none;
@@ -70,47 +71,51 @@
   font-weight: 600;
   transition: background-color 0.3s ease;
   width: 100%;
-  }
-  
-  .form button:hover {
-    background-color: #b96f31;
-  }
-  
-  .form button:active {
-    background-color: #004085;
-  }
-  
-  .form .file-label {
-    font-weight: 500;
-    color: #555;
-    margin-bottom: 0.2rem;
-  }
-  
-  .form .file-input-wrapper {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  
-  .form .file-input-wrapper input[type="file"] {
-    width: 100%;
-  }
-  
-  @media (max-width: 600px) {
-    .form {
+}
+
+.form button:hover {
+  background-color: #b96f31;
+}
+
+.form button:active {
+  background-color: #004085;
+}
+
+/* Disposition en grille pour les champs */
+.form .form-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* Deux colonnes */
+  gap: 1.5rem; /* Espacement entre les champs */
+  margin-bottom: 1.2rem;
+}
+
+.form .form-row-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Trois colonnes */
+  gap: 1.5rem; /* Espacement entre les champs */
+  margin-bottom: 1.2rem;
+}
+
+/* Ajustements pour les écrans plus petits */
+@media (max-width: 600px) {
+  .form {
       padding: 1.5rem;
       max-width: 100%;
-    }
-  
-    .form h2 {
-      font-size: 1.6rem;
-    }
-  
-    .form input,
-    .form textarea,
-    .form button {
-      font-size: 0.9rem;
-    }
   }
-  
+
+  .form h2 {
+      font-size: 1.6rem;
+  }
+
+  .form input,
+  .form textarea,
+  .form select,
+  .form button {
+      font-size: 0.9rem;
+  }
+
+  .form .form-row,
+  .form .form-row-3 {
+      grid-template-columns: 1fr; /* Une seule colonne sur les petits écrans */
+  }
+}

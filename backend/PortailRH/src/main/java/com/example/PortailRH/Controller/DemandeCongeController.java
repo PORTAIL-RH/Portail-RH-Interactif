@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +51,7 @@ public class DemandeCongeController {
 
     // 3. Create a new demand
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<String> createDemandeConge(
+    public ResponseEntity<Map<String, Object>> createDemandeConge(
             @RequestParam("dateDebut") String dateDebut,
             @RequestParam("dateFin") String dateFin,
             @RequestParam("texteDemande") String texteDemande,
@@ -69,7 +70,9 @@ public class DemandeCongeController {
             Date endDate = dateFormat.parse(dateFin);
 
             if (startDate.after(endDate)) {
-                return new ResponseEntity<>("La date de début doit être avant la date de fin.", HttpStatus.BAD_REQUEST);
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "La date de début doit être avant la date de fin."
+                ));
             }
 
             // Handle the file upload
@@ -80,7 +83,9 @@ public class DemandeCongeController {
             try {
                 days = Integer.parseInt(nbrJours);
             } catch (NumberFormatException e) {
-                return new ResponseEntity<>("Le nombre de jours n'est pas valide.", HttpStatus.BAD_REQUEST);
+                return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Le nombre de jours n'est pas valide."
+                ));
             }
 
             // Calculate the reprise date based on the nbrJours
@@ -110,13 +115,22 @@ public class DemandeCongeController {
             }
 
             // Save the request
-            demandeCongeRepository.save(demande);
-            return new ResponseEntity<>("Demande de congé créée avec succès", HttpStatus.CREATED);
+            DemandeConge savedDemande = demandeCongeRepository.save(demande);
+
+            // Return a JSON response
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de congé créée avec succès",
+                    "demandeId", savedDemande.getId()
+            ));
 
         } catch (ParseException e) {
-            return new ResponseEntity<>("Format de date invalide. Utilisez le format yyyy-MM-dd.", HttpStatus.BAD_REQUEST);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "Format de date invalide. Utilisez le format yyyy-MM-dd."
+            ));
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "message", "Erreur lors du traitement du fichier."
+            ));
         }
     }
 

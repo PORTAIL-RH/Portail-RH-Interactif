@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './Formation.css';
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const FormationForm = () => {
   const [formData, setFormData] = useState({
@@ -72,6 +74,7 @@ const FormationForm = () => {
       setThemes(themesMap[formData.type] || []);
     } catch (err) {
       setError('Erreur lors du chargement des données');
+      toast.error('Erreur lors du chargement des données');
       console.error(err);
     } finally {
       setLoading(false);
@@ -101,7 +104,7 @@ const FormationForm = () => {
     }
     if (!formData.texteDemande) newErrors.texteDemande = 'Texte Demande est requis';
     if (!file) newErrors.file = 'Fichier Joint est requis';
-  
+
     setErrors(newErrors);
     console.log("Validation errors:", newErrors); // Debugging line
     return Object.keys(newErrors).length === 0;
@@ -109,27 +112,29 @@ const FormationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submission triggered"); // Debugging line
-  
+    console.log("Form submission triggered");
+
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
     const codeSoc = localStorage.getItem('codeSoc');
-  
+
     if (!authToken || !userId) {
       setError('Missing token or user ID');
+      toast.error('Missing token or user ID');
       return;
     }
-  
+
     // Set typeDemande to "formation" before validation
     setFormData((prevFormData) => ({
       ...prevFormData,
       typeDemande: "formation",
     }));
-  
+
     if (!validateForm()) {
+      toast.error('Veuillez corriger les erreurs dans le formulaire.');
       return;
     }
-  
+
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('dateFin', formData.dateFin);
@@ -142,11 +147,7 @@ const FormationForm = () => {
     formDataToSend.append('codeSoc', codeSoc);
     formDataToSend.append('matPersId', userId);
     formDataToSend.append('file', file);
-  
-    for (let [key, value] of formDataToSend.entries()) {
-      console.log(key, value); // Debugging line
-    }
-  
+
     try {
       const response = await fetch('http://localhost:8080/api/demande-formation/create', {
         method: 'POST',
@@ -155,34 +156,36 @@ const FormationForm = () => {
         },
         body: formDataToSend,
       });
-  
-      console.log("Response status:", response.status); // Debugging line
+
+      console.log("Response status:", response.status);
       const contentType = response.headers.get('content-type');
       if (!response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const errorResult = await response.json();
-          console.error("Server error:", errorResult); // Debugging line
-          setError('Error submitting form: ' + (errorResult.message || 'Unknown error'));
+          console.error("Server error:", errorResult);
+          toast.error('Erreur lors de la soumission du formulaire: ' + (errorResult.message || 'Erreur inconnue'));
         } else {
           const errorText = await response.text();
-          console.error("Server error:", errorText); // Debugging line
-          setError('Error submitting form: ' + errorText);
+          console.error("Server error:", errorText);
+          toast.error('Erreur lors de la soumission du formulaire: ' + errorText);
         }
         return;
       }
-  
+
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
-        console.log('Form submitted successfully:', result); // Debugging line
+        console.log('Form submitted successfully:', result);
+        toast.success('Formulaire soumis avec succès !');
         setError('');
       } else {
         const resultText = await response.text();
-        console.log('Form submitted successfully:', resultText); // Debugging line
+        console.log('Form submitted successfully:', resultText);
+        toast.success('Formulaire soumis avec succès !');
         setError('');
       }
     } catch (error) {
-      console.error('Error submitting form:', error); // Debugging line
-      setError('Error submitting form: ' + error.message);
+      console.error('Error submitting form:', error);
+      toast.error('Erreur lors de la soumission du formulaire: ' + error.message);
     }
   };
 
@@ -206,24 +209,28 @@ const FormationForm = () => {
       <Sidebar isSidebarOpen={isSidebarOpen} onToggle={handleSidebarToggle} />
 
       <div className="content">
-        <form className="form" onSubmit={handleSubmit}>
-          <h2>Demande de Formation</h2>
+      <form className="form" onSubmit={handleSubmit}>
+        <h2>Demande de Formation</h2>
 
-          {loading && <div className="loading">Chargement...</div>}
-          {error && <div className="error">{error}</div>}
+        {loading && <div className="loading">Chargement...</div>}
+        {error && <div className="error">{error}</div>}
 
+        {/* Ligne pour Date Début et Date Fin */}
+        <div className="form-row">
           <div className="form-group">
             <label>Date Début:</label>
             <input type="date" name="dateDebut" value={formData.dateDebut} onChange={handleChange} required />
             {errors.dateDebut && <span className="error">{errors.dateDebut}</span>}
           </div>
-
           <div className="form-group">
             <label>Date Fin:</label>
             <input type="date" name="dateFin" value={formData.dateFin} onChange={handleChange} required />
             {errors.dateFin && <span className="error">{errors.dateFin}</span>}
           </div>
+        </div>
 
+        {/* Ligne pour Titre, Type et Thème */}
+        <div className="form-row-3">
           <div className="form-group">
             <label>Titre de la formation:</label>
             <select name="titre" value={formData.titre} onChange={handleChange} required>
@@ -236,7 +243,6 @@ const FormationForm = () => {
             </select>
             {errors.titre && <span className="error">{errors.titre}</span>}
           </div>
-
           <div className="form-group">
             <label>Type de demande:</label>
             <select name="type" value={formData.type} onChange={handleTypeChange} required>
@@ -249,7 +255,6 @@ const FormationForm = () => {
             </select>
             {errors.type && <span className="error">{errors.type}</span>}
           </div>
-
           <div className="form-group">
             <label>Thème de la formation:</label>
             <select name="theme" value={formData.theme} onChange={handleChange} required>
@@ -262,22 +267,38 @@ const FormationForm = () => {
             </select>
             {errors.theme && <span className="error">{errors.theme}</span>}
           </div>
+        </div>
 
-          <div className="form-group">
-            <label>Texte Demande:</label>
-            <textarea name="texteDemande" value={formData.texteDemande} onChange={handleChange} required></textarea>
-            {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
-          </div>
+        {/* Texte Demande */}
+        <div className="form-group">
+          <label>Texte Demande:</label>
+          <textarea name="texteDemande" value={formData.texteDemande} onChange={handleChange} required></textarea>
+          {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
+        </div>
 
-          <div className="form-group">
-            <label>Fichier Joint:</label>
-            <input type="file" name="file" onChange={handleFileChange} required />
-            {errors.file && <span className="error">{errors.file}</span>}
-          </div>
+        {/* Fichier Joint */}
+        <div className="form-group">
+          <label>Fichier Joint:</label>
+          <input type="file" name="file" onChange={handleFileChange} required />
+          {errors.file && <span className="error">{errors.file}</span>}
+        </div>
 
-          <button type="submit" className="submit-button">Soumettre</button>
-        </form>
-      </div>
+        {/* Bouton de soumission */}
+        <button type="submit" className="submit-button">Soumettre</button>
+      </form>
+    </div>
+
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };

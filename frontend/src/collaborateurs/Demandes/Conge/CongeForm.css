@@ -90,35 +90,12 @@
   background-color: #004085;
 }
 
-/* File Input Wrapper */
-.form .file-input-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+/* Grid Layout for Date and Time Fields */
+.form .form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr); /* Trois colonnes */
+  gap: 1.5rem; /* Espacement entre les champs */
   margin-bottom: 1.5rem;
-}
-
-.form .file-input-wrapper input[type="file"] {
-  width: 100%;
-}
-
-/* Error Message Styling */
-.error-message {
-  color: #e74c3c;
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  text-align: center;
-  font-weight: 600;
-}
-
-/* Time Picker Group */
-.form-time {
-  display: flex;
-  justify-content: space-between;
-}
-
-.time-group {
-  width: 48%;
 }
 
 /* Responsive Styling */
@@ -136,5 +113,9 @@
   .form textarea,
   .form button {
     font-size: 1rem;
+  }
+
+  .form .form-row {
+    grid-template-columns: 1fr; /* Une seule colonne sur les petits écrans */
   }
 }
