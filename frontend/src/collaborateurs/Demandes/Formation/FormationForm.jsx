@@ -99,6 +99,7 @@ const FormationForm = () => {
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]); // Store the selected file
+    console.log('File:', file);
   };
 
   const validateForm = () => {
@@ -118,84 +119,81 @@ const FormationForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+  
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-    const codeSoc = localStorage.getItem('codeSoc');
-
-    
+  
     if (!authToken || !userId) {
       setError('Missing token or user ID');
+      console.error('Missing token or user ID');
       return;
     }
-
-    // Create FormData object
+  
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('dateFin', formData.dateFin);
-    formDataToSend.append('typeDemande', formData.typeDemande);
+    formDataToSend.append('typeDemande', "formation");
     formDataToSend.append('texteDemande', formData.texteDemande);
-    formDataToSend.append('titre', formData.titre);
-    formDataToSend.append('type', formData.type);
-    formDataToSend.append('theme', formData.theme);
-
-    formDataToSend.append('annee_f', formData.annee_f);
-    formDataToSend.append('codeSoc', formData.codeSoc);
+    formDataToSend.append('titreId', formData.titre || '');
+    formDataToSend.append('typeId', formData.type || '');
+    formDataToSend.append('themeId', formData.theme || '');
+    formDataToSend.append('codeSoc', formData.codeSoc || 'defaultValue');
+    formDataToSend.append('annee_f', new Date().getFullYear().toString());
     formDataToSend.append('matPersId', userId);
-
+  
     if (file) {
       formDataToSend.append('file', file);
     }
-
+  
+    for (let [key, value] of formDataToSend.entries()) {
+      console.log(key, value);
+    }
+  
     try {
       const response = await fetch('http://localhost:8080/api/demande-formation/create', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: formDataToSend,
       });
-
+  
+      console.log('Authorization Header:', `Bearer ${authToken}`);
+  
       const contentType = response.headers.get('content-type');
       if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const errorResult = await response.json();
-          setError('Error submitting form: ' + (errorResult.message || 'Unknown error'));
-        } else {
-          const errorText = await response.text();
-          setError('Error submitting form: ' + errorText);
-        }
+        const errorText = contentType?.includes('application/json')
+          ? await response.json()
+          : await response.text();
+        console.error('Error submitting form:', errorText);
+        setError('Error submitting form: ' + errorText.message || 'Unknown error');
         return;
       }
-
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        console.log('Form submitted successfully:', result);
-        setError('');
-      } else {
-        const resultText = await response.text();
-        console.log('Form submitted successfully:', resultText);
-        setError('');
-      }
+  
+      console.log('Form submitted successfully:', await response.json());
+      setError('');
     } catch (error) {
       console.error('Error submitting form:', error);
       setError('Error submitting form: ' + error.message);
     }
   };
+  
+
 
   const handleTypeChange = (e) => {
-    const selectedType = e.target.value;
-    setFormData({ ...formData, type: selectedType, theme: '' }); // Réinitialisez 'theme'
-  
-    // Chargez les thèmes liés au type sélectionné
-    if (formData.titre && types[formData.titre]) {
-      const typeObject = types[formData.titre].find((type) => type.nom === selectedType);
-      if (typeObject) {
-        setThemes(typeObject.themes || []);
-      } else {
-        setThemes([]);
-      }
+  const selectedTypeId = e.target.value; // This will be the type ID
+  setFormData({ ...formData, type: selectedTypeId, theme: '' }); // Update type with ID and reset theme
+
+  // Load themes for the selected type
+  if (formData.titre && types[formData.titre]) {
+    const typeObject = types[formData.titre].find((type) => type.id === selectedTypeId);
+    if (typeObject) {
+      setThemes(typeObject.themes || []);
+    } else {
+      setThemes([]);
     }
-  };
+  }
+};
 
   return (
     <div className="app">
@@ -226,20 +224,16 @@ const FormationForm = () => {
             <label>Titre de la formation:</label>
             <select
               name="titre"
-              value={formData.titre}
+              value={formData.titre} // Use formData.titre (ID) instead of formData.titre.id
               onChange={handleChange}
               required
             >
               <option value="">Sélectionnez un titre</option>
-              {titres
-                .filter(titre =>
-                  !formData.typeDemande || titre.types?.some(type => type.nom === formData.typeDemande)
-                )
-                .map(titre => (
-                  <option key={titre.id} value={titre.id}>
-                    {titre.titre}
-                  </option>
-                ))}
+              {titres.map((titre) => (
+                <option key={titre.id} value={titre.id}>
+                  {titre.titre}
+                </option>
+              ))}
             </select>
             {errors.titre && <span className="error">{errors.titre}</span>}
           </div>
@@ -249,13 +243,13 @@ const FormationForm = () => {
             <label>Type de demande:</label>
             <select
               name="type"
-              value={formData.type}
+              value={formData.type} // Use formData.type (ID) instead of formData.type.id
               onChange={handleTypeChange}
               required
             >
               <option value="">Sélectionnez un type</option>
               {types[formData.titre]?.map((type) => (
-                <option key={type.id} value={type.nom}>
+                <option key={type.id} value={type.id}>
                   {type.type}
                 </option>
               ))}
@@ -268,7 +262,7 @@ const FormationForm = () => {
             <label>Thème de la formation:</label>
             <select
               name="theme"
-              value={formData.theme}
+              value={formData.theme} // Use formData.theme (ID) instead of formData.theme.id
               onChange={handleChange}
               required
             >
@@ -281,6 +275,7 @@ const FormationForm = () => {
             </select>
             {errors.theme && <span className="error">{errors.theme}</span>}
           </div>
+
 
           <div className="form-group">
             <label>Texte Demande:</label>
