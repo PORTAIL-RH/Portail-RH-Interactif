@@ -1,6 +1,7 @@
 package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Repository.DemandeFormationRepository;
 import com.example.PortailRH.Repository.ThemeRepository;
 import com.example.PortailRH.Repository.TitreRepository;
 import com.example.PortailRH.Repository.TypeRepository;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/demande-formation")
@@ -36,7 +38,8 @@ public class DemandeFormationController {
 
     @Autowired
     private FichierJointService fichierJointService;
-
+    @Autowired
+    private DemandeFormationRepository demandeFormationRepository;
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemandeFormation(
             @RequestParam("dateDebut") String dateDebut,
@@ -104,5 +107,14 @@ public class DemandeFormationController {
         } catch (RuntimeException e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/personnel/{matPersId}")
+    public ResponseEntity<List<DemandeFormation>> getDemandesFormationByPersonnelId(@PathVariable String matPersId) {
+        List<DemandeFormation> demandes = demandeFormationRepository.findByMatPersId(matPersId);
+        if (demandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(demandes);
     }
 }

@@ -1,3 +1,4 @@
+
 package com.example.PortailRH.Config;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +62,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/all").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demande-conge/create").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}").permitAll()
+
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
@@ -73,6 +76,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/types").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/titres/{id}/types").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/titres/{titreId}/types/{typeId}/themes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}").permitAll()
+
 
                         //demandeautorisation endpoints
 

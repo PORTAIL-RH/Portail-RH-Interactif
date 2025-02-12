@@ -10,7 +10,7 @@ public class theme {
     @Id
     private String id;
     private String theme;
-
+    private String typeId;
     // Constructeurs, getters et setters
     public theme(String id, String theme) {
         this.id = id;
@@ -31,5 +31,13 @@ public class theme {
 
     public void setTheme(String theme) {
         this.theme = theme;
+    }
+
+    public String getTypeId() {
+        return typeId;
+    }
+
+    public void setTypeId(String typeId) {
+        this.typeId = typeId;
     }
 }
