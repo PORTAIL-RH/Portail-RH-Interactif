@@ -15,12 +15,12 @@ public class NotificationService {
     private NotificationRepository notificationRepository;
 
     // Create a new notification
-    public void createNotification(String message) {
+    public Notification createNotification(String message) {
         Notification notification = new Notification();
         notification.setMessage(message);
         notification.setTimestamp(LocalDateTime.now());
-        notification.setViewed(false); // Initially set the notification as unviewed
-        notificationRepository.save(notification);
+        notification.setViewed(false); // Initially unviewed
+        return notificationRepository.save(notification);
     }
 
     // Fetch all notifications

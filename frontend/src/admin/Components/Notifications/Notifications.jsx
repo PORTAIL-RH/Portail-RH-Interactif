@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
+import { Client } from "@stomp/stompjs";
 import bellIcon from "../../../assets/bell.png";
 import "./Notifications.css";
-import Sidebar from "../Sidebar/Sidebar"; 
+import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
 
 const Notifications = () => {
@@ -10,6 +11,7 @@ const Notifications = () => {
   const [unviewedCount, setUnviewedCount] = useState(0);
   const [error, setError] = useState("");
 
+  // Fetch initial notifications
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
@@ -19,14 +21,14 @@ const Notifications = () => {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
         });
 
         if (response.ok) {
           const data = await response.json();
           setNotifications(data || []);
-          const unviewed = data.filter(notification => !notification.viewed).length;
+          const unviewed = data.filter((notification) => !notification.viewed).length;
           setUnviewedCount(unviewed);
         } else {
           setError(`Failed to fetch notifications. Status: ${response.status}`);
@@ -39,6 +41,41 @@ const Notifications = () => {
     fetchNotifications();
   }, []);
 
+  // Establish WebSocket connection
+  useEffect(() => {
+    const client = new Client({
+      brokerURL: "ws://localhost:8080/ws", // WebSocket endpoint
+      debug: function (str) {
+        console.log(str);
+      },
+      reconnectDelay: 5000, // Reconnect after 5 seconds
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    });
+
+    client.onConnect = () => {
+      console.log("WebSocket connected");
+      client.subscribe("/topic/notifications", (message) => {
+        const newNotification = JSON.parse(message.body);
+        setNotifications((prevNotifications) => [newNotification, ...prevNotifications]);
+        setUnviewedCount((prevCount) => prevCount + 1);
+      });
+    };
+
+    client.onStompError = (frame) => {
+      console.error("WebSocket error:", frame.headers.message);
+    };
+
+    client.activate();
+
+    return () => {
+      if (client) {
+        client.deactivate();
+        console.log("WebSocket disconnected");
+      }
+    };
+  }, []);
+
   // Function to mark a notification as read
   const markAsRead = async (id) => {
     try {
@@ -48,7 +85,7 @@ const Notifications = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -58,6 +95,7 @@ const Notifications = () => {
             notification.id === id ? { ...notification, viewed: true } : notification
           )
         );
+        setUnviewedCount((prevCount) => prevCount - 1);
       } else {
         console.error(`Failed to mark notification as read. Status: ${response.status}`);
       }
