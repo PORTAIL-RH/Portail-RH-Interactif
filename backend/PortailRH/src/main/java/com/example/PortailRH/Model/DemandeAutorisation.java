@@ -1,6 +1,5 @@
 package com.example.PortailRH.Model;
 
-import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -8,18 +7,16 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.List;
 
-@Data
 @Document(collection = "Demandes_Autorisation")
 public class DemandeAutorisation {
 
     @Id
-    private String id_libre_demande;
+    private String id;
 
     private Date dateDebut;
     private Date dateFin;
-    private Date dateDemande = new Date();
+    private Date dateDemande;
     private String typeDemande;
 
     @DBRef
@@ -27,24 +24,36 @@ public class DemandeAutorisation {
     private String codeSoc;
     private String texteDemande;
 
-    private Reponse reponseChef = Reponse.I;
-    private Reponse reponseRH = Reponse.I;
+    private Reponse reponseChef;
+    private Reponse reponseRH;
 
-    @DBRef(lazy = true) // Relation avec les fichiers joints
-    private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
+    @DBRef(lazy = true)
+    private Collection<Fichier_joint> files;
 
-    private String heureSortie;
-    private String heureRetour;
+    private int heureSortie;
+    private int heureRetour;
+    private int horaireSortie;  // Fixed: Added missing field
+    private int horaireRetour;  // Fixed: Removed duplicate, corrected naming
+    private int minuteSortie;
+    private int minuteRetour;
     private String codAutorisation;
+
+    // Default constructor
+    public DemandeAutorisation() {
+        this.dateDemande = new Date();
+        this.reponseChef = Reponse.I;
+        this.reponseRH = Reponse.I;
+        this.files = new ArrayList<>();
+    }
 
     // Getters and Setters
 
-    public String getId_libre_demande() {
-        return id_libre_demande;
+    public String getId() {
+        return id;
     }
 
-    public void setId_libre_demande(String id_libre_demande) {
-        this.id_libre_demande = id_libre_demande;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public Date getDateDebut() {
@@ -120,27 +129,59 @@ public class DemandeAutorisation {
     }
 
     public Collection<Fichier_joint> getFiles() {
-        return Files;
+        return files;
     }
 
     public void setFiles(Collection<Fichier_joint> files) {
-        this.Files = files;
+        this.files = files;
     }
 
-    public String getHeureSortie() {
+    public int getHeureSortie() {
         return heureSortie;
     }
 
-    public void setHeureSortie(String heureSortie) {
+    public void setHeureSortie(int heureSortie) {
         this.heureSortie = heureSortie;
     }
 
-    public String getHeureRetour() {
+    public int getMinuteSortie() {
+        return minuteSortie;
+    }
+
+    public void setMinuteSortie(int minuteSortie) {
+        this.minuteSortie = minuteSortie;
+    }
+
+    public int getHeureRetour() {
         return heureRetour;
     }
 
-    public void setHeureRetour(String heureRetour) {
+    public void setHeureRetour(int heureRetour) {
         this.heureRetour = heureRetour;
+    }
+
+    public int getMinuteRetour() {
+        return minuteRetour;
+    }
+
+    public void setMinuteRetour(int minuteRetour) {
+        this.minuteRetour = minuteRetour;
+    }
+
+    public int getHoraireSortie() {
+        return horaireSortie;
+    }
+
+    public void setHoraireSortie(int horaireSortie) {
+        this.horaireSortie = horaireSortie;
+    }
+
+    public int getHoraireRetour() {
+        return horaireRetour;
+    }
+
+    public void setHoraireRetour(int horaireRetour) {
+        this.horaireRetour = horaireRetour;
     }
 
     public String getCodAutorisation() {

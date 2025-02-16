@@ -28,27 +28,45 @@ const AutorisationForm = () => {
   };
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]); // Store the selected file
+    setFile(e.target.files[0]);
+  };
+
+  const validateForm = () => {
+    const { dateDebut, dateFin, heureSortie, heureRetour } = formData;
+
+    if (new Date(dateDebut) > new Date(dateFin)) {
+      toast.error('La date de début ne peut pas être supérieure à la date de fin.');
+      return false;
+    }
+    if (heureSortie >= heureRetour) {
+      toast.error('L\'heure de sortie doit être inférieure à l\'heure de retour.');
+      return false;
+    }
+    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!validateForm()) {
+      return;
+    }
+
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
     const codeSoc = localStorage.getItem('codeSoc');
 
     if (!authToken || !userId) {
-      toast.error('Missing token or user ID');
+      toast.error('Token ou ID utilisateur manquant');
       return;
     }
 
-    // Create FormData object
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('dateFin', formData.dateFin);
     formDataToSend.append('heureSortie', formData.heureSortie);
     formDataToSend.append('heureRetour', formData.heureRetour);
-    formDataToSend.append('codeSoc', formData.codeSoc);
+    formDataToSend.append('codeSoc', codeSoc);
     formDataToSend.append('texteDemande', formData.texteDemande);
     formDataToSend.append('codAutorisation', formData.cod_autorisation);
     formDataToSend.append('matPersId', userId);
@@ -70,28 +88,28 @@ const AutorisationForm = () => {
       if (!response.ok) {
         if (contentType && contentType.includes('application/json')) {
           const errorResult = await response.json();
-          toast.error('Error submitting form: ' + (errorResult.message || 'Unknown error'));
+          toast.error('Erreur lors de la soumission du formulaire : ' + (errorResult.message || 'Erreur inconnue'));
         } else {
           const errorText = await response.text();
-          toast.error('Error submitting form: ' + errorText);
+          toast.error('Erreur lors de la soumission du formulaire : ' + errorText);
         }
         return;
       }
 
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
-        console.log('Form submitted successfully:', result);
+        console.log('Formulaire soumis avec succès :', result);
         toast.success('Demande d\'autorisation soumise avec succès !');
         setError('');
       } else {
         const resultText = await response.text();
-        console.log('Form submitted successfully:', resultText);
+        console.log('Formulaire soumis avec succès :', resultText);
         toast.success('Demande d\'autorisation soumise avec succès !');
         setError('');
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Error submitting form: ' + error.message);
+      console.error('Erreur lors de la soumission du formulaire :', error);
+      toast.error('Erreur lors de la soumission du formulaire : ' + error.message);
     }
   };
 
@@ -102,10 +120,11 @@ const AutorisationForm = () => {
         <Navbar />
         <div className="container mt-4">
           <form onSubmit={handleSubmit} className="autorisation-form container p-4 shadow rounded">
-            <h2 className="text-center mb-4">Autorisation Form</h2>
+            <h2 className="text-center mb-4">Formulaire d'Autorisation</h2>
+
             {error && <div className="alert alert-danger">{error}</div>}
 
-            {/* Ligne pour Date Début et Date Fin */}
+            {/* Date Inputs */}
             <div className="form-row">
               <div>
                 <label htmlFor="dateDebut" className="form-label">Date Début</label>
@@ -133,11 +152,11 @@ const AutorisationForm = () => {
               </div>
             </div>
 
-            {/* Ligne pour Heure Sortie et Heure Retour */}
+            {/* Time Inputs */}
             <div className="form-row">
               <div>
-                <label htmlFor="heureSortie" className="form-label">Sortie</label>
-                <select
+                <label htmlFor="heureSortie" className="form-label">Heure de Sortie</label>
+                <input
                   type="time"
                   id="heureSortie"
                   name="heureSortie"
@@ -145,17 +164,11 @@ const AutorisationForm = () => {
                   value={formData.heureSortie}
                   onChange={handleChange}
                   required
-                  >
-                  <option value="">Choisissez un horaire</option>
-                  <option value="Matin">Matin</option>
-                  <option value="Soir">Soir</option>
-                </select>
+                />
               </div>
-
-
               <div>
-                <label htmlFor="heureRetour" className="form-label">Retour</label>
-                <select
+                <label htmlFor="heureRetour" className="form-label">Heure de Retour</label>
+                <input
                   type="time"
                   id="heureRetour"
                   name="heureRetour"
@@ -163,15 +176,11 @@ const AutorisationForm = () => {
                   value={formData.heureRetour}
                   onChange={handleChange}
                   required
-                  >
-                  <option value="">Choisissez un horaire</option>
-                  <option value="Matin">Matin</option>
-                  <option value="Soir">Soir</option>
-                </select>
+                />
               </div>
             </div>
 
-            {/* Texte de la Demande */}
+            {/* Textarea for demande */}
             <div className="full-width">
               <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
               <textarea
@@ -184,7 +193,7 @@ const AutorisationForm = () => {
               ></textarea>
             </div>
 
-            {/* Fichier Joint */}
+            {/* File Input */}
             <div className="full-width">
               <label htmlFor="file" className="form-label">Fichier Joint</label>
               <input
@@ -196,7 +205,7 @@ const AutorisationForm = () => {
               />
             </div>
 
-            {/* Bouton de soumission */}
+            {/* Submit Button */}
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>
         </div>
