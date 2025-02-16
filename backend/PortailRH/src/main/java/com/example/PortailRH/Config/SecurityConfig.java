@@ -64,6 +64,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}").permitAll()
 
+                        ///demande document endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/demande-document/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document").permitAll()
+
+                        ///demande pre avance
+                        .requestMatchers(HttpMethod.POST, "/api/demande-pre-avance/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance").permitAll()
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()

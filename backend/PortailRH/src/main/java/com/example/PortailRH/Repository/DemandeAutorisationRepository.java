@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface DemandeAutorisationRepository extends MongoRepository<DemandeAutorisation, String> {
-    List<DemandeAutorisation> findByMatPersId(String matPersId);
+    List<DemandeAutorisation> findByMatPers_Id(String matPersId);
 }

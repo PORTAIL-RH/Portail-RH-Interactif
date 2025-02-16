@@ -75,14 +75,6 @@ public class DemandeConge {
         return dateFin;
     }
 
-    public Date getDateDemande() {
-        return dateDemande;
-    }
-
-    public void setDateDemande(Date dateDemande) {
-        this.dateDemande = dateDemande;
-    }
-
     public String getTypeDemande() {
         return typeDemande;
     }

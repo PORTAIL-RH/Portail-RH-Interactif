@@ -12,9 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -34,103 +35,117 @@ public class DemandeAutorisationController {
             @RequestParam("dateDebut") String dateDebut,
             @RequestParam("dateFin") String dateFin,
             @RequestParam("texteDemande") String texteDemande,
-            @RequestParam("heureSortie") String heureSortie, // Déjà en String
-            @RequestParam("heureRetour") String heureRetour, // Déjà en String
+            @RequestParam("heureSortie") String heureSortieStr,
+            @RequestParam("heureRetour") String heureRetourStr,
             @RequestParam("codAutorisation") String codAutorisation,
             @RequestParam("codeSoc") String codeSoc,
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam("matPersId") String matPersId) {
 
         try {
-            // Valider et parser les dates
+            // Convertir les dates en objets Date
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(dateDebut);
             Date endDate = dateFormat.parse(dateFin);
 
             if (startDate.after(endDate)) {
-                return new ResponseEntity<>("La date de début doit être avant la date de fin.", HttpStatus.BAD_REQUEST);
+                return ResponseEntity.badRequest().body("La date de début doit être avant la date de fin.");
             }
 
-            // Gérer le fichier joint
-            Fichier_joint fichier = fichierJointService.saveFile(file);
+            // Convertir les heures en LocalTime
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
+            LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
 
-            // Créer la demande d'autorisation
+// Vérifier si l'heure de sortie est après l'heure de retour
+            if (heureSortie.isAfter(heureRetour)) {
+                return ResponseEntity.badRequest().body("L'heure de sortie doit être avant l'heure de retour.");
+            }
+
+// Extraire l'heure et les minutes
+            int horaireSortie = heureSortie.getHour();
+            int minuteSortie = heureSortie.getMinute();
+            int horaireRetour = heureRetour.getHour();
+            int minuteRetour = heureRetour.getMinute();
+
+// Créer une nouvelle demande d'autorisation
             DemandeAutorisation demande = new DemandeAutorisation();
             demande.setDateDebut(startDate);
             demande.setDateFin(endDate);
-            demande.setTypeDemande("autorisation"); // Définir automatiquement le type de demande
+            demande.setTypeDemande("autorisation");
             demande.setTexteDemande(texteDemande);
-            demande.setHeureSortie(heureSortie); // Déjà en String
-            demande.setHeureRetour(heureRetour); // Déjà en String
+            demande.setHoraireSortie(horaireSortie);
+            demande.setMinuteSortie(minuteSortie);
+            demande.setHoraireRetour(horaireRetour);
+            demande.setMinuteRetour(minuteRetour);
+
+// Ajouter ces lignes pour corriger le problème :
+            demande.setHeureSortie(horaireSortie);  // Fixer l'heureSortie avec la valeur correcte
+            demande.setHeureRetour(horaireRetour);  // Fixer l'heureRetour avec la valeur correcte
+
             demande.setCodAutorisation(codAutorisation);
             demande.setCodeSoc(codeSoc);
 
-            // Associer le personnel
-            Personnel matPers = new Personnel();
-            matPers.setId(matPersId); // Associer l'ID du personnel
-            demande.setMatPers(matPers);
+// Associer le personnel
+            Personnel personnel = new Personnel();
+            personnel.setId(matPersId);
+            demande.setMatPers(personnel);
 
-            // Associer le fichier joint (si présent)
-            if (fichier != null) {
+// Gérer l'upload du fichier s'il existe
+            if (file != null && !file.isEmpty()) {
+                Fichier_joint fichier = fichierJointService.saveFile(file);
                 demande.setFiles(List.of(fichier));
             }
 
-            // Sauvegarder la demande
+// Enregistrer la demande
             demandeAutorisationRepository.save(demande);
-            return new ResponseEntity<>("Demande d'autorisation créée avec succès", HttpStatus.CREATED);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Demande d'autorisation créée avec succès");
+
 
         } catch (ParseException e) {
-            return new ResponseEntity<>("Format de date invalide.", HttpStatus.BAD_REQUEST);
-        } catch (IOException e) {
-            return new ResponseEntity<>("Erreur lors du traitement du fichier.", HttpStatus.INTERNAL_SERVER_ERROR);
+            return ResponseEntity.badRequest().body("Format de date invalide.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Une erreur est survenue : " + e.getMessage());
         }
     }
 
-    // Endpoint pour récupérer toutes les demandes d'autorisation
     @GetMapping
     public ResponseEntity<List<DemandeAutorisation>> getAllDemandes() {
         List<DemandeAutorisation> demandes = demandeAutorisationRepository.findAll();
         return ResponseEntity.ok(demandes);
     }
 
-    // Endpoint pour récupérer une demande par son ID
     @GetMapping("/{id}")
     public ResponseEntity<DemandeAutorisation> getDemandeById(@PathVariable String id) {
         Optional<DemandeAutorisation> demande = demandeAutorisationRepository.findById(id);
-        return demande.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return demande.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Endpoint pour mettre à jour une demande d'autorisation
     @PutMapping("/{id}")
-    public ResponseEntity<DemandeAutorisation> updateDemande(@PathVariable String id, @RequestBody DemandeAutorisation demandeAutorisation) {
-        if (demandeAutorisationRepository.existsById(id)) {
-            demandeAutorisation.setId_libre_demande(id);
-            DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(demandeAutorisation);
-            return ResponseEntity.ok(updatedDemande);
+    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandeAutorisation demandeAutorisation) {
+        if (!demandeAutorisationRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        demandeAutorisation.setId(id);
+        demandeAutorisationRepository.save(demandeAutorisation);
+        return ResponseEntity.ok("Demande mise à jour avec succès");
     }
 
-    // Endpoint pour supprimer une demande d'autorisation
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDemande(@PathVariable String id) {
-        if (demandeAutorisationRepository.existsById(id)) {
-            demandeAutorisationRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteDemande(@PathVariable String id) {
+        if (!demandeAutorisationRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        demandeAutorisationRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeAutorisation>> getDemandesByPersonnelId(@PathVariable String matPersId) {
-        // Find all demands where the matPers.id matches the provided matPersId
-        List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPersId(matPersId);
-
-        if (demandes.isEmpty()) {
-            return ResponseEntity.noContent().build(); // Return 204 No Content if no demands are found
-        }
-
-        return ResponseEntity.ok(demandes); // Return the list of demands
+        List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
+        return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
     }
-
 }
