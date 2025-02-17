@@ -21,7 +21,6 @@ public class DemandePreAvance {
 
     @DBRef
     private Personnel matPers;
-
     private Reponse reponseChef;
     private Reponse reponseRH;
 
