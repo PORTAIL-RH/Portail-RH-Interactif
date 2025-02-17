@@ -45,6 +45,9 @@ public class DemandePreAvance {
         this.reponseRH = Reponse.I;
     }
 
+    public static Map<String, Double> getTypesPreAvance() {
+        return TYPES_PRE_AVANCE;
+    }
     // Méthode pour définir le type de demande
     public void setTypeDemande(String typeDemande) {
         if (TYPES_PRE_AVANCE.containsKey(typeDemande)) {

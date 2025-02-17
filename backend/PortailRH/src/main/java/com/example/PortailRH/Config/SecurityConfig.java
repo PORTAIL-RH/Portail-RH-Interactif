@@ -71,6 +71,7 @@ public class SecurityConfig {
                         ///demande pre avance
                         .requestMatchers(HttpMethod.POST, "/api/demande-pre-avance/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/types").permitAll()
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
