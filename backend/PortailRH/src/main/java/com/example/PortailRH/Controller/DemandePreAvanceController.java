@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -36,6 +37,10 @@ public class DemandePreAvanceController {
     public ResponseEntity<List<DemandePreAvance>> getAllDemandes() {
         List<DemandePreAvance> demandes = demandePreAvanceRepository.findAll();
         return ResponseEntity.ok(demandes);
+    }
+    @GetMapping("/types")
+    public ResponseEntity<Map<String, Double>> getTypesPreAvance() {
+        return ResponseEntity.ok(DemandePreAvance.getTypesPreAvance());
     }
 
     // Get a DemandePreAvance by ID

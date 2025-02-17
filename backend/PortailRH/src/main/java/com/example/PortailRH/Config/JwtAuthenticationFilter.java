@@ -42,6 +42,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-document") ||
                 requestURI.startsWith("/api/demande-pre-avance/create") ||
                 requestURI.startsWith("/api/demande-pre-avance") ||
+                requestURI.startsWith("/api/demande-pre-avance/types") ||
+
 
 
 
