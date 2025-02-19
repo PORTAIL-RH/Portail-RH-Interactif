@@ -15,6 +15,9 @@ const Authentication = lazy(() => import('./collaborateurs/Authentification/Auth
 const DemandeConge = lazy(() => import('./collaborateurs/Demandes/Conge/CongeForm.jsx'));
 const DemandeFormation = lazy(() => import('./collaborateurs/Demandes/Formation/FormationForm.jsx'));
 const DemandeAutorisation = lazy(() => import('./collaborateurs/Demandes/Autorisation/AutorisationForm.jsx'));
+const DemandePreAvance = lazy(() => import('./collaborateurs/Demandes/Avance/Avance.jsx'));
+const DemandeDocument = lazy(() => import('./collaborateurs/Demandes/Document/Document.jsx'));
+const AccueilCollaborateurs = lazy(() => import('./collaborateurs/Accueil/Accueil.jsx'));
 
 // AppGen
 
@@ -43,8 +46,9 @@ function App() {
           <Route path="/DemandeConge" element={<DemandeConge />} />
           <Route path="/DemandeFormation" element={<DemandeFormation />} />
           <Route path="/DemandeAutorisation" element={<DemandeAutorisation />} />
-
-
+          <Route path="/DemandePreAvance" element={<DemandePreAvance />} />
+          <Route path="/DemandeDocument" element={<DemandeDocument />} />
+          <Route path="/AccueilCollaborateurs" element={<AccueilCollaborateurs />} />
 
           {/* AppGen */}
           <Route path="/CompanyHome" element={<CompanyHome />} />

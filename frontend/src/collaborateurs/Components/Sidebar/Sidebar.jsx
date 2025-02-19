@@ -18,6 +18,8 @@ const Sidebar = () => {
         <li><a href="/DemandeFormation">Formation</a></li>
         <li><a href="/DemandeConge">Congé</a></li>
         <li><a href="/DemandeAutorisation">Autorisation</a></li>
+        <li><a href="/DemandePreAvance">Avance</a></li>
+        <li><a href="/DemandeDocument">Document</a></li>
       </ul>
     </div>
   );
