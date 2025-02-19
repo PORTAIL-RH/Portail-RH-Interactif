@@ -23,6 +23,7 @@ public class DemandePreAvance {
     private Personnel matPers;
     private Reponse reponseChef;
     private Reponse reponseRH;
+    private String codeSoc;
 
     // Map pour stocker les types de pré-avances et leurs montants moyens
     private static final Map<String, Double> TYPES_PRE_AVANCE = new HashMap<>();
@@ -129,5 +130,12 @@ public class DemandePreAvance {
 
     public void setReponseRH(Reponse reponseRH) {
         this.reponseRH = reponseRH;
+    }
+    public String getCodeSoc() {
+        return codeSoc;
+    }
+
+    public void setCodeSoc(String codeSoc) {
+        this.codeSoc = codeSoc;
     }
 }

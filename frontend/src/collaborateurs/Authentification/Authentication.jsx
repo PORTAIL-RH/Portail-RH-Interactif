@@ -82,7 +82,7 @@ const Authentication = () => {
           localStorage.setItem('authToken', token);
           localStorage.setItem('userId', id);
           alert('Login successful!');
-          navigate('/DemandeConge');
+          navigate('/AccueilCollaborateurs');
         } else {
           alert('Invalid response data.');
         }

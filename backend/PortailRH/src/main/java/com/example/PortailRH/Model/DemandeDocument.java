@@ -18,6 +18,8 @@ public class DemandeDocument {
     private Personnel matPers;
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
+    private String codeSoc;
+
 
     public String getId() {
         return id;
@@ -52,9 +54,9 @@ public class DemandeDocument {
     }
 
     // CodeSoc will be derived dynamically from Personnel object
-    public String getCodeSoc() {
+    /*public String getCodeSoc() {
         return matPers != null ? matPers.getCode_soc() : null;
-    }
+    }*/
 
     public Reponse getReponseChef() {
         return reponseChef;
@@ -76,5 +78,12 @@ public class DemandeDocument {
 
     public void setDateDemande(Date dateDemande) {
         this.dateDemande = dateDemande;
+    }
+    public String getCodeSoc() {
+        return codeSoc;
+    }
+
+    public void setCodeSoc(String codeSoc) {
+        this.codeSoc = codeSoc;
     }
 }

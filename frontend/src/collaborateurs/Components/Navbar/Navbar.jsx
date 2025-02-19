@@ -1,7 +1,10 @@
 import React from 'react';
 import './Navbar.css';
+import { useNavigate } from 'react-router-dom'; // Pour la navigation
 
 const Navbar = () => {
+  const navigate = useNavigate();
+
   const handleLogout = () => {
     // Clear relevant data from localStorage
     localStorage.removeItem('authToken'); // Replace 'authToken' with your actual key
@@ -10,10 +13,13 @@ const Navbar = () => {
     // Redirect to the main page
     window.location.href = '/';
   };
+  const handleLogoClick = () => {
+    navigate('/AccueilCollaborateurs'); // Rediriger vers la page d'accueil des collaborateurs
+  };
 
   return (
     <nav className="navbar">
-      <div className="navbar-logo">Portail RH</div>
+      <div onClick={handleLogoClick} className="navbar-logo">Portail RH</div>
       <div className="navbar-links">
         <a href="/profile">Profil</a>
         <a href="/" className="Déconnexion" onClick={handleLogout}>Déconnexion</a>
