@@ -7,7 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const DocumentForm = () => {
   const [formData, setFormData] = useState({
-    typeDemande: '',
+    typeDemande: 'Document',
     objet: '',
     codeSoc: '',
     matPers: { id: '' }, 
@@ -99,18 +99,7 @@ const DocumentForm = () => {
             <h2 className="text-center mb-4">Formulaire Document</h2>
 
             {error && <div className="alert alert-danger">{error}</div>}
-            
-            <div className="full-width">
-              <label className="form-label">Type de Demande :</label>
-              <input
-                type="input"
-                name="typeDemande"
-                value={formData.typeDemande}
-                onChange={handleChange}
-                required
-        
-              />
-            </div>
+
 
             <div className="full-width">
               <label className="form-label">objet :</label>

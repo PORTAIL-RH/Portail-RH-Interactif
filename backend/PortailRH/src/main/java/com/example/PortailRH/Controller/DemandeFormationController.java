@@ -40,6 +40,13 @@ public class DemandeFormationController {
     private FichierJointService fichierJointService;
     @Autowired
     private DemandeFormationRepository demandeFormationRepository;
+
+
+    @GetMapping
+    public ResponseEntity<List<DemandeFormation>> getAllDemandes() {
+        List<DemandeFormation> demandes = demandeFormationRepository.findAll();
+        return ResponseEntity.ok(demandes);
+    }
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemandeFormation(
             @RequestParam("dateDebut") String dateDebut,

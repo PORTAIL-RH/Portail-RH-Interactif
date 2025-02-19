@@ -1,0 +1,152 @@
+/* Layout.css */
+.accueil-containerpp {
+  display: flex;
+  height: 100vh;
+  background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+  padding-top: 70px;
+}
+
+.main-contentpp {
+  margin: 20px;
+  flex: 1;
+  padding: 30px;
+  background-color: rgba(255, 255, 255, 0.95); 
+  border-radius: 15px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.main-contentpp:hover {
+  transform: translateY(-5px); 
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); 
+}
+
+.main-contentpp {
+  margin-top: 20px;
+  flex: 1;
+  padding: 40px 20px;
+  background-color: #ffffff; 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+  border-radius: 8px; 
+}
+
+.main-contentpp {
+  margin-top: 20px;
+  flex: 1;
+  padding: 40px 20px;
+  background-color: #ffffff; 
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 8px; 
+  text-align: center; 
+}
+
+.main-contentpp h2 {
+  font-size: 1.8rem; 
+  color: #333; 
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1px; 
+}
+
+.main-contentpp p {
+  font-size: 1rem; 
+  color: #666; 
+  line-height: 1.7; 
+  margin-bottom: 20px;
+  text-align: justify; 
+  font-family: 'Helvetica Neue', sans-serif;
+  font-weight: 600; 
+  transition: color 0.3s ease;
+}
+
+.main-contentpp p:hover {
+  color: #222; 
+}
+
+
+/* Table.css */
+.staff-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 40px;
+}
+
+.staff-table th,
+.staff-table td {
+  padding: 15px;
+  text-align: left;
+  font-size: 16px;
+  border-bottom: 1px solid #ababc9; 
+}
+
+.staff-table th {
+  background-color: #f0e5f1;
+  color: #150e52; 
+  font-size: 18px;
+  font-weight: 600; 
+}
+
+.staff-table tr {
+  transition: background-color 0.3s ease;
+}
+
+.staff-table tr:hover {
+  background-color: #f5f5f5; 
+}
+
+/* Status Indicator Colors */
+.staff-table .active {
+  color: #2ecc71; 
+  font-weight: 600;
+}
+
+.staff-table .inactive {
+  color: #e74c3c; 
+  font-weight: 600;
+}
+
+/* Buttons.css */
+.staff-table button {
+  padding: 8px 12px;
+  background-color: #0e135f;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  border: none;
+  transition: background-color 0.3s ease;
+  margin-right: 5px;
+}
+
+.staff-table button:hover {
+  background-color: #5a66aa;
+}
+
+.staff-table button:disabled {
+  background-color: #dcdcdc;
+  cursor: not-allowed;
+}
+
+/* SelectDropdown.css */
+.staff-table select {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0; 
+  width: 100%;
+  font-size: 14px;
+  color: #333;
+  transition: border-color 0.3s ease;
+}
+
+.staff-table select:focus {
+  border-color: #0e1852; 
+}
+
+/* Error Message */
+.error-message {
+  color: #e74c3c;
+  font-size: 1rem;
+  margin-bottom: 20px;
+}

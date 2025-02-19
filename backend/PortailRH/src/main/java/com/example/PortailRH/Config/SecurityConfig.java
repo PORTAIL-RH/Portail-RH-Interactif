@@ -75,6 +75,8 @@ public class SecurityConfig {
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/themes/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()

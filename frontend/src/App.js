@@ -10,6 +10,15 @@ const NotificationModal = lazy(() => import('./admin/Components/Navbar/Notificat
 const Addpers = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPersonnel.jsx'));
 
 
+// RH
+const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
+const PersonnelsRH = lazy(() => import('./RH/Components/Personnels/Personnels.jsx'));
+const DemandesRH = lazy(() => import('./RH/Components/Demandes/Demandes.jsx')); 
+
+// CHEF
+const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
+const Personnels = lazy(() => import('./Chef_hierarchique/Components/Personnels/Personnels.jsx'));
+const Demandes = lazy(() => import('./Chef_hierarchique/Components/Demandes/Demandes.jsx'));
 // Collaborateurs
 const Authentication = lazy(() => import('./collaborateurs/Authentification/Authentication.jsx'));
 const DemandeConge = lazy(() => import('./collaborateurs/Demandes/Conge/CongeForm.jsx'));
@@ -39,8 +48,19 @@ function App() {
           <Route path="/Apropos" element={<Apropos />} />
           <Route path="/NotificationModal" element={<NotificationModal />} />
           <Route path="/Addpers" element={<Addpers />} />
-
           
+  {/* chef hierarchique */}
+  <Route path="/AccueilCHEF" element={<AccueilCHEF />} />
+          <Route path="/Personnels" element={<Personnels />} />
+          <Route path="/Demandes" element={<Demandes />} />
+          
+
+            {/* chef hierarchique */}
+  <Route path="/AccueilRH" element={<AccueilRH />} />
+          <Route path="/PersonnelsRH" element={<PersonnelsRH />} />
+          <Route path="/DemandesRH" element={<DemandesRH />} />
+
+
           {/* Collaborateurs */}
           <Route path="/" element={<Authentication />} />
           <Route path="/DemandeConge" element={<DemandeConge />} />
