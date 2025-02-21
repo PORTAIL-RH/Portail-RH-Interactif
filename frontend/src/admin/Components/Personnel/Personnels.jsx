@@ -6,9 +6,12 @@ import "./Personnels.css";
 const Personnel = () => {
   const [personnel, setPersonnel] = useState([]);
   const [roles, setRoles] = useState([]);
+  const [services, setServices] = useState([]);
   const [staffError, setStaffError] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
-  const [editingPersonnel, setEditingPersonnel] = useState(null); // Add state for editing
+  const [selectedService, setSelectedService] = useState("");
+  const [editingPersonnel, setEditingPersonnel] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch roles
   useEffect(() => {
@@ -26,6 +29,26 @@ const Personnel = () => {
       }
     };
     fetchRoles();
+  }, []);
+
+  // Fetch services
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/services/all");
+        if (response.ok) {
+          const data = await response.json();
+          setServices(data || []);
+        } else {
+          console.error(`Failed to fetch services. Status: ${response.status}`);
+        }
+      } catch (error) {
+        console.error("Error fetching services:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchServices();
   }, []);
 
   // Fetch personnel
@@ -49,27 +72,46 @@ const Personnel = () => {
 
   // Handle role change
   const handleRoleChange = (e) => {
-    setSelectedRole(e.target.value);
+    const role = e.target.value;
+    setSelectedRole(role);
+    // Automatically set service to null for RH and Chef Hiérarchique
+    if (role === "RH" || role === "chef hierarchique") {
+      setSelectedService("");
+    }
   };
 
-  // Handle activation and assign role
-  const handleValidate = async (personnelId, action) => {
-    if (action === "activate" && !selectedRole) {
-      alert("Please select a role before activating!");
-      return;
-    }
+  // Handle service change
+  const handleServiceChange = (e) => {
+    setSelectedService(e.target.value);
+  };
 
+  const handleValidate = async (personnelId, action) => {
+    if (action === "activate") {
+      if (!selectedRole) {
+        alert("Please select a role before activating!");
+        return;
+      }
+      // Only check for service if the role is "collaborateur"
+      if (selectedRole === "collaborateur" && !selectedService) {
+        alert("Please select a service before activating!");
+        return;
+      }
+    }
+  
     const endpoint =
       action === "activate"
         ? `http://localhost:8080/api/admin/activate-personnel/${personnelId}`
         : `http://localhost:8080/api/admin/desactivate-personnel/${personnelId}`;
-
+  
     const method = "POST";
     const body =
       action === "activate"
-        ? JSON.stringify({ libelle: selectedRole })
+        ? JSON.stringify({
+            role: selectedRole,
+            serviceId: selectedRole === "collaborateur" ? selectedService : null, // Only send serviceId for Collaborateur
+          })
         : null;
-
+  
     try {
       const response = await fetch(endpoint, {
         method,
@@ -78,27 +120,41 @@ const Personnel = () => {
         },
         body,
       });
-
+  
+      const responseData = await response.json();
+  
       if (response.ok) {
         setPersonnel((prevPersonnel) =>
           prevPersonnel.map((person) =>
             person.id === personnelId
-              ? { ...person, active: action === "activate", role: selectedRole }
+              ? {
+                  ...person,
+                  active: action === "activate",
+                  role: selectedRole,
+                  service:
+                    selectedRole === "collaborateur"
+                      ? services.find((s) => s.serviceId === selectedService)
+                      : null,
+                }
               : person
           )
         );
+        alert(responseData.message || "Action completed successfully!");
       } else {
-        console.error(`Failed to ${action} personnel.`);
+        alert(`Failed to ${action} personnel: ${responseData.message || "Unknown error"}`);
       }
     } catch (error) {
-      console.error(`Error ${action}ing personnel:`, error);
+      alert(`Error ${action}ing personnel: ${error.message}`);
     }
   };
-
   // Handle the form submit for updating personnel
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
-    const updatedPersonnel = { ...editingPersonnel, role: selectedRole }; // Add role if needed
+    const updatedPersonnel = {
+      ...editingPersonnel,
+      role: selectedRole,
+      serviceId: selectedRole === "collaborateur" ? selectedService : null,
+    };
     try {
       const response = await fetch(
         `http://localhost:8080/api/personnel/updateAllFields/${updatedPersonnel.id}`,
@@ -110,31 +166,45 @@ const Personnel = () => {
           body: JSON.stringify(updatedPersonnel),
         }
       );
-  
+
       if (response.ok) {
         const updatedData = await response.json();
-        console.log("Updated Personnel:", updatedData); // Add a log to verify updated data
-  
         setPersonnel((prevPersonnel) =>
           prevPersonnel.map((person) =>
             person.id === updatedPersonnel.id ? updatedData : person
           )
         );
         alert("Personnel updated successfully!");
-        setEditingPersonnel(null); // Close the edit form
+        setEditingPersonnel(null);
+        setSelectedRole("");
+        setSelectedService("");
       } else {
         alert("Failed to update personnel.");
       }
     } catch (error) {
-      console.error("Error updating personnel:", error);
       alert("Error updating personnel. Please try again.");
     }
   };
-  
+
   // Handle cancel editing
   const handleCancelEdit = () => {
-    setEditingPersonnel(null); // Close the edit form
+    setEditingPersonnel(null);
+    setSelectedRole("");
+    setSelectedService("");
   };
+
+  // Initialize selectedRole and selectedService when editing
+  useEffect(() => {
+    if (editingPersonnel) {
+      setSelectedRole(editingPersonnel.role || "");
+      setSelectedService(editingPersonnel.service?.serviceId || "");
+    }
+  }, [editingPersonnel]);
+
+  // Display loading message if services are still being fetched
+  if (isLoading) {
+    return <p>Loading services...</p>;
+  }
 
   return (
     <div className="accueil-containerpp">
@@ -152,6 +222,7 @@ const Personnel = () => {
                 <th>Matricule</th>
                 <th>Status</th>
                 <th>Role</th>
+                <th>Service</th>
                 <th>Validation</th>
                 <th>Actions</th>
               </tr>
@@ -184,6 +255,26 @@ const Personnel = () => {
                     )}
                   </td>
                   <td>
+                    {person.active ? (
+                      <span>{person.service?.serviceName || "N/A"}</span>
+                    ) : (
+                      selectedRole === "collaborateur" && (
+                        <select
+                          value={selectedService}
+                          onChange={handleServiceChange}
+                          disabled={person.active || !person.prenom}
+                        >
+                          <option value="">Select Service</option>
+                          {services.map((service) => (
+                            <option key={service.serviceId} value={service.serviceId}>
+                              {service.serviceName}
+                            </option>
+                          ))}
+                        </select>
+                      )
+                    )}
+                  </td>
+                  <td>
                     <button
                       onClick={() => handleValidate(person.id, "activate")}
                       disabled={person.active || !person.prenom}
@@ -199,7 +290,7 @@ const Personnel = () => {
                   </td>
                   <td>
                     <button
-                      onClick={() => setEditingPersonnel(person)} // Open the edit form
+                      onClick={() => setEditingPersonnel(person)}
                       disabled={!person.prenom}
                     >
                       Modifier
@@ -253,7 +344,7 @@ const Personnel = () => {
               />
               <label>Role:</label>
               <select
-                value={selectedRole || editingPersonnel.role}
+                value={selectedRole}
                 onChange={handleRoleChange}
               >
                 <option value="">Select Role</option>
@@ -263,6 +354,22 @@ const Personnel = () => {
                   </option>
                 ))}
               </select>
+              {selectedRole === "collaborateur" && (
+                <>
+                  <label>Service:</label>
+                  <select
+                    value={selectedService}
+                    onChange={handleServiceChange}
+                  >
+                    <option value="">Select Service</option>
+                    {services.map((service) => (
+                      <option key={service.serviceId} value={service.serviceId}>
+                        {service.serviceName}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
               <div className="form-actions">
                 <button type="submit">Save Changes</button>
                 <button type="button" onClick={handleCancelEdit}>

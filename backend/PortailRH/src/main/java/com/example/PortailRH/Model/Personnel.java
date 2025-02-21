@@ -1,11 +1,14 @@
 package com.example.PortailRH.Model;
 
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
+import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "Personnel")
@@ -64,6 +67,12 @@ public class Personnel {
     private boolean active = false;
     private String role;
 
+    @DBRef
+    private Service service;
+
+    @DBRef
+    private Personnel chefHierarchique;
+
     public Personnel() {
     }
     // Custom constructor for creating a Personnel object with only the matricule
@@ -71,19 +80,34 @@ public class Personnel {
         this.matricule = matricule;
     }
 
-    /**
-     * Activates the account and assigns roles.
-     * @param roles Set of roles to assign.
-     */
-    public void activateCollaborateur(String roles) {
-        this.active = true;
-        this.role = roles;
-    }
 
-    public void desactivateCollaborateur(String roles) {
+    public void activateCollaborateur(String role, Service service) {
+        this.active = true;
+        this.role = role;
+        this.service = service;
+
+        // Check if service is null before calling getChefHierarchique()
+        if (service != null) {
+            this.chefHierarchique = service.getChefHierarchique();
+        } else {
+            // Handle the case where service is null
+            this.chefHierarchique = null; // or throw an exception
+            System.err.println("Service is null for role: " + role);
+        }
+    }
+    public String getServiceName() {
+        return service != null ? service.getServiceName() : "N/A";
+    }
+    /**
+     * Deactivates the collaborator.
+     */
+    public void desactivateCollaborateur() {
         this.active = false;
         this.role = null;
+        this.service = null;
+        this.chefHierarchique = null;
     }
+
 
     /**
      * Validates if the password and confirmation match.
