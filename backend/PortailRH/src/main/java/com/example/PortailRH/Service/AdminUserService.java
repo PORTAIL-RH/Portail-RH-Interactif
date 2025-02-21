@@ -2,117 +2,116 @@ package com.example.PortailRH.Service;
 
 import com.example.PortailRH.Model.AdminUser;
 import com.example.PortailRH.Model.Personnel;
-import com.example.PortailRH.Model.Role;
+import com.example.PortailRH.Model.Service;
 import com.example.PortailRH.Repository.AdminUserRepository;
 import com.example.PortailRH.Repository.PersonnelRepository;
-import com.example.PortailRH.Repository.RoleRepository;
-import com.example.PortailRH.Util.JwtUtil;
+import com.example.PortailRH.Repository.ServiceRepository;
 import jakarta.mail.MessagingException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
-@Service
+@org.springframework.stereotype.Service
 public class AdminUserService {
+
     private final PersonnelRepository personnelRepository;
-    private final RoleRepository roleRepository;
+    private final ServiceRepository serviceRepository;
     private final EmailService emailService;
-    private  BCryptPasswordEncoder passwordEncoder;
-    @Autowired
-    private  AdminUserRepository adminUserRepository;
-    @Autowired
-    private JwtUtil jwtUtil;
+
+    private final AdminUserRepository adminUserRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
 
     @Autowired
     public AdminUserService(PersonnelRepository personnelRepository,
-                            RoleRepository roleRepository,
+                            ServiceRepository serviceRepository,
                             EmailService emailService,
                             AdminUserRepository adminUserRepository,
-                            BCryptPasswordEncoder passwordEncoder,
-    JwtUtil jwtUtil) {
+                            BCryptPasswordEncoder passwordEncoder) {
         this.personnelRepository = personnelRepository;
-        this.roleRepository = roleRepository;
+        this.serviceRepository = serviceRepository;
         this.emailService = emailService;
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtil=jwtUtil;
     }
 
-    public void activateCollaborateur(String id, String roleLibelle) throws MessagingException {
-        // Log the roleLibelle received
-        System.out.println("Libellé reçu pour le rôle: '" + roleLibelle + "'");
-
-        // 1. Find the personnel by their ID
+    /**
+     * Activate a collaborator by assigning a role and service.
+     * @param id The ID of the collaborator to activate.
+     * @param role The role to assign (e.g., "collaborateur", "chef hierarchique", "RH").
+     * @param serviceId The ID of the service to which the collaborator belongs.
+     * @throws IllegalArgumentException If the collaborator or service is not found.
+     */
+    public void activateCollaborateur(String id, String role, String serviceId) {
+        // Find the collaborator by ID
         Personnel personnel = personnelRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Collaborateur non trouvé"));
+                .orElseThrow(() -> new IllegalArgumentException("Collaborateur non trouvé avec l'ID : " + id));
 
-        // 2. Clean up the role label to remove extra spaces and log
-        String cleanLibelle = roleLibelle.trim();
-        System.out.println("Libellé nettoyé: '" + cleanLibelle + "'");
-
-        // 3. Find the role by its libelle from the database
-        Optional<Role> roleOptional = roleRepository.findByLibelleIgnoreCase(cleanLibelle);
-
-        // Debugging role search
-        if (roleOptional.isPresent()) {
-            System.out.println("Rôle trouvé : " + roleOptional.get().getLibelle());
-        } else {
-            System.out.println("Rôle avec le libellé '" + cleanLibelle + "' non trouvé");
+        // Validate service for "collaborateur" role
+        Service service = null;
+        if (role.equals("collaborateur")) {
+            if (serviceId == null || serviceId.isEmpty()) {
+                throw new IllegalArgumentException("Service ID is required for 'collaborateur' role.");
+            }
+            service = serviceRepository.findById(serviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Service non trouvé avec l'ID : " + serviceId));
         }
 
-        Role role = roleOptional
-                .orElseThrow(() -> new IllegalArgumentException("Rôle '" + cleanLibelle + "' non trouvé"));
+        // Activate the collaborator with the role and service
+        personnel.activateCollaborateur(role, service);
 
-        // 4. Activate the user and assign the role
-        personnel.activateCollaborateur(role.getLibelle());
+        // Save the updated collaborator
         personnelRepository.save(personnel);
 
-        // 5. Send professional verification email
-        String emailSubject = "Activation de votre compte chez ArabSoft";
-        String emailBody = "<p>Bonjour " + personnel.getPrenom() + ",</p>" +
-                "<p>Nous sommes heureux de vous informer que votre compte a été activé avec succès par l'administrateur de la société ArabSoft.</p>" +
-                "<p>Vous pouvez maintenant vous connecter en utilisant votre matricule : " + personnel.getMatricule() + ".</p>" +
-                "<p>Votre rôle est : " + role.getLibelle() + ".</p>" +
-                "<p>Nous vous souhaitons plein de succès dans vos nouvelles fonctions.</p>" +
-                "<p>Cordialement,</p>" +
-                "<p>L'équipe ArabSoft</p>";
-        emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
+        // Send activation email
+        try {
+            String subject = "Account Activation";
+            String body = "Dear " + personnel.getNom() + ",\n\n" +
+                    "Your account has been activated with the role: " + role + ".\n" +
+                    (service != null ? "Service: " + service.getServiceName() + ".\n\n" : "\n\n") +
+                    "Best regards,\nYour Company";
+            emailService.sendVerificationEmail(personnel.getEmail(), subject, body);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send activation email", e);
+        }
     }
-
     /**
-     * Deactivate the collaborator by ID
+     * Deactivate a collaborator by ID.
+     * @param id The ID of the collaborator to deactivate.
+     * @throws IllegalArgumentException If the collaborator is not found.
      */
-    public void desactivateCollaborateur(String id) throws MessagingException {
+    public void desactivateCollaborateur(String id) {
+        // Find the collaborator by ID
         Personnel personnel = personnelRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Collaborateur introuvable"));
+                .orElseThrow(() -> new IllegalArgumentException("Collaborateur non trouvé avec l'ID : " + id));
 
         // Deactivate the collaborator
-        personnel.desactivateCollaborateur(personnel.getRole());
+        personnel.desactivateCollaborateur();
+
+        // Save the updated collaborator
         personnelRepository.save(personnel);
 
-        // Send professional deactivation email
-        String emailSubject = "Désactivation de votre compte chez ArabSoft";
-        String emailBody = "<p>Bonjour " + personnel.getPrenom() + ",</p>" +
-                "<p>Nous vous remercions pour votre collaboration avec ArabSoft. Votre compte a été désactivé avec succès par l'administrateur.</p>" +
-                "<p>Nous vous souhaitons tout le meilleur pour l'avenir et espérons avoir l'occasion de collaborer à nouveau avec vous.</p>" +
-                "<p>Cordialement,</p>" +
-                "<p>L'équipe ArabSoft</p>";
-        emailService.sendVerificationEmail(personnel.getEmail(), emailSubject, emailBody);
+        // Send deactivation email
+        try {
+            String subject = "Account Deactivation";
+            String body = "Dear " + personnel.getNom() + ",\n\n" +
+                    "Your account has been deactivated.\n\n" +
+                    "Best regards,\nYour Company";
+            emailService.sendVerificationEmail(personnel.getEmail(), subject, body);
+        } catch (MessagingException e) {
+            throw new RuntimeException("Failed to send deactivation email", e);
+        }
     }
 
-
-    /**
-     * Register a new Admin User
-     */
     public void registerAdminUser(AdminUser adminUser) {
+        // Check if the email already exists
         if (adminUserRepository.findByEmail(adminUser.getEmail()).isPresent()) {
             throw new IllegalArgumentException("Email already exists!");
         }
-        adminUser.setMotDePasse(passwordEncoder.encode(adminUser.getMotDePasse())); // Encrypt password
+
+        // Encrypt the password before saving
+        adminUser.setMotDePasse(passwordEncoder.encode(adminUser.getMotDePasse()));
+
+        // Save the admin user to the database
         adminUserRepository.save(adminUser);
-    }}
-
-
+    }
+}

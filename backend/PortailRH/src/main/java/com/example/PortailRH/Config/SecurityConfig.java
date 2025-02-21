@@ -38,6 +38,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/Personnel/updateAllFields/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/byId/{id}").permitAll()
 
+
+                        //Services Endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/services/create").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/services/all").permitAll()
+
+
                         //notification endpoints
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()

@@ -150,7 +150,7 @@ public class PersonnelController {
         try {
             String matricule = payload.get("matricule");
             String email = payload.get("email");
-            String codeSoc = payload.get("code_soc");  // Extract code_soc from payload
+            String codeSoc = payload.get("code_soc");
 
             // Validate matricule format (exactly 5 digits)
             if (matricule == null || !matricule.matches("^\\d{5}$")) {
