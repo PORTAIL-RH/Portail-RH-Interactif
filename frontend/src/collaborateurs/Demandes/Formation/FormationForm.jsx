@@ -8,7 +8,6 @@ import 'react-toastify/dist/ReactToastify.css';
 const FormationForm = () => {
   const [formData, setFormData] = useState({
     dateDebut: '',
-    dateFin: '',
     typeDemande: '',
     texteDemande: '',
     titre: '',
@@ -98,12 +97,8 @@ const FormationForm = () => {
   const validateForm = () => {
     const newErrors = {};
     if (!formData.dateDebut) newErrors.dateDebut = 'Date Début est requise';
-    if (!formData.dateFin) newErrors.dateFin = 'Date Fin est requise';
-    if (formData.dateDebut && formData.dateFin && formData.dateDebut > formData.dateFin) {
-      newErrors.dateFin = 'Date Fin doit être postérieure à Date Début';
-    }
+    
     if (!formData.texteDemande) newErrors.texteDemande = 'Texte Demande est requis';
-    if (!file) newErrors.file = 'Fichier Joint est requis';
 
     setErrors(newErrors);
     console.log("Validation errors:", newErrors); // Debugging line
@@ -137,7 +132,6 @@ const FormationForm = () => {
 
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
-    formDataToSend.append('dateFin', formData.dateFin);
     formDataToSend.append('typeDemande', "formation");
     formDataToSend.append('texteDemande', formData.texteDemande);
     formDataToSend.append('titre', formData.titre);
@@ -215,20 +209,13 @@ const FormationForm = () => {
         {loading && <div className="loading">Chargement...</div>}
         {error && <div className="error">{error}</div>}
 
-        {/* Ligne pour Date Début et Date Fin */}
-        <div className="form-row">
+        {/* Ligne pour Date Début  */}
           <div className="form-group">
             <label>Date Début:</label>
             <input type="date" name="dateDebut" value={formData.dateDebut} onChange={handleChange} required />
             {errors.dateDebut && <span className="error">{errors.dateDebut}</span>}
           </div>
-          <div className="form-group">
-            <label>Date Fin:</label>
-            <input type="date" name="dateFin" value={formData.dateFin} onChange={handleChange} required />
-            {errors.dateFin && <span className="error">{errors.dateFin}</span>}
-          </div>
-        </div>
-
+          
         {/* Ligne pour Titre, Type et Thème */}
         <div className="form-row-3">
           <div className="form-group">
@@ -279,8 +266,7 @@ const FormationForm = () => {
         {/* Fichier Joint */}
         <div className="form-group">
           <label>Fichier Joint:</label>
-          <input type="file" name="file" onChange={handleFileChange} required />
-          {errors.file && <span className="error">{errors.file}</span>}
+          <input type="file" name="file" onChange={handleFileChange}  />
         </div>
 
         {/* Bouton de soumission */}
