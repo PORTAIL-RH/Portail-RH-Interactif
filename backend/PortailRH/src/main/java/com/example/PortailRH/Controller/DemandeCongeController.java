@@ -59,7 +59,7 @@ public class DemandeCongeController {
             @RequestParam("snjTempRetour") String snjTempRetour,
             @RequestParam("dateReprisePrev") String dateReprisePrev,
             @RequestParam("codeSoc") String codeSoc,
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file, // Fichier facultatif
             @RequestParam("matPersId") String matPersId,
             @RequestParam("nbrJours") String nbrJours) {
 
@@ -75,8 +75,11 @@ public class DemandeCongeController {
                 ));
             }
 
-            // Handle the file upload
-            Fichier_joint fichier = fichierJointService.saveFile(file);
+            // Handle the file upload (if any)
+            Fichier_joint fichier = null;
+            if (file != null && !file.isEmpty()) {
+                fichier = fichierJointService.saveFile(file);
+            }
 
             // Validate and parse the number of days
             int days;
@@ -133,7 +136,6 @@ public class DemandeCongeController {
             ));
         }
     }
-
     // 4. Update a demand
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDemande(

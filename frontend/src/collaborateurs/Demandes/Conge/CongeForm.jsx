@@ -224,7 +224,7 @@ const CongeForm = () => {
               type="file"
               name="file"
               onChange={handleFileChange}
-              required
+              
             />
           </label>
 

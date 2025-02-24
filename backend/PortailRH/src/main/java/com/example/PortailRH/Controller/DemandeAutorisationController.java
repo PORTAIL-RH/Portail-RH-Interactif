@@ -57,10 +57,7 @@ public class DemandeAutorisationController {
             LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
             LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
 
-// Vérifier si l'heure de sortie est après l'heure de retour
-            if (heureSortie.isAfter(heureRetour)) {
-                return ResponseEntity.badRequest().body("L'heure de sortie doit être avant l'heure de retour.");
-            }
+
 
 // Extraire l'heure et les minutes
             int horaireSortie = heureSortie.getHour();

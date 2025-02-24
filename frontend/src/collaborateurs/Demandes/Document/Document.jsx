@@ -10,6 +10,8 @@ const DocumentForm = () => {
     typeDemande: 'Document',
     objet: '',
     codeSoc: '',
+    file: null,
+    typeDocument: '',
     matPers: { id: '' }, 
   });
 
@@ -28,6 +30,10 @@ const DocumentForm = () => {
       }));
     }
   }, []);
+
+  const handleFileChange = (e) => {
+    setFormData({ ...formData, file: e.target.files[0] }); // Store the selected file
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -100,11 +106,30 @@ const DocumentForm = () => {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
+            <div className="full-width">
+              <label className="form-label">Type de Document :</label>
+              <select
+                name="typeDocument"
+                value={formData.typeDocument}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Sélectionnez un type</option>
+                <option value="Documents administratifs et légaux">Documents administratifs et légaux</option>
+                <option value="Documents fiscaux">Documents fiscaux</option>
+                <option value="Documents sociaux">Documents sociaux</option>
+                <option value="Documents de formation et de développement professionnel">Documents de formation et de développement professionnel</option>
+                <option value="Documents liés à la sécurité sociale">Documents liés à la sécurité sociale</option>
+                <option value="Documents liés à la santé et à la sécurité">Documents liés à la santé et à la sécurité</option>
+                <option value="Documents de fin de contrat">Documents de fin de contrat</option>
+              </select>
+            </div>
+
 
             <div className="full-width">
               <label className="form-label">objet :</label>
-              <input
-                type="input"
+              <textarea
+                type="textarea"
                 name="objet"
                 value={formData.objet}
                 onChange={handleChange}
@@ -112,7 +137,16 @@ const DocumentForm = () => {
               />
             </div>
 
-            
+          {/* File upload */}
+          <label>
+            Upload File:
+            <input
+              type="file"
+              name="file"
+              onChange={handleFileChange}
+              
+            />
+          </label>
 
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>

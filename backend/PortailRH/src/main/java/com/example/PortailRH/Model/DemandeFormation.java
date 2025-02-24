@@ -17,7 +17,6 @@ public class DemandeFormation {
     private String id_libre_demande;
 
     private Date dateDebut;
-    private Date dateFin;
     private Date dateDemande = new Date();
     private String typeDemande;
 
@@ -57,14 +56,6 @@ public class DemandeFormation {
 
     public void setDateDebut(Date dateDebut) {
         this.dateDebut = dateDebut;
-    }
-
-    public Date getDateFin() {
-        return dateFin;
-    }
-
-    public void setDateFin(Date dateFin) {
-        this.dateFin = dateFin;
     }
 
     public Date getDateDemande() {

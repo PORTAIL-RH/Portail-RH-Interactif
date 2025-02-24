@@ -118,7 +118,7 @@ const Authentication = () => {
                 case 'RH':
                   navigate('/AccueilRH');
                   break;
-                case 'Chef Hiérarchique':
+                case 'chef hiérarchique':
                   navigate('/AccueilCHEF');
                   break;
                 default:

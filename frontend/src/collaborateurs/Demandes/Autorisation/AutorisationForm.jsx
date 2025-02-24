@@ -32,14 +32,10 @@ const AutorisationForm = () => {
   };
 
   const validateForm = () => {
-    const { dateDebut, dateFin, heureSortie, heureRetour } = formData;
+    const { dateDebut, dateFin } = formData;
 
     if (new Date(dateDebut) > new Date(dateFin)) {
       toast.error('La date de début ne peut pas être supérieure à la date de fin.');
-      return false;
-    }
-    if (heureSortie >= heureRetour) {
-      toast.error('L\'heure de sortie doit être inférieure à l\'heure de retour.');
       return false;
     }
     return true;
@@ -189,7 +185,7 @@ const AutorisationForm = () => {
                 className="form-control"
                 value={formData.texteDemande}
                 onChange={handleChange}
-                required
+                
               ></textarea>
             </div>
 

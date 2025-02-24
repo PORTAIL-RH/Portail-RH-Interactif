@@ -50,7 +50,6 @@ public class DemandeFormationController {
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemandeFormation(
             @RequestParam("dateDebut") String dateDebut,
-            @RequestParam("dateFin") String dateFin,
             @RequestParam("typeDemande") String typeDemande,
             @RequestParam("texteDemande") String texteDemande,
             @RequestParam("titre") String titreId,
@@ -58,26 +57,17 @@ public class DemandeFormationController {
             @RequestParam("theme") String themeId,
             @RequestParam("annee_f") String annee_f,
             @RequestParam("codeSoc") String codeSoc,
-            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "file", required = false) MultipartFile file, // Fichier facultatif
             @RequestParam("matPersId") String matPersId) {
 
         try {
             // Validate and parse dates
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(dateDebut);
-            Date endDate = dateFormat.parse(dateFin);
-
-            if (startDate.after(endDate)) {
-                return new ResponseEntity<>("La date de début doit être avant la date de fin.", HttpStatus.BAD_REQUEST);
-            }
-
-            // Handle the file upload
-            Fichier_joint fichier = fichierJointService.saveFile(file);
 
             // Create the demande formation
             DemandeFormation demandeFormation = new DemandeFormation();
             demandeFormation.setDateDebut(startDate);
-            demandeFormation.setDateFin(endDate);
             demandeFormation.setTypeDemande(typeDemande);
             demandeFormation.setTexteDemande(texteDemande);
             demandeFormation.setCodeSoc(codeSoc);
@@ -100,8 +90,11 @@ public class DemandeFormationController {
             demandeFormation.setType(type);
             demandeFormation.setTheme(theme);
 
-            // Associate the file with the request
-            demandeFormation.getFiles().add(fichier);
+            // Handle the file upload only if a file is provided
+            if (file != null && !file.isEmpty()) {
+                Fichier_joint fichier = fichierJointService.saveFile(file);
+                demandeFormation.getFiles().add(fichier);
+            }
 
             // Save the request
             DemandeFormation createdDemande = demandeFormationService.createDemandeFormation(demandeFormation);
