@@ -4,6 +4,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 
 @Document(collection = "Demandes_Document")
@@ -14,11 +16,15 @@ public class DemandeDocument {
     private String typeDemande;
     private String objet;
     private Date dateDemande = new Date();
+
+    private String typeDocument;
     @DBRef
     private Personnel matPers;
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
     private String codeSoc;
+    @DBRef(lazy = true)
+    private Collection<Fichier_joint> Files = new ArrayList<>();
 
 
     public String getId() {
@@ -86,4 +92,19 @@ public class DemandeDocument {
     public void setCodeSoc(String codeSoc) {
         this.codeSoc = codeSoc;
     }
+    public Collection<Fichier_joint> getFiles() {
+        return Files;
+    }
+
+    public void setFiles(Collection<Fichier_joint> files) {
+        this.Files = files;
+    }
+    public String getTypeDocument() {
+        return typeDocument;
+    }
+
+    public void setTypeDocument(String typeDocument) {
+        this.typeDocument = typeDocument;
+    }
+
 }

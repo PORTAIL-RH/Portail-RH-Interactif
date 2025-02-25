@@ -10,11 +10,51 @@ const PreAvanceForm = () => {
     typeDemande: '',
     montant: 0,
     codeSoc: '',
-    matPers: { id: '' }, 
+    matPers: { id: '' },
+    file: null,
   });
 
   const [error, setError] = useState('');
 
+  // Fonction pour valider le montant
+  const validateMontant = (typeDemande, montant) => {
+    const montantsMax = {
+      MEDICAL: 2000.0,
+      SCOLARITE: 1500.0,
+      VOYAGE: 1000.0,
+      INFORMATIQUE: 800.0,
+      DEMENAGEMENT: 3000.0,
+      MARIAGE: 5000.0,
+      FUNERAILLES: 2000.0,
+    };
+
+    if (montantsMax[typeDemande] && montant > montantsMax[typeDemande]) {
+      return `Le montant ne doit pas dépasser ${montantsMax[typeDemande]} euros pour ce type de demande.`;
+    }
+    return null;
+  };
+
+  // Gestionnaire de changement pour les champs du formulaire
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+
+    // Validation du montant si le champ modifié est "montant"
+    if (name === 'montant') {
+      const errorMessage = validateMontant(formData.typeDemande, value);
+      setError(errorMessage);
+    }
+  };
+
+  // Gestionnaire de changement pour le fichier
+  const handleFileChange = (e) => {
+    setFormData({ ...formData, file: e.target.files[0] });
+  };
+
+  // Récupération des données de l'utilisateur depuis le localStorage
   useEffect(() => {
     const userId = localStorage.getItem('userId');
     const codeSoc = localStorage.getItem('codeSoc');
@@ -24,21 +64,22 @@ const PreAvanceForm = () => {
       setFormData((prevData) => ({
         ...prevData,
         codeSoc,
-        matPers: { id: matPersId }, // Set matPers as an object with id
+        matPers: { id: matPersId },
       }));
     }
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
+  // Gestionnaire de soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validation du montant avant soumission
+    const errorMessage = validateMontant(formData.typeDemande, formData.montant);
+    if (errorMessage) {
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return;
+    }
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
@@ -55,7 +96,7 @@ const PreAvanceForm = () => {
         },
         body: JSON.stringify({
           ...formData,
-          matPers: { id: formData.matPers.id }, // Ensure matPers is sent as an object
+          matPers: { id: formData.matPers.id },
         }),
       });
 
@@ -98,8 +139,10 @@ const PreAvanceForm = () => {
           <form onSubmit={handleSubmit} className="autorisation-form container p-4 shadow rounded">
             <h2 className="text-center mb-4">Formulaire de Pré-Avance</h2>
 
+            {/* Affichage des erreurs */}
             {error && <div className="alert alert-danger">{error}</div>}
-            
+
+            {/* Champ Type de Demande */}
             <div className="full-width">
               <label className="form-label">Type de Demande :</label>
               <select
@@ -119,6 +162,7 @@ const PreAvanceForm = () => {
               </select>
             </div>
 
+            {/* Champ Montant */}
             <div className="full-width">
               <label className="form-label">Montant :</label>
               <input
@@ -130,8 +174,17 @@ const PreAvanceForm = () => {
               />
             </div>
 
-          
+            {/* Champ Upload de fichier */}
+            <label>
+              Upload File:
+              <input
+                type="file"
+                name="file"
+                onChange={handleFileChange}
+              />
+            </label>
 
+            {/* Bouton de soumission */}
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>
         </div>

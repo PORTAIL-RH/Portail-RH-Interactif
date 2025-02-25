@@ -5,9 +5,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Document(collection = "Demandes_Pre_Avance")
 public class DemandePreAvance {
@@ -24,6 +22,8 @@ public class DemandePreAvance {
     private Reponse reponseChef;
     private Reponse reponseRH;
     private String codeSoc;
+    @DBRef(lazy = true)
+    private Collection<Fichier_joint> Files = new ArrayList<>();
 
     // Map pour stocker les types de pré-avances et leurs montants moyens
     private static final Map<String, Double> TYPES_PRE_AVANCE = new HashMap<>();
@@ -137,5 +137,12 @@ public class DemandePreAvance {
 
     public void setCodeSoc(String codeSoc) {
         this.codeSoc = codeSoc;
+    }
+    public Collection<Fichier_joint> getFiles() {
+        return Files;
+    }
+
+    public void setFiles(Collection<Fichier_joint> files) {
+        this.Files = files;
     }
 }
