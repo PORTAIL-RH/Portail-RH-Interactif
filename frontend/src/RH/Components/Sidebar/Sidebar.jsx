@@ -30,6 +30,11 @@ const Sidebar = () => {
             <span className={`sidebar-text ${isCollapsed ? 'hidden' : ''}`}>Liste Des Demandes</span>
           </Link>
         </li>
+        <li className="sidebar-item">
+            <Link to="/CalendarRH" className="sidebar-link">
+              <span className={`sidebar-text ${isCollapsed ? 'hidden' : ''}`}>Calendrier des Conges</span>
+            </Link>
+        </li>
       </ul>
     </nav>
   );

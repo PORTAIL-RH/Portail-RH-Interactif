@@ -6,6 +6,7 @@ import Navbar from "../Navbar/Navbar";
 const PersonnelForm = () => {
   const [matricule, setMatricule] = useState('');
   const [email, setEmail] = useState('');
+  const [code_soc, setCodeSoc] = useState(''); // Add state for code_soc
   const [personnelList, setPersonnelList] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -13,15 +14,15 @@ const PersonnelForm = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-  
-    if (!matricule || !email) {
+
+    if (!matricule || !email || !code_soc) {
       setErrorMessage('Veuillez remplir tous les champs.');
       setSuccessMessage('');
       return;
     }
-  
-    const newPersonnel = { matricule, email };
-  
+
+    const newPersonnel = { matricule, email, code_soc }; // Include code_soc in the object
+
     try {
       const response = await fetch('http://localhost:8080/api/Personnel/addWithMatriculeAndEmail', {
         method: 'POST',
@@ -30,25 +31,26 @@ const PersonnelForm = () => {
         },
         body: JSON.stringify(newPersonnel),
       });
-  
+
       const data = await response.json(); // Parse the JSON response
-  
+
       if (!response.ok) {
         throw new Error(data.message || 'Une erreur est survenue.');
       }
-  
+
       // Update the personnel list
       setPersonnelList([...personnelList, data.personnel]);
       setSuccessMessage(data.message || 'Personnel ajouté avec succès.');
       setErrorMessage('');
       setMatricule('');
       setEmail('');
+      setCodeSoc(''); // Reset code_soc field
     } catch (error) {
       setErrorMessage(error.message);
       setSuccessMessage('');
     }
   };
-  
+
   return (
     <div className="accueil-containerajpp">
       <Navbar />
@@ -84,6 +86,17 @@ const PersonnelForm = () => {
             />
           </div>
 
+          <div className="form-group">
+            <label htmlFor="code_soc">Code Soc</label>
+            <input
+              type="text"
+              id="code_soc"
+              value={code_soc} // Bind to code_soc state
+              onChange={(e) => setCodeSoc(e.target.value)} // Update code_soc state
+              placeholder="Entrez le code soc"
+            />
+          </div>
+
           <button type="submit" className="submit-btn">
             Ajouter Personnel
           </button>
@@ -95,7 +108,7 @@ const PersonnelForm = () => {
           <ul>
             {personnelList.map((personnel, index) => (
               <li key={index}>
-                <strong>Matricule:</strong> {personnel.matricule}, <strong>Email:</strong> {personnel.email}
+                <strong>Matricule:</strong> {personnel.matricule}, <strong>Email:</strong> {personnel.email}, <strong>Code Soc:</strong> {personnel.code_soc}
               </li>
             ))}
           </ul>

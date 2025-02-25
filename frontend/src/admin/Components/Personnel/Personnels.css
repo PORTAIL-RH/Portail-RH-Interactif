@@ -65,7 +65,38 @@
   color: #222; 
 }
 
+/* Filtration Bar */
+.filtration-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  align-items: center;
+}
 
+.filtration-bar input,
+.filtration-bar select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s ease;
+}
+
+.filtration-bar input:focus,
+.filtration-bar select:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.filtration-bar input::placeholder {
+  color: #999;
+}
+
+.filtration-bar select {
+  background-color: white;
+  cursor: pointer;
+}
 /* Table.css */
 .staff-table {
   width: 100%;

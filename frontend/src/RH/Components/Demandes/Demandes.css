@@ -1,11 +1,24 @@
 /* General Styles */
+.navbar-containerpp {
+  display: flex;
+  height: 100vh;
+  background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+  padding-top: 70px; /* Adjust based on Navbar height */
+}
+
 /* Demandes.css */
 .demandes-container {
   display: flex;
   flex-direction: row;
   margin-top: 50px;
 }
-
+.status-badge.processed {
+  background-color: #6c26bd; /* Purple for "Traité" */
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
 .main-content {
   display: flex;
   width: 100%;

@@ -44,16 +44,30 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-conge/personnel/{matPersId}") ||
                 requestURI.startsWith("/api/demande-formation/personnel/{matPersId}") ||
                 requestURI.startsWith("/api/demande-conge/create") ||
+                requestURI.startsWith("/api/demande-conge/approved") ||
+
+                requestURI.startsWith("/api/demande-conge/valider/{id}") ||
+                requestURI.startsWith("/api/demande-conge/refuser/{id}") ||
+                requestURI.startsWith("/api/demande-conge/traiter/{id}") ||
+
+                requestURI.startsWith("/api/demande-formation/valider/{id}") ||
+                requestURI.startsWith("/api/demande-formation/refuser/{id}") ||
+                requestURI.startsWith("/api/demande-formation/traiter/{id}") ||
+                requestURI.startsWith("/api/demande-document/valider/{id}") ||
+                requestURI.startsWith("/api/demande-document/traiter/{id}") ||
+                requestURI.startsWith("/api/demande-document/refuser/{id}") ||
+                requestURI.startsWith("/api/demande-pre-avance/valiser/{id}") ||
+                requestURI.startsWith("/api/demande-pre-avance/refuser/{id}") ||
+                requestURI.startsWith("/api/demande-pre-avance/traiter/{id}") ||
+                requestURI.startsWith("/api/demande-autorisation/refuser/{id}") ||
+                requestURI.startsWith("/api/demande-autorisation/traiter/{id}") ||
+                requestURI.startsWith("/api/demande-autorisation/valider/{id}") ||
+                requestURI.startsWith("/api/services/by-chef/{chefId}") ||
                 requestURI.startsWith("/api/demande-document/create") ||
                 requestURI.startsWith("/api/demande-document") ||
                 requestURI.startsWith("/api/demande-pre-avance/create") ||
                 requestURI.startsWith("/api/demande-pre-avance") ||
                 requestURI.startsWith("/api/demande-pre-avance/types") ||
-
-
-
-
-                requestURI.startsWith("/api/demande-autorisation") ||
                 requestURI.startsWith("/api/demande-conge") ||
                 requestURI.startsWith("/api/titres") ||
                 requestURI.startsWith("/api/types") ||
@@ -63,10 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/titres/") ||
                 requestURI.startsWith("/api/titres/{id}/types") ||
                 requestURI.startsWith("/api/types/{id}/themes") ||
-
                 requestURI.startsWith("/api/titres/{titreId}/types/{typeId}/themes") ||
-
-
                 requestURI.startsWith("api/Personnel/addWithMatriculeAndEmail")||
                 requestURI.startsWith("/api/admin/Login") ||
                 requestURI.startsWith("/api/admin/activate-personnel") ||
