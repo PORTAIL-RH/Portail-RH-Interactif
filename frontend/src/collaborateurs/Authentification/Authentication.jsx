@@ -75,21 +75,21 @@ const Authentication = () => {
         matricule: formData.matricule.trim(),
         motDePasse: formData.password.trim(),
       };
-
+  
       const response = await fetch('http://localhost:8080/api/Personnel/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody),
       });
-
+  
       if (response.ok) {
         const responseData = await response.json();
         const { token, id } = responseData;
-
+  
         if (token && id) {
           localStorage.setItem('authToken', token);
           localStorage.setItem('userId', id);
-
+  
           // Fetch user details by ID to get the role
           const userResponse = await fetch(`http://localhost:8080/api/Personnel/byId/${id}`, {
             method: 'GET',
@@ -98,18 +98,35 @@ const Authentication = () => {
               'Authorization': `Bearer ${token}`,
             },
           });
-
+  
           if (userResponse.ok) {
             const userData = await userResponse.json();
             const { role } = userData;
             if (role) {
               localStorage.setItem('userRole', role);
               localStorage.setItem('usermatricule', formData.matricule);
-              localStorage.setItem('userCodeSoc', userData.code_soc); // Récupérer le code_soc du backend
-            
-            
+              localStorage.setItem('userCodeSoc', userData.code_soc);
+  
               alert('Login successful!');
-
+  
+              // If the user is a Chef Hiérarchique, fetch their service
+              if (role === 'chef hiérarchique') {
+                const serviceResponse = await fetch(`http://localhost:8080/api/services/by-chef/${id}`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                  },
+                });
+  
+                if (serviceResponse.ok) {
+                  const serviceData = await serviceResponse.json();
+                  localStorage.setItem('userService', JSON.stringify(serviceData)); // Store service in local storage
+                } else {
+                  console.error('Error fetching service data:', await serviceResponse.text());
+                }
+              }
+  
               // Role-based redirection
               switch (role) {
                 case 'collaborateur':

@@ -30,11 +30,7 @@ const Sidebar = () => {
             <span className={`sidebar-text ${isCollapsed ? 'hidden' : ''}`}>Ajouter Personnel</span>
           </Link>
         </li>
-        <li className="sidebar-item">
-          <Link to="/Addpers" className="sidebar-link">
-            <span className={`sidebar-text ${isCollapsed ? 'hidden' : ''}`}>Demandes</span>
-          </Link>
-        </li>
+       
         <li className="sidebar-item">
           <Link to="/Apropos" className="sidebar-link">
             <span className={`sidebar-text ${isCollapsed ? 'hidden' : ''}`}>A propos de nous</span>

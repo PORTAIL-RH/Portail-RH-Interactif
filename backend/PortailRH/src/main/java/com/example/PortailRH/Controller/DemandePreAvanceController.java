@@ -32,12 +32,15 @@ public class DemandePreAvanceController {
             return ResponseEntity.badRequest().build(); // Return 400 Bad Request for other exceptions
         }
     }
+
     // Get all DemandePreAvance records
     @GetMapping
     public ResponseEntity<List<DemandePreAvance>> getAllDemandes() {
         List<DemandePreAvance> demandes = demandePreAvanceRepository.findAll();
         return ResponseEntity.ok(demandes);
     }
+
+    // Get the types of pre-avances and their maximum amounts
     @GetMapping("/types")
     public ResponseEntity<Map<String, Double>> getTypesPreAvance() {
         return ResponseEntity.ok(DemandePreAvance.getTypesPreAvance());

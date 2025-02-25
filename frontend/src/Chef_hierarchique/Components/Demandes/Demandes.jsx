@@ -16,7 +16,7 @@ const Demandes = () => {
   const fetchDemandes = async () => {
     try {
       const token = localStorage.getItem("authToken");
-
+  
       // Fetch demande-conge
       const congeResponse = await fetch("http://localhost:8080/api/demande-conge", {
         method: "GET",
@@ -25,19 +25,20 @@ const Demandes = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (!congeResponse.ok) {
         const errorText = await congeResponse.text();
         throw new Error(`Conge request failed: ${congeResponse.status} - ${errorText}`);
       }
-
+  
       const congeData = await congeResponse.json();
-
+  
       const mappedCongeData = congeData.map((demande) => ({
         ...demande,
+        id: demande.id || demande.id_libre_demande, // Ensure consistent ID field
         dateDemande: demande.dateDemande || demande.dateCreation || "Inconnu",
       }));
-
+  
       // Fetch demande-autorisation
       const autorisationResponse = await fetch("http://localhost:8080/api/demande-autorisation", {
         method: "GET",
@@ -46,14 +47,19 @@ const Demandes = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (!autorisationResponse.ok) {
         const errorText = await autorisationResponse.text();
         throw new Error(`Autorisation request failed: ${autorisationResponse.status} - ${errorText}`);
       }
-
+  
       const autorisationData = await autorisationResponse.json();
-
+  
+      const mappedAutorisationData = autorisationData.map((demande) => ({
+        ...demande,
+        id: demande.id || demande.id_libre_demande, // Ensure consistent ID field
+      }));
+  
       // Fetch demande-formation
       const formationResponse = await fetch("http://localhost:8080/api/demande-formation", {
         method: "GET",
@@ -62,14 +68,19 @@ const Demandes = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (!formationResponse.ok) {
         const errorText = await formationResponse.text();
         throw new Error(`Formation request failed: ${formationResponse.status} - ${errorText}`);
       }
-
+  
       const formationData = await formationResponse.json();
-
+  
+      const mappedFormationData = formationData.map((demande) => ({
+        ...demande,
+        id: demande.id || demande.id_libre_demande, // Ensure consistent ID field
+      }));
+  
       // Fetch demande-pre-avance
       const preAvanceResponse = await fetch("http://localhost:8080/api/demande-pre-avance", {
         method: "GET",
@@ -78,14 +89,19 @@ const Demandes = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (!preAvanceResponse.ok) {
         const errorText = await preAvanceResponse.text();
         throw new Error(`PreAvance request failed: ${preAvanceResponse.status} - ${errorText}`);
       }
-
+  
       const preAvanceData = await preAvanceResponse.json();
-
+  
+      const mappedPreAvanceData = preAvanceData.map((demande) => ({
+        ...demande,
+        id: demande.id || demande.id_libre_demande, // Ensure consistent ID field
+      }));
+  
       // Fetch demande-document
       const documentResponse = await fetch("http://localhost:8080/api/demande-document", {
         method: "GET",
@@ -94,28 +110,39 @@ const Demandes = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
+  
       if (!documentResponse.ok) {
         const errorText = await documentResponse.text();
         throw new Error(`Document request failed: ${documentResponse.status} - ${errorText}`);
       }
-
+  
       const documentData = await documentResponse.json();
-
+  
+      const mappedDocumentData = documentData.map((demande) => ({
+        ...demande,
+        id: demande.id || demande.id_libre_demande, // Ensure consistent ID field
+      }));
+  
       // Combine the data
       const combinedData = [
         ...mappedCongeData,
-        ...formationData,
-        ...autorisationData,
-        ...preAvanceData,
-        ...documentData,
+        ...mappedAutorisationData,
+        ...mappedFormationData,
+        ...mappedPreAvanceData,
+        ...mappedDocumentData,
       ];
-
-      // Filter demands to include only those from personnel with role "Collaborateur"
+  
+      // Get the serviceName of the connected Chef Hiérarchique from local storage
+      const userService = JSON.parse(localStorage.getItem("userService"));
+      const chefServiceName = userService?.serviceName;
+  
+      // Filter demands to include only those from personnel with role "Collaborateur" and the same serviceName
       const filteredData = combinedData.filter((demande) => {
-        return demande.matPers?.role === "collaborateur"; 
+        const isCollaborateur = demande.matPers?.role === "collaborateur";
+        const hasSameService = demande.matPers?.serviceName === chefServiceName;
+        return isCollaborateur && hasSameService;
       });
-
+  
       setDemandes(filteredData);
       setFilteredDemandes(filteredData);
       setLoading(false);
@@ -124,6 +151,112 @@ const Demandes = () => {
       setLoading(false);
     }
   };
+
+// Function to handle confirmation (approval) of a demande
+const handleConfirmer = async (demandeId, typeDemande) => {
+  try {
+    const token = localStorage.getItem("authToken");
+
+    // Determine the API endpoint based on the type of demande
+    let endpoint;
+    switch (typeDemande) {
+      case "autorisation":
+        endpoint = `http://localhost:8080/api/demande-autorisation/valider/${demandeId}`;
+        break;
+      case "formation":
+        endpoint = `http://localhost:8080/api/demande-formation/valider/${demandeId}`;
+        break;
+      case "preAvance":
+        endpoint = `http://localhost:8080/api/demande-pre-avance/valider/${demandeId}`;
+        break;
+      case "Document":
+        endpoint = `http://localhost:8080/api/demande-document/valider/${demandeId}`;
+        break;
+      default:
+        endpoint = `http://localhost:8080/api/demande-conge/valider/${demandeId}`;
+        break;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      alert("Demande confirmée avec succès");
+
+      // Update the state without reloading the page
+      setDemandes((prevDemandes) =>
+        prevDemandes.map((demande) =>
+          demande.id === demandeId
+            ? { ...demande, reponseChef: "O" } // Update status to "O" (approved)
+            : demande
+        )
+      );
+    } else {
+      const errorText = await response.text();
+      alert(`Erreur: ${errorText}`);
+    }
+  } catch (error) {
+    alert("Une erreur s'est produite lors de la confirmation de la demande.");
+  }
+};
+
+// Function to handle rejection of a demande
+const handleRefuser = async (demandeId, typeDemande) => {
+  try {
+    const token = localStorage.getItem("authToken");
+
+    // Determine the API endpoint based on the type of demande
+    let endpoint;
+    switch (typeDemande) {
+      case "autorisation":
+        endpoint = `http://localhost:8080/api/demande-autorisation/refuser/${demandeId}`;
+        break;
+      case "formation":
+        endpoint = `http://localhost:8080/api/demande-formation/refuser/${demandeId}`;
+        break;
+      case "preAvance":
+        endpoint = `http://localhost:8080/api/demande-pre-avance/refuser/${demandeId}`;
+        break;
+      case "Document":
+        endpoint = `http://localhost:8080/api/demande-document/refuser/${demandeId}`;
+        break;
+      default:
+        endpoint = `http://localhost:8080/api/demande-conge/refuser/${demandeId}`;
+        break;
+    }
+
+    const response = await fetch(endpoint, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.ok) {
+      alert("Demande refusée avec succès");
+
+      // Update the state without reloading the page
+      setDemandes((prevDemandes) =>
+        prevDemandes.map((demande) =>
+          demande.id === demandeId
+            ? { ...demande, reponseChef: "N" } // Update status to "N" (rejected)
+            : demande
+        )
+      );
+    } else {
+      const errorText = await response.text();
+      alert(`Erreur: ${errorText}`);
+    }
+  } catch (error) {
+    alert("Une erreur s'est produite lors du refus de la demande.");
+  }
+};
 
   useEffect(() => {
     fetchDemandes();
@@ -193,7 +326,7 @@ const Demandes = () => {
               <option value="congé">Congé</option>
               <option value="formation">Formation</option>
               <option value="preAvance">PreAvance</option>
-              <option value="document">Document</option>
+              <option value="Document">Document</option>
             </select>
 
             <select value={selectedStatus} onChange={handleStatusChange}>
@@ -230,7 +363,7 @@ const Demandes = () => {
                 <th>Date</th>
                 <th>Texte Demande</th>
                 <th>Statut</th>
-                <th>Détails</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -273,13 +406,21 @@ const Demandes = () => {
                     </span>
                   </td>
                   <td>
-                    <button
-                      className="details-button"
-                      onClick={() => console.log("Afficher les détails pour :", demande)}
-                    >
-                      Voir détails
-                    </button>
-                  </td>
+  <button
+    className="confirmer-button"
+    onClick={() => handleConfirmer(demande.id, demande.typeDemande)}
+    disabled={demande.reponseChef !== "I"} 
+  >
+    Confirmer
+  </button>
+  <button
+    className="refuser-button"
+    onClick={() => handleRefuser(demande.id, demande.typeDemande)}
+    disabled={demande.reponseChef !== "I"} 
+  >
+    Refuser
+  </button>
+</td>
                 </tr>
               ))}
             </tbody>

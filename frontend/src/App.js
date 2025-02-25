@@ -14,11 +14,13 @@ const Addpers = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPerson
 const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
 const PersonnelsRH = lazy(() => import('./RH/Components/Personnels/Personnels.jsx'));
 const DemandesRH = lazy(() => import('./RH/Components/Demandes/Demandes.jsx')); 
+const CalendarRH = lazy(() => import('./RH/Components/Calendar/Calendar.jsx'));
 
 // CHEF
 const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
 const Personnels = lazy(() => import('./Chef_hierarchique/Components/Personnels/Personnels.jsx'));
 const Demandes = lazy(() => import('./Chef_hierarchique/Components/Demandes/Demandes.jsx'));
+const Calendar = lazy(() => import('./Chef_hierarchique/Components/Calendar/Calendar.jsx'));
 // Collaborateurs
 const Authentication = lazy(() => import('./collaborateurs/Authentification/Authentication.jsx'));
 const DemandeConge = lazy(() => import('./collaborateurs/Demandes/Conge/CongeForm.jsx'));
@@ -53,12 +55,15 @@ function App() {
   <Route path="/AccueilCHEF" element={<AccueilCHEF />} />
           <Route path="/Personnels" element={<Personnels />} />
           <Route path="/Demandes" element={<Demandes />} />
-          
+          <Route path="/Calendar" element={<Calendar />} />
 
-            {/* chef hierarchique */}
+
+            {/* RH */}
   <Route path="/AccueilRH" element={<AccueilRH />} />
           <Route path="/PersonnelsRH" element={<PersonnelsRH />} />
           <Route path="/DemandesRH" element={<DemandesRH />} />
+          <Route path="/CalendarRH" element={<CalendarRH />} />
+
 
 
           {/* Collaborateurs */}
