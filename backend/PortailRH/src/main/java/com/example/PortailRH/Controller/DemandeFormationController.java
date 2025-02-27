@@ -57,6 +57,8 @@ public class DemandeFormationController {
             @RequestParam("theme") String themeId,
             @RequestParam("annee_f") String annee_f,
             @RequestParam("codeSoc") String codeSoc,
+            @RequestParam("nbrJours") String nbrJours,
+
             @RequestParam(value = "file", required = false) MultipartFile file, // Fichier facultatif
             @RequestParam("matPersId") String matPersId) {
 
@@ -71,6 +73,7 @@ public class DemandeFormationController {
             demandeFormation.setTypeDemande(typeDemande);
             demandeFormation.setTexteDemande(texteDemande);
             demandeFormation.setCodeSoc(codeSoc);
+            demandeFormation.setNbrJours(nbrJours);
             demandeFormation.setAnnee_f(annee_f);
 
             // Set the Personnel object based on matPersId
@@ -116,5 +119,31 @@ public class DemandeFormationController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(demandes);
+    }
+    @PutMapping("/valider/{id}")
+    public ResponseEntity<String> validerDemande(@PathVariable String id) {
+        return demandeFormationRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.O);
+            demandeFormationRepository.save(demande);
+            return ResponseEntity.ok("Demande validée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/refuser/{id}")
+    public ResponseEntity<String> refuserDemande(@PathVariable String id) {
+        return demandeFormationRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.N);
+            demandeFormationRepository.save(demande);
+            return ResponseEntity.ok("Demande refusée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/traiter/{id}")
+    public ResponseEntity<String> traiterDemande(@PathVariable String id) {
+        return demandeFormationRepository.findById(id).map(demande -> {
+            demande.setReponseRH(Reponse.T);
+            demandeFormationRepository.save(demande);
+            return ResponseEntity.ok("Demande traitée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

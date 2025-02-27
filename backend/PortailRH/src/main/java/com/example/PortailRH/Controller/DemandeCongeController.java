@@ -3,10 +3,14 @@ package com.example.PortailRH.Controller;
 import com.example.PortailRH.Model.DemandeConge;
 import com.example.PortailRH.Model.Fichier_joint;
 import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.Reponse;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Repository.DemandeCongeRepository;
 import com.example.PortailRH.Repository.FichierJointRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,10 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -57,7 +58,6 @@ public class DemandeCongeController {
             @RequestParam("texteDemande") String texteDemande,
             @RequestParam("snjTempDep") String snjTempDep,
             @RequestParam("snjTempRetour") String snjTempRetour,
-            @RequestParam("dateReprisePrev") String dateReprisePrev,
             @RequestParam("codeSoc") String codeSoc,
             @RequestParam(value = "file", required = false) MultipartFile file, // Fichier facultatif
             @RequestParam("matPersId") String matPersId,
@@ -101,14 +101,14 @@ public class DemandeCongeController {
             demande.setTexteDemande(texteDemande);
             demande.setSnjTempDep(snjTempDep);
             demande.setSnjTempRetour(snjTempRetour);
-            demande.setDateReprisePrev(dateReprise);
-            demande.setTypeDemande("congé"); // Définition automatique du type
+            demande.setTypeDemande("congé");
 
             // Set the Personnel object based on matPersId and codeSoc
             Personnel matPers = new Personnel();
             matPers.setId(matPersId);
             matPers.setCode_soc(codeSoc);
             demande.setMatPers(matPers);
+            demande.setCodeSoc(codeSoc);
 
             demande.setNbrJours(days);
 
@@ -162,5 +162,53 @@ public class DemandeCongeController {
             return ResponseEntity.noContent().build();
         }
         return ResponseEntity.ok(demandes);
+    }
+
+
+
+    @PutMapping("/valider/{id}")
+    public ResponseEntity<String> validerDemande(@PathVariable String id) {
+        return demandeCongeRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.O);
+            demandeCongeRepository.save(demande);
+            return ResponseEntity.ok("Demande validée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/refuser/{id}")
+    public ResponseEntity<String> refuserDemande(@PathVariable String id) {
+        return demandeCongeRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.N);
+            demandeCongeRepository.save(demande);
+            return ResponseEntity.ok("Demande refusée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/traiter/{id}")
+    public ResponseEntity<String> traiterDemande(@PathVariable String id) {
+        return demandeCongeRepository.findById(id).map(demande -> {
+            demande.setReponseRH(Reponse.T);
+            demandeCongeRepository.save(demande);
+            return ResponseEntity.ok("Demande traitée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+    @GetMapping("/approved")
+    public ResponseEntity<List<Map<String, Object>>> getApprovedDemandes(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<DemandeConge> approvedDemandes = demandeCongeRepository.findByReponseChef(Reponse.O, pageable);
+
+        List<Map<String, Object>> result = approvedDemandes.stream()
+                .map(demande -> {
+                    Map<String, Object> dateMap = new HashMap<>();
+                    dateMap.put("dateDebut", demande.getDateDebut());
+                    dateMap.put("dateFin", demande.getDateFin());
+                    dateMap.put("employee", demande.getMatPers());
+                    return dateMap;
+                })
+                .toList();
+
+        return ResponseEntity.ok(result);
     }
 }

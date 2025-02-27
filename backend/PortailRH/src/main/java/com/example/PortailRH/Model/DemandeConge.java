@@ -16,14 +16,20 @@ public class DemandeConge {
 
     @Id
     private String id_libre_demande;
-
-    private Date dateDebut;
-    private Date dateFin;
     private Date dateDemande = new Date();
     private String typeDemande;
 
     @DBRef
     private Personnel matPers;
+    private String codeSoc;
+    private Date dateDebut;
+    private Date dateFin;
+    private String snjTempDep;
+    private String snjTempRetour;
+    private int nbrJours;
+
+
+
     private String texteDemande;
 
     private Reponse reponseChef = Reponse.I;
@@ -32,10 +38,7 @@ public class DemandeConge {
     @DBRef(lazy = true) // Relation avec les fichiers joints
     private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
-    private String snjTempDep;
-    private String snjTempRetour;
-    private Date dateReprisePrev;
-    private int nbrJours;
+
 
     public void setDateDebut(Date dateDebut) {
         this.dateDebut = dateDebut;
@@ -53,9 +56,6 @@ public class DemandeConge {
             // Calculate the difference in days
             long diffInMillies = Math.abs(dateFin.getTime() - dateDebut.getTime());
             this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
-
-            // Calculate dateReprisePrev (dateFin - dateDebut)
-            this.dateReprisePrev = new Date(dateDebut.getTime() + diffInMillies);
         }
     }
 
@@ -81,6 +81,10 @@ public class DemandeConge {
 
     public void setTypeDemande(String typeDemande) {
         this.typeDemande = typeDemande;
+    }
+
+    public void setCodeSoc(String codeSoc) {
+        this.codeSoc = codeSoc;
     }
 
     public Personnel getMatPers() {
@@ -152,13 +156,7 @@ public class DemandeConge {
         this.snjTempRetour = snjTempRetour;
     }
 
-    public Date getDateReprisePrev() {
-        return dateReprisePrev;
-    }
 
-    public void setDateReprisePrev(Date dateReprisePrev) {
-        this.dateReprisePrev = dateReprisePrev;
-    }
 
     public int getNbrJours() {
         return nbrJours;
@@ -168,4 +166,11 @@ public class DemandeConge {
         this.nbrJours = nbrJours;
     }
 
+    public Date getDateDemande() {
+        return dateDemande;
+    }
+
+    public void setDateDemande(Date dateDemande) {
+        this.dateDemande = dateDemande;
+    }
 }

@@ -14,18 +14,26 @@ public class DemandeDocument {
     @Id
     private String id;
     private String typeDemande;
-    private String objet;
     private Date dateDemande = new Date();
+
 
     private String typeDocument;
     @DBRef
     private Personnel matPers;
+    private String TexteDemande;
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
     private String codeSoc;
     @DBRef(lazy = true)
     private Collection<Fichier_joint> Files = new ArrayList<>();
 
+    public String getTexteDemande() {
+        return TexteDemande;
+    }
+
+    public void setTexteDemande(String texteDemande) {
+        TexteDemande = texteDemande;
+    }
 
     public String getId() {
         return id;
@@ -43,13 +51,6 @@ public class DemandeDocument {
         this.typeDemande = typeDemande;
     }
 
-    public String getObjet() {
-        return objet;
-    }
-
-    public void setObjet(String objet) {
-        this.objet = objet;
-    }
 
     public Personnel getMatPers() {
         return matPers;

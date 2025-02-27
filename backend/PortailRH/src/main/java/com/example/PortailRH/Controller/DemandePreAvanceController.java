@@ -1,12 +1,16 @@
 package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Exception.MontantDepasseException;
-import com.example.PortailRH.Model.DemandePreAvance;
+import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.DemandePreAvanceRepository;
+import com.example.PortailRH.Service.FichierJointService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -17,27 +21,65 @@ public class DemandePreAvanceController {
 
     @Autowired
     private DemandePreAvanceRepository demandePreAvanceRepository;
+    @Autowired
+    private FichierJointService fichierJointService;
+
+
+
+    @GetMapping
+    public List<DemandePreAvance> getAllDemandes() {
+        return demandePreAvanceRepository.findAll();
+    }
 
     // Create a new DemandePreAvance
-    @PostMapping("/create")
-    public ResponseEntity<?> createDemande(@RequestBody DemandePreAvance demandePreAvance) {
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createDemande(
+            @RequestParam("type") String type,
+            @RequestParam("montant") double montant,
+            @RequestParam("texteDemande") String texteDemande,
+            @RequestParam("matPersId") String matPersId,
+            @RequestParam("codeSoc") String codeSoc,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
         try {
-            demandePreAvance.setDateDemande(new java.util.Date()); // Set the current date
-            demandePreAvance.validateMontant(); // Validate the montant
+            System.out.println("Received matPersId: " + matPersId); // Log matPersId
+
+            // Create a new DemandePreAvance object
+            DemandePreAvance demandePreAvance = new DemandePreAvance();
+            demandePreAvance.setType(type);
+            demandePreAvance.setMontant(montant);
+            demandePreAvance.setTexteDemande(texteDemande);
+            Personnel matPers = new Personnel();
+            matPers.setId(matPersId);
+            matPers.setCode_soc(codeSoc);
+            demandePreAvance.setMatPers(matPers);
+            demandePreAvance.setCodeSoc(codeSoc);
+            demandePreAvance.setDateDemande(new Date());
+
+            // Validate the montant
+            demandePreAvance.validateMontant();
+
+            // Handle file upload (if provided)
+            if (file != null && !file.isEmpty()) {
+                // Save the file and get the saved Fichier_joint object
+                Fichier_joint fichier = fichierJointService.saveFile(file);
+
+                // Ensure the Fichier_joint object is saved and has a valid ID
+                if (fichier.getId() == null) {
+                    throw new IllegalStateException("Failed to save the file: Fichier_joint ID is null");
+                }
+
+                // Associate the file with the demande
+                demandePreAvance.setFiles(List.of(fichier));
+            }
+
+            // Save the demandePreAvance to the database
             DemandePreAvance savedDemande = demandePreAvanceRepository.save(demandePreAvance);
             return ResponseEntity.ok(savedDemande);
         } catch (MontantDepasseException e) {
             return ResponseEntity.badRequest().body(e.getMessage()); // Return 400 Bad Request with the exception message
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build(); // Return 400 Bad Request for other exceptions
+            return ResponseEntity.badRequest().body("Erreur lors de la création de la demande: " + e.getMessage());
         }
-    }
-
-    // Get all DemandePreAvance records
-    @GetMapping
-    public ResponseEntity<List<DemandePreAvance>> getAllDemandes() {
-        List<DemandePreAvance> demandes = demandePreAvanceRepository.findAll();
-        return ResponseEntity.ok(demandes);
     }
 
     // Get the types of pre-avances and their maximum amounts
@@ -80,5 +122,42 @@ public class DemandePreAvanceController {
     public ResponseEntity<List<DemandePreAvance>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandePreAvance> demandes = demandePreAvanceRepository.findByMatPers_Id(matPersId);
         return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
+    }
+
+    // Validate a DemandePreAvance by ID
+    @PutMapping("/valider/{id}")
+    public ResponseEntity<String> validerDemande(@PathVariable String id) {
+        return demandePreAvanceRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.O);
+            demandePreAvanceRepository.save(demande);
+            return ResponseEntity.ok("Demande validée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // Refuse a DemandePreAvance by ID
+    @PutMapping("/refuser/{id}")
+    public ResponseEntity<String> refuserDemande(@PathVariable String id) {
+        return demandePreAvanceRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.N);
+            demandePreAvanceRepository.save(demande);
+            return ResponseEntity.ok("Demande refusée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // Process a DemandePreAvance by ID
+    @PutMapping("/traiter/{id}")
+    public ResponseEntity<String> traiterDemande(@PathVariable String id) {
+        return demandePreAvanceRepository.findById(id).map(demande -> {
+            demande.setReponseRH(Reponse.T);
+            demandePreAvanceRepository.save(demande);
+            return ResponseEntity.ok("Demande traitée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    // Helper method to save the uploaded file
+    private String saveFile(MultipartFile file) {
+        // Implement file saving logic here
+        // Example: Save the file to a directory or cloud storage and return the file path
+        return "path/to/saved/file";
     }
 }

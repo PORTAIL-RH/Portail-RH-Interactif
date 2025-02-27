@@ -14,14 +14,15 @@ public class DemandeAutorisation {
     @Id
     private String id;
 
-    private Date dateDebut;
-    private Date dateFin;
+
+
     private Date dateDemande;
     private String typeDemande;
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
+    private Date dateDebut;
     private String texteDemande;
 
     private Reponse reponseChef;
@@ -64,13 +65,7 @@ public class DemandeAutorisation {
         this.dateDebut = dateDebut;
     }
 
-    public Date getDateFin() {
-        return dateFin;
-    }
 
-    public void setDateFin(Date dateFin) {
-        this.dateFin = dateFin;
-    }
 
     public Date getDateDemande() {
         return dateDemande;

@@ -15,14 +15,17 @@ import java.util.Date;
 public class DemandeFormation {
     @Id
     private String id_libre_demande;
-
-    private Date dateDebut;
-    private Date dateDemande = new Date();
     private String typeDemande;
+    private Date dateDemande = new Date();
+
+
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
+    private Date dateDebut;
+    private String nbrJours;
+
     private String texteDemande;
 
     private Reponse reponseChef = Reponse.I;
@@ -64,6 +67,14 @@ public class DemandeFormation {
 
     public void setDateDemande(Date dateDemande) {
         this.dateDemande = dateDemande;
+    }
+
+    public String getNbrJours() {
+        return nbrJours;
+    }
+
+    public void setNbrJours(String nbrJours) {
+        this.nbrJours = nbrJours;
     }
 
     public String getTypeDemande() {
