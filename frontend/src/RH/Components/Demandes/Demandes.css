@@ -1,19 +1,17 @@
-/* General Styles */
 .navbar-containerpp {
   display: flex;
   height: 100vh;
   background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
-  padding-top: 70px; /* Adjust based on Navbar height */
+  padding-top: 70px;
 }
 
-/* Demandes.css */
 .demandes-container {
   display: flex;
   flex-direction: row;
   margin-top: 50px;
 }
 .status-badge.processed {
-  background-color: #6c26bd; /* Purple for "Traité" */
+  background-color: #6c26bd; 
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
@@ -27,8 +25,8 @@
 .demandes-content {
   width: 100%;
   padding: 20px;
-  margin-left: 20px; /* Adjust according to the width of the sidebar */
-  overflow: auto; /* This adds the scroll bar to the content */
+  margin-left: 20px; 
+  overflow: auto; 
 }
 
 h1 {
@@ -38,7 +36,6 @@ h1 {
   color: #333;
 }
 
-/* Filters Section */
 .filters {
   display: flex;
   gap: 20px;
@@ -56,7 +53,7 @@ h1 {
 
 .filters select:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: #2d35a0;
 }
 
 .date-picker {
@@ -74,7 +71,7 @@ h1 {
 }
 
 .date-picker button:hover {
-  border-color: #007bff;
+  border-color: #2d35a0;
 }
 
 .date-picker input[type="date"] {
@@ -90,7 +87,6 @@ h1 {
   z-index: 10;
 }
 
-/* Table Styles */
 .demandes-table {
   width: 100%;
   border-collapse: collapse;
@@ -107,7 +103,7 @@ h1 {
 }
 
 .demandes-table th {
-  background-color: #007bff;
+  background-color: #2d35a0;
   color: #fff;
   font-weight: 500;
 }
@@ -116,7 +112,6 @@ h1 {
   background-color: #f9f9f9;
 }
 
-/* Status Badges */
 .status-badge {
   display: inline-block;
   padding: 6px 12px;
@@ -141,12 +136,11 @@ h1 {
   color: #fff;
 }
 
-/* Details Button */
 .details-button {
   padding: 8px 16px;
   border: none;
   border-radius: 5px;
-  background-color: #007bff;
+  background-color: #2d35a0;
   color: #fff;
   font-size: 14px;
   cursor: pointer;
@@ -155,10 +149,9 @@ h1 {
 
 .details-button:hover {
   background-color: #0056b3;
-  transform: scale(1.05); /* Slight zoom effect */
+  transform: scale(1.05); 
 }
 
-/* Loading and Error Messages */
 .loading,
 .error {
   display: flex;

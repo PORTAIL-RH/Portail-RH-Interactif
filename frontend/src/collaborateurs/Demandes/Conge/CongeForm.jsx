@@ -10,12 +10,12 @@ const CongeForm = () => {
     dateDebut: '',
     dateFin: '',
     nbrJours: 0,
-    matPers: '',
+    matPersId: '', 
+    codeSoc: '', 
     texteDemande: '',
     snjTempDep: '',
     snjTempRetour: '',
     dateReprisePrev: '',
-    codeSoc: '',
     file: null,
     typeDemande: 'conge',
   });
@@ -32,8 +32,21 @@ const CongeForm = () => {
   };
 
   const handleFileChange = (e) => {
-    setFormData({ ...formData, file: e.target.files[0] }); // Store the selected file
+    setFormData({ ...formData, file: e.target.files[0] }); 
   };
+
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    const userCodeSoc = localStorage.getItem('userCodeSoc');
+
+    if (userId && userCodeSoc) {
+      setFormData((prevData) => ({
+        ...prevData,
+        matPersId: userId,
+        codeSoc: userCodeSoc,
+      }));
+    }
+  }, []);
 
   useEffect(() => {
     if (formData.dateDebut && formData.dateFin) {
@@ -46,7 +59,7 @@ const CongeForm = () => {
       }
 
       const timeDiff = endDate - startDate;
-      const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); // Convert to days
+      const dayDiff = Math.ceil(timeDiff / (1000 * 3600 * 24)); 
       setFormData((prevData) => ({
         ...prevData,
         nbrJours: dayDiff,
@@ -57,17 +70,14 @@ const CongeForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Get user ID (mat_pers) and token from localStorage
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-    const codeSoc = localStorage.getItem('codeSoc');
 
     if (!authToken || !userId) {
       toast.error('Missing token or user ID');
       return;
     }
 
-    // Create FormData object
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('dateFin', formData.dateFin);
@@ -75,12 +85,11 @@ const CongeForm = () => {
     formDataToSend.append('snjTempDep', formData.snjTempDep);
     formDataToSend.append('snjTempRetour', formData.snjTempRetour);
     formDataToSend.append('dateReprisePrev', formData.dateReprisePrev);
-    formDataToSend.append('codeSoc', codeSoc || '');
+    formDataToSend.append('codeSoc', formData.codeSoc); 
     formDataToSend.append('matPersId', userId);
     formDataToSend.append('nbrJours', formData.nbrJours.toString());
     formDataToSend.append('typeDemande', formData.typeDemande);
 
-    // Append the file if it exists
     if (formData.file) {
       formDataToSend.append('file', formData.file);
     }
@@ -92,12 +101,11 @@ const CongeForm = () => {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
-        body: formDataToSend, // Send FormData
+        body: formDataToSend, 
       });
 
       console.log('Response status:', response.status);
 
-      // Check if the response is JSON
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
@@ -109,7 +117,6 @@ const CongeForm = () => {
           toast.error('Error submitting form: ' + (result.message || response.statusText));
         }
       } else {
-        // Handle non-JSON responses (e.g., plain text or HTML)
         const textResponse = await response.text();
         console.error('Non-JSON response:', textResponse);
         toast.error('Error submitting form: ' + textResponse);
@@ -122,18 +129,14 @@ const CongeForm = () => {
 
   return (
     <div className="app">
-      {/* Navbar */}
       <Navbar />
 
-      {/* Sidebar */}
       <Sidebar isSidebarOpen={isSidebarOpen} onToggle={handleSidebarToggle} />
 
-      {/* Formulaire de congé */}
       <div className="content">
         <form className="form" onSubmit={handleSubmit}>
           <h2>Demande de Congé</h2>
 
-          {/* Ligne pour Date Début, Date Fin et Nombre de jours */}
           <div className="form-row">
             <label>
               Date Début:
@@ -166,8 +169,6 @@ const CongeForm = () => {
             </label>
           </div>
 
-          {/* Ligne pour Sortie, Retour et Date de reprise prévue */}
-          {/* Ligne pour Sortie et Retour */}
           <div className="form-row">
             <label>
               Sortie:
@@ -195,20 +196,10 @@ const CongeForm = () => {
                 <option value="Soir">Soir</option>
               </select>
             </label>
-            <label>
-              Date de reprise prévue:
-              <input
-                type="date"
-                name="dateReprisePrev"
-                value={formData.dateReprisePrev}
-                onChange={handleChange}
-              />
-            </label>
           </div>
 
-          {/* Motif */}
           <label>
-            Motif:
+            Texte demande:
             <textarea
               name="texteDemande"
               value={formData.texteDemande}
@@ -217,14 +208,12 @@ const CongeForm = () => {
             ></textarea>
           </label>
 
-          {/* File upload */}
           <label>
-            Upload File:
+            Fichier Joint: (optionnel)
             <input
               type="file"
               name="file"
               onChange={handleFileChange}
-              
             />
           </label>
 

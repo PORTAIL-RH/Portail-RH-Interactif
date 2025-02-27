@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AutorisationForm.css';
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
@@ -8,16 +8,29 @@ import 'react-toastify/dist/ReactToastify.css';
 const AutorisationForm = () => {
   const [formData, setFormData] = useState({
     dateDebut: '',
-    dateFin: '',
     heureSortie: '',
     heureRetour: '',
-    codeSoc: '',
+    codeSoc: '', 
     texteDemande: '',
     cod_autorisation: '',
+    matPersId: '',
   });
 
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    const userCodeSoc = localStorage.getItem('userCodeSoc');
+
+    if (userId && userCodeSoc) {
+      setFormData((prevData) => ({
+        ...prevData,
+        codeSoc: userCodeSoc,
+        matPersId: userId,
+      }));
+    }
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,12 +45,31 @@ const AutorisationForm = () => {
   };
 
   const validateForm = () => {
-    const { dateDebut, dateFin } = formData;
+    const errors = {};
 
-    if (new Date(dateDebut) > new Date(dateFin)) {
-      toast.error('La date de début ne peut pas être supérieure à la date de fin.');
+    if (!formData.dateDebut) {
+      errors.dateDebut = 'La date est requise.';
+    }
+
+    if (!formData.heureSortie) {
+      errors.heureSortie = "L'heure de sortie est requise.";
+    }
+
+    if (!formData.heureRetour) {
+      errors.heureRetour = "L'heure de retour est requise.";
+    }
+
+    if (!formData.texteDemande) {
+      errors.texteDemande = 'Le texte de la demande est requis.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setError(Object.values(errors).join(' ')); 
+      toast.error('Veuillez corriger les erreurs dans le formulaire.');
       return false;
     }
+
+    setError('');
     return true;
   };
 
@@ -50,7 +82,6 @@ const AutorisationForm = () => {
 
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-    const codeSoc = localStorage.getItem('codeSoc');
 
     if (!authToken || !userId) {
       toast.error('Token ou ID utilisateur manquant');
@@ -59,10 +90,9 @@ const AutorisationForm = () => {
 
     const formDataToSend = new FormData();
     formDataToSend.append('dateDebut', formData.dateDebut);
-    formDataToSend.append('dateFin', formData.dateFin);
     formDataToSend.append('heureSortie', formData.heureSortie);
     formDataToSend.append('heureRetour', formData.heureRetour);
-    formDataToSend.append('codeSoc', codeSoc);
+    formDataToSend.append('codeSoc', formData.codeSoc); 
     formDataToSend.append('texteDemande', formData.texteDemande);
     formDataToSend.append('codAutorisation', formData.cod_autorisation);
     formDataToSend.append('matPersId', userId);
@@ -120,10 +150,9 @@ const AutorisationForm = () => {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            {/* Date Inputs */}
             <div className="form-row">
               <div>
-                <label htmlFor="dateDebut" className="form-label">Date Début</label>
+                <label htmlFor="dateDebut" className="form-label">Date</label>
                 <input
                   type="date"
                   id="dateDebut"
@@ -134,21 +163,8 @@ const AutorisationForm = () => {
                   required
                 />
               </div>
-              <div>
-                <label htmlFor="dateFin" className="form-label">Date Fin</label>
-                <input
-                  type="date"
-                  id="dateFin"
-                  name="dateFin"
-                  className="form-control"
-                  value={formData.dateFin}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
             </div>
 
-            {/* Time Inputs */}
             <div className="form-row">
               <div>
                 <label htmlFor="heureSortie" className="form-label">Heure de Sortie</label>
@@ -176,7 +192,6 @@ const AutorisationForm = () => {
               </div>
             </div>
 
-            {/* Textarea for demande */}
             <div className="full-width">
               <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
               <textarea
@@ -185,13 +200,12 @@ const AutorisationForm = () => {
                 className="form-control"
                 value={formData.texteDemande}
                 onChange={handleChange}
-                
+                required
               ></textarea>
             </div>
 
-            {/* File Input */}
             <div className="full-width">
-              <label htmlFor="file" className="form-label">Fichier Joint</label>
+              <label htmlFor="file" className="form-label">Fichier Joint : (optionnel)</label>
               <input
                 type="file"
                 id="file"
@@ -201,13 +215,11 @@ const AutorisationForm = () => {
               />
             </div>
 
-            {/* Submit Button */}
             <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
           </form>
         </div>
       </div>
 
-      {/* Toast Container */}
       <ToastContainer
         position="top-right"
         autoClose={5000}

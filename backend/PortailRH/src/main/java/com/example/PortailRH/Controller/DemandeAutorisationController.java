@@ -3,6 +3,7 @@ package com.example.PortailRH.Controller;
 import com.example.PortailRH.Model.DemandeAutorisation;
 import com.example.PortailRH.Model.Fichier_joint;
 import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.Reponse;
 import com.example.PortailRH.Repository.DemandeAutorisationRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,6 @@ public class DemandeAutorisationController {
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemande(
             @RequestParam("dateDebut") String dateDebut,
-            @RequestParam("dateFin") String dateFin,
             @RequestParam("texteDemande") String texteDemande,
             @RequestParam("heureSortie") String heureSortieStr,
             @RequestParam("heureRetour") String heureRetourStr,
@@ -46,11 +46,6 @@ public class DemandeAutorisationController {
             // Convertir les dates en objets Date
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(dateDebut);
-            Date endDate = dateFormat.parse(dateFin);
-
-            if (startDate.after(endDate)) {
-                return ResponseEntity.badRequest().body("La date de début doit être avant la date de fin.");
-            }
 
             // Convertir les heures en LocalTime
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
@@ -68,7 +63,6 @@ public class DemandeAutorisationController {
 // Créer une nouvelle demande d'autorisation
             DemandeAutorisation demande = new DemandeAutorisation();
             demande.setDateDebut(startDate);
-            demande.setDateFin(endDate);
             demande.setTypeDemande("autorisation");
             demande.setTexteDemande(texteDemande);
             demande.setHoraireSortie(horaireSortie);
@@ -145,4 +139,32 @@ public class DemandeAutorisationController {
         List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
         return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
     }
+
+    @PutMapping("/valider/{id}")
+    public ResponseEntity<String> validerDemande(@PathVariable String id) {
+        return demandeAutorisationRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.O);
+            demandeAutorisationRepository.save(demande);
+            return ResponseEntity.ok("Demande validée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/refuser/{id}")
+    public ResponseEntity<String> refuserDemande(@PathVariable String id) {
+        return demandeAutorisationRepository.findById(id).map(demande -> {
+            demande.setReponseChef(Reponse.N);
+            demandeAutorisationRepository.save(demande);
+            return ResponseEntity.ok("Demande refusée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PutMapping("/traiter/{id}")
+    public ResponseEntity<String> traiterDemande(@PathVariable String id) {
+        return demandeAutorisationRepository.findById(id).map(demande -> {
+            demande.setReponseRH(Reponse.T);
+            demandeAutorisationRepository.save(demande);
+            return ResponseEntity.ok("Demande traitée avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
 }

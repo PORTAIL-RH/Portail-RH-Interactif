@@ -18,7 +18,7 @@ const Demandes = () => {
       const token = localStorage.getItem("authToken");
   
       // Fetch demande-conge
-      const congeResponse = await fetch("http://localhost:8082/api/demande-conge", {
+      const congeResponse = await fetch("http://localhost:8080/api/demande-conge", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -40,7 +40,7 @@ const Demandes = () => {
       }));
   
       // Fetch demande-autorisation
-      const autorisationResponse = await fetch("http://localhost:8082/api/demande-autorisation", {
+      const autorisationResponse = await fetch("http://localhost:8080/api/demande-autorisation", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +61,7 @@ const Demandes = () => {
       }));
   
       // Fetch demande-formation
-      const formationResponse = await fetch("http://localhost:8082/api/demande-formation", {
+      const formationResponse = await fetch("http://localhost:8080/api/demande-formation", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -82,7 +82,7 @@ const Demandes = () => {
       }));
   
       // Fetch demande-pre-avance
-      const preAvanceResponse = await fetch("http://localhost:8082/api/demande-pre-avance", {
+      const preAvanceResponse = await fetch("http://localhost:8080/api/demande-pre-avance", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +103,7 @@ const Demandes = () => {
       }));
   
       // Fetch demande-document
-      const documentResponse = await fetch("http://localhost:8082/api/demande-document", {
+      const documentResponse = await fetch("http://localhost:8080/api/demande-document", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -166,7 +166,7 @@ const handleConfirmer = async (demandeId, typeDemande) => {
       case "formation":
         endpoint = `http://localhost:8080/api/demande-formation/valider/${demandeId}`;
         break;
-      case "preAvance":
+      case "PreAvnace":
         endpoint = `http://localhost:8080/api/demande-pre-avance/valider/${demandeId}`;
         break;
       case "Document":
@@ -325,7 +325,7 @@ const handleRefuser = async (demandeId, typeDemande) => {
               <option value="autorisation">Autorisation</option>
               <option value="congé">Congé</option>
               <option value="formation">Formation</option>
-              <option value="preAvance">PreAvance</option>
+              <option value="PreAvnace">PreAvance</option>
               <option value="Document">Document</option>
             </select>
 

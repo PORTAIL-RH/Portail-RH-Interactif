@@ -65,7 +65,6 @@ public class SecurityConfig {
 
 
                         //demandeConge endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/all").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demande-conge/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}").permitAll()
