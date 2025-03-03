@@ -21,6 +21,11 @@ public class SecurityConfig {
     @Autowired
     private WebConfig webConfig;
 
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, WebConfig webConfig) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.webConfig = webConfig;
+    }
+
     @Bean
     public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
@@ -50,6 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unread").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unreadnbr").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/nbr").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/ws/**").permitAll() // Allow WebSocket connection
 
 
                         //roles endpoints

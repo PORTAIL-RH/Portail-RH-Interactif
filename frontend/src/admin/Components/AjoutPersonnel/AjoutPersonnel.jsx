@@ -6,6 +6,7 @@ import Navbar from "../Navbar/Navbar";
 const PersonnelForm = () => {
   const [matricule, setMatricule] = useState('');
   const [email, setEmail] = useState('');
+  const [code_soc, setCodeSoc] = useState('');
   const [personnelList, setPersonnelList] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -14,13 +15,13 @@ const PersonnelForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
   
-    if (!matricule || !email) {
+    if (!matricule || !email || !code_soc) {
       setErrorMessage('Veuillez remplir tous les champs.');
       setSuccessMessage('');
       return;
     }
   
-    const newPersonnel = { matricule, email };
+    const newPersonnel = { matricule, email ,code_soc};
   
     try {
       const response = await fetch('http://localhost:8080/api/Personnel/addWithMatriculeAndEmail', {
@@ -43,6 +44,7 @@ const PersonnelForm = () => {
       setErrorMessage('');
       setMatricule('');
       setEmail('');
+      setCodeSoc('');
     } catch (error) {
       setErrorMessage(error.message);
       setSuccessMessage('');
@@ -61,6 +63,18 @@ const PersonnelForm = () => {
         {successMessage && <div className="success-message">{successMessage}</div>}
 
         <form onSubmit={handleSubmit} className="personnel-form">
+
+          <div className="form-group">
+            <label htmlFor="code">Code société</label>
+            <input
+              type="input"
+              id="codeSoc"
+              value={code_soc}
+              onChange={(e) => setCodeSoc(e.target.value)}
+              placeholder="Entrez code société"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="matricule">Matricule</label>
             <input

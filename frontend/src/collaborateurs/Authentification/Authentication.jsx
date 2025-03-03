@@ -122,7 +122,7 @@ const Authentication = () => {
                   navigate('/AccueilCHEF');
                   break;
                 default:
-                  navigate('/');
+                  navigate('/Accueil');
                   break;
               }
             } else {

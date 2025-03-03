@@ -1,6 +1,5 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.Notification;
 import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -16,7 +15,7 @@ public class WebSocketNotificationController {
     @Autowired
     private NotificationService notificationService;
 
-    // Send a notification to all connected clients
+    // Handle WebSocket messages sent to "/app/send-notification"
     @MessageMapping("/send-notification")
     public void sendNotification(String message) {
         // Create and save the notification
