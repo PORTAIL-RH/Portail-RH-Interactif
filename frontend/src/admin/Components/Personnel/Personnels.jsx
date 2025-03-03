@@ -13,6 +13,10 @@ const Personnel = () => {
   const [editingPersonnel, setEditingPersonnel] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // State for filters
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterMatricule, setFilterMatricule] = useState("");
+
   // Fetch roles
   useEffect(() => {
     const fetchRoles = async () => {
@@ -85,6 +89,7 @@ const Personnel = () => {
     setSelectedService(e.target.value);
   };
 
+  // Handle validation (activate/deactivate)
   const handleValidate = async (personnelId, action) => {
     if (action === "activate") {
       if (!selectedRole) {
@@ -97,12 +102,12 @@ const Personnel = () => {
         return;
       }
     }
-  
+
     const endpoint =
       action === "activate"
         ? `http://localhost:8080/api/admin/activate-personnel/${personnelId}`
         : `http://localhost:8080/api/admin/desactivate-personnel/${personnelId}`;
-  
+
     const method = "POST";
     const body =
       action === "activate"
@@ -111,7 +116,7 @@ const Personnel = () => {
             serviceId: selectedRole === "collaborateur" ? selectedService : null, // Only send serviceId for Collaborateur
           })
         : null;
-  
+
     try {
       const response = await fetch(endpoint, {
         method,
@@ -120,9 +125,9 @@ const Personnel = () => {
         },
         body,
       });
-  
+
       const responseData = await response.json();
-  
+
       if (response.ok) {
         setPersonnel((prevPersonnel) =>
           prevPersonnel.map((person) =>
@@ -147,6 +152,7 @@ const Personnel = () => {
       alert(`Error ${action}ing personnel: ${error.message}`);
     }
   };
+
   // Handle the form submit for updating personnel
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
@@ -201,6 +207,20 @@ const Personnel = () => {
     }
   }, [editingPersonnel]);
 
+  // Filter personnel based on filter values
+  const filteredPersonnel = personnel.filter((person) => {
+    const matchesMatricule = person.matricule
+      ? person.matricule.toLowerCase().includes(filterMatricule.toLowerCase())
+      : true; // If no filter, include all
+
+    const matchesStatus =
+      filterStatus === "" ||
+      (filterStatus === "active" && person.active) ||
+      (filterStatus === "inactive" && !person.active);
+
+    return matchesMatricule && matchesStatus;
+  });
+
   // Display loading message if services are still being fetched
   if (isLoading) {
     return <p>Loading services...</p>;
@@ -212,8 +232,27 @@ const Personnel = () => {
       <Sidebar />
       <div className="main-contentpp">
         <h2>La liste des personnels</h2>
+
+        {/* Filtration Bar */}
+        <div className="filtration-bar">
+  <input
+    type="text"
+    placeholder="Filter by Matricule"
+    value={filterMatricule}
+    onChange={(e) => setFilterMatricule(e.target.value)}
+  />
+  <select
+    value={filterStatus}
+    onChange={(e) => setFilterStatus(e.target.value)}
+  >
+    <option value="">All Statuses</option>
+    <option value="active">Active</option>
+    <option value="inactive">Inactive</option>
+  </select>
+</div>
+
         {staffError && <p className="error-message">{staffError}</p>}
-        {personnel.length > 0 ? (
+        {filteredPersonnel.length > 0 ? (
           <table className="staff-table">
             <thead>
               <tr>
@@ -228,7 +267,7 @@ const Personnel = () => {
               </tr>
             </thead>
             <tbody>
-              {personnel.map((person) => (
+              {filteredPersonnel.map((person) => (
                 <tr key={person.id}>
                   <td>{person.nom || "Nom non disponible"}</td>
                   <td>{person.email}</td>

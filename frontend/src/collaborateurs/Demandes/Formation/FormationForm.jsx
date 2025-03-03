@@ -7,6 +7,7 @@ import 'react-toastify/dist/ReactToastify.css';
 
 const FormationForm = () => {
   const [formData, setFormData] = useState({
+    nbrJours: '',
     dateDebut: '',
     typeDemande: '',
     texteDemande: '',
@@ -96,12 +97,12 @@ const FormationForm = () => {
 
   const validateForm = () => {
     const newErrors = {};
+    if (!formData.nbrJours) newErrors.nbrJours = 'Nombre de Jours est requis';
     if (!formData.dateDebut) newErrors.dateDebut = 'Date Début est requise';
-    
     if (!formData.texteDemande) newErrors.texteDemande = 'Texte Demande est requis';
 
     setErrors(newErrors);
-    console.log("Validation errors:", newErrors); // Debugging line
+    console.log("Validation errors:", newErrors); 
     return Object.keys(newErrors).length === 0;
   };
 
@@ -111,18 +112,19 @@ const FormationForm = () => {
 
     const userId = localStorage.getItem('userId');
     const authToken = localStorage.getItem('authToken');
-    const codeSoc = localStorage.getItem('codeSoc');
+    const userCodeSoc = localStorage.getItem('userCodeSoc');
 
-    if (!authToken || !userId) {
+    if (!authToken || !userId || ! userCodeSoc) {
       setError('Missing token or user ID');
       toast.error('Missing token or user ID');
       return;
     }
 
-    // Set typeDemande to "formation" before validation
     setFormData((prevFormData) => ({
       ...prevFormData,
       typeDemande: "formation",
+      codeSoc: userCodeSoc,
+
     }));
 
     if (!validateForm()) {
@@ -131,6 +133,7 @@ const FormationForm = () => {
     }
 
     const formDataToSend = new FormData();
+    formDataToSend.append('nbrJours', formData.nbrJours); 
     formDataToSend.append('dateDebut', formData.dateDebut);
     formDataToSend.append('typeDemande', "formation");
     formDataToSend.append('texteDemande', formData.texteDemande);
@@ -138,7 +141,7 @@ const FormationForm = () => {
     formDataToSend.append('type', formData.type);
     formDataToSend.append('theme', formData.theme);
     formDataToSend.append('annee_f', formData.annee_f);
-    formDataToSend.append('codeSoc', codeSoc);
+    formDataToSend.append('codeSoc', formData.codeSoc);
     formDataToSend.append('matPersId', userId);
     formDataToSend.append('file', file);
 
@@ -203,76 +206,93 @@ const FormationForm = () => {
       <Sidebar isSidebarOpen={isSidebarOpen} onToggle={handleSidebarToggle} />
 
       <div className="content">
-      <form className="form" onSubmit={handleSubmit}>
-        <h2>Demande de Formation</h2>
+        <form className="form" onSubmit={handleSubmit}>
+          <h2>Demande de Formation</h2>
 
-        {loading && <div className="loading">Chargement...</div>}
-        {error && <div className="error">{error}</div>}
+          {loading && <div className="loading">Chargement...</div>}
+          {error && <div className="error">{error}</div>}
 
-        {/* Ligne pour Date Début  */}
+          <div className="form-row-2">
           <div className="form-group">
-            <label>Date Début:</label>
-            <input type="date" name="dateDebut" value={formData.dateDebut} onChange={handleChange} required />
-            {errors.dateDebut && <span className="error">{errors.dateDebut}</span>}
-          </div>
-          
-        {/* Ligne pour Titre, Type et Thème */}
-        <div className="form-row-3">
-          <div className="form-group">
-            <label>Titre de la formation:</label>
-            <select name="titre" value={formData.titre} onChange={handleChange} required>
-              <option value="">Sélectionnez un titre</option>
-              {titres.map(titre => (
-                <option key={titre.id} value={titre.id}>
-                  {titre.titre}
-                </option>
-              ))}
-            </select>
-            {errors.titre && <span className="error">{errors.titre}</span>}
-          </div>
-          <div className="form-group">
-            <label>Type de demande:</label>
-            <select name="type" value={formData.type} onChange={handleTypeChange} required>
-              <option value="">Sélectionnez un type</option>
-              {types[formData.titre]?.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.type}
-                </option>
-              ))}
-            </select>
-            {errors.type && <span className="error">{errors.type}</span>}
-          </div>
-          <div className="form-group">
-            <label>Thème de la formation:</label>
-            <select name="theme" value={formData.theme} onChange={handleChange} required>
-              <option value="">Sélectionnez un thème</option>
-              {Array.isArray(themes) && themes.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  {theme.nom}
-                </option>
-              ))}
-            </select>
-            {errors.theme && <span className="error">{errors.theme}</span>}
-          </div>
-        </div>
+    <label>Date Début:</label>
+    <input
+      type="date"
+      name="dateDebut"
+      value={formData.dateDebut}
+      onChange={handleChange}
+      required
+    />
+    {errors.dateDebut && <span className="error">{errors.dateDebut}</span>}
+  </div>
+  <div className="form-group">
+    <label>Nombre de Jours:</label>
+    <input
+      type="number"
+      name="nbrJours"
+      value={formData.nbrJours}
+      onChange={handleChange}
+      required
+      min="1"
+    />
+    {errors.nbrJours && <span className="error">{errors.nbrJours}</span>}
+  </div>
 
-        {/* Texte Demande */}
-        <div className="form-group">
-          <label>Texte Demande:</label>
-          <textarea name="texteDemande" value={formData.texteDemande} onChange={handleChange} required></textarea>
-          {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
-        </div>
+  
+</div>
 
-        {/* Fichier Joint */}
-        <div className="form-group">
-          <label>Fichier Joint:</label>
-          <input type="file" name="file" onChange={handleFileChange}  />
-        </div>
+          <div className="form-row-3">
+            <div className="form-group">
+              <label>Titre de la formation:</label>
+              <select name="titre" value={formData.titre} onChange={handleChange} required>
+                <option value="">Sélectionnez un titre</option>
+                {titres.map(titre => (
+                  <option key={titre.id} value={titre.id}>
+                    {titre.titre}
+                  </option>
+                ))}
+              </select>
+              {errors.titre && <span className="error">{errors.titre}</span>}
+            </div>
+            <div className="form-group">
+              <label>Type de la formation:</label>
+              <select name="type" value={formData.type} onChange={handleTypeChange} required>
+                <option value="">Sélectionnez un type</option>
+                {types[formData.titre]?.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.type}
+                  </option>
+                ))}
+              </select>
+              {errors.type && <span className="error">{errors.type}</span>}
+            </div>
+            <div className="form-group">
+              <label>Thème de la formation:</label>
+              <select name="theme" value={formData.theme} onChange={handleChange} required>
+                <option value="">Sélectionnez un thème</option>
+                {Array.isArray(themes) && themes.map((theme) => (
+                  <option key={theme.id} value={theme.id}>
+                    {theme.nom}
+                  </option>
+                ))}
+              </select>
+              {errors.theme && <span className="error">{errors.theme}</span>}
+            </div>
+          </div>
 
-        {/* Bouton de soumission */}
-        <button type="submit" className="submit-button">Soumettre</button>
-      </form>
-    </div>
+          <div className="form-group">
+            <label>Texte Demande:</label>
+            <textarea name="texteDemande" value={formData.texteDemande} onChange={handleChange} required></textarea>
+            {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
+          </div>
+
+          <div className="form-group">
+            <label>Fichier Joint : (optionnel)</label>
+            <input type="file" name="file" onChange={handleFileChange} />
+          </div>
+
+          <button type="submit" className="submit-button">Soumettre</button>
+        </form>
+      </div>
 
       <ToastContainer
         position="top-right"

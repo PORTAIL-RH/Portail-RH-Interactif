@@ -47,7 +47,7 @@ public class SecurityConfig {
                         //Services Endpoints
                         .requestMatchers(HttpMethod.POST, "/api/services/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/services/all").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/services/by-chef/{chefId}").permitAll()
 
                         //notification endpoints
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
@@ -71,20 +71,32 @@ public class SecurityConfig {
 
 
                         //demandeConge endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/all").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/demande-conge/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-conge/valider/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-conge/refuser/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-conge/traiter/{id}").permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/approved").permitAll()
+
+
 
                         ///demande document endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-document/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-document").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-document/valider/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-document/refuser/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-document/traiter/{id}").permitAll()
+
 
                         ///demande pre avance
                         .requestMatchers(HttpMethod.POST, "/api/demande-pre-avance/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/types").permitAll()
-
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/valider/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/refuser/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/traiter/{id}").permitAll()
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation").permitAll()
@@ -99,14 +111,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/titres/{id}/types").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/titres/{titreId}/types/{typeId}/themes").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}").permitAll()
-
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-formation/valider/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-formation/refuser/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-formation/traiter/{id}").permitAll()
 
                         //demandeautorisation endpoints
 
                         .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/personnel/{matPersId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation").permitAll()
-
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/valider/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/refuser/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/traiter/{id}").permitAll()
 
 
 

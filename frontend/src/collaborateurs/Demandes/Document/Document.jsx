@@ -8,31 +8,32 @@ import 'react-toastify/dist/ReactToastify.css';
 const DocumentForm = () => {
   const [formData, setFormData] = useState({
     typeDemande: 'Document',
-    objet: '',
+    texteDemande: '',
     codeSoc: '',
     file: null,
     typeDocument: '',
-    matPers: { id: '' }, 
+    matPers: { id: '' },
   });
 
   const [error, setError] = useState('');
+  const [file, setFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
-    const codeSoc = localStorage.getItem('codeSoc');
-    const matPersId = localStorage.getItem('matPers'); 
+    const userCodeSoc = localStorage.getItem('userCodeSoc');
 
-    if (userId && codeSoc && matPersId) {
+    if (userId && userCodeSoc) {
       setFormData((prevData) => ({
         ...prevData,
-        codeSoc,
-        matPers: { id: matPersId }, // Set matPers as an object with id
+        codeSoc: userCodeSoc,
+        matPers: { id: userId },
       }));
     }
   }, []);
 
   const handleFileChange = (e) => {
-    setFormData({ ...formData, file: e.target.files[0] }); // Store the selected file
+    setFile(e.target.files[0]);
   };
 
   const handleChange = (e) => {
@@ -45,11 +46,35 @@ const DocumentForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
+
+    if (!formData.typeDocument || !formData.texteDemande) {
+      toast.error('Veuillez remplir tous les champs obligatoires.');
+      setIsSubmitting(false);
+      return;
+    }
 
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
       toast.error('Token d\'authentification manquant');
+      setIsSubmitting(false);
       return;
+    }
+
+    const formDataToSend = new FormData();
+    formDataToSend.append('typeDemande', formData.typeDemande);
+    formDataToSend.append('texteDemande', formData.texteDemande);
+    formDataToSend.append('codeSoc', formData.codeSoc);
+    formDataToSend.append('typeDocument', formData.typeDocument);
+    formDataToSend.append('matPersId', formData.matPers.id);
+
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('La taille du fichier ne doit pas dépasser 5 Mo.');
+        setIsSubmitting(false);
+        return;
+      }
+      formDataToSend.append('file', file);
     }
 
     try {
@@ -57,12 +82,8 @@ const DocumentForm = () => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...formData,
-          matPers: { id: formData.matPers.id }, // Ensure matPers is sent as an object
-        }),
+        body: formDataToSend,
       });
 
       const contentType = response.headers.get('content-type');
@@ -81,17 +102,28 @@ const DocumentForm = () => {
       if (contentType && contentType.includes('application/json')) {
         const result = await response.json();
         console.log('Formulaire soumis avec succès :', result);
-        toast.success('Demande de pré-avance soumise avec succès !');
+        toast.success('Demande de document soumise avec succès !');
         setError('');
+        setFormData({
+          typeDemande: 'Document',
+          texteDemande: '',
+          codeSoc: '',
+          file: null,
+          typeDocument: '',
+          matPers: { id: '' },
+        });
+        setFile(null);
       } else {
         const resultText = await response.text();
         console.log('Formulaire soumis avec succès :', resultText);
-        toast.success('Demande de pré-avance soumise avec succès !');
+        toast.success('Demande de document soumise avec succès !');
         setError('');
       }
     } catch (error) {
       console.error('Erreur lors de la soumission du formulaire :', error);
       toast.error('Erreur lors de la soumission du formulaire : ' + error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -125,30 +157,29 @@ const DocumentForm = () => {
               </select>
             </div>
 
-
             <div className="full-width">
-              <label className="form-label">objet :</label>
+              <label className="form-label">texteDemande :</label>
               <textarea
                 type="textarea"
-                name="objet"
-                value={formData.objet}
+                name="texteDemande"
+                value={formData.texteDemande}
                 onChange={handleChange}
                 required
               />
             </div>
 
-          {/* File upload */}
-          <label>
-            Upload File:
-            <input
-              type="file"
-              name="file"
-              onChange={handleFileChange}
-              
-            />
-          </label>
+            <div className="full-width">
+              <label className="form-label">Fichier Joint : (optionnel)</label>
+              <input
+                type="file"
+                name="file"
+                onChange={handleFileChange}
+              />
+            </div>
 
-            <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
+            <button type="submit" className="btn btn-primary mt-4" disabled={isSubmitting}>
+              {isSubmitting ? 'Envoi en cours...' : 'Envoyer'}
+            </button>
           </form>
         </div>
       </div>

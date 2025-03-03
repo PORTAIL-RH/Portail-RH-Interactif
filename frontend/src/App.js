@@ -14,14 +14,21 @@ const Addpers = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPerson
 const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
 const PersonnelsRH = lazy(() => import('./RH/Components/Personnels/Personnels.jsx'));
 const DemandesRH = lazy(() => import('./RH/Components/Demandes/Demandes.jsx')); 
+const CalendarRH = lazy(() => import('./RH/Components/Calendar/Calendar.jsx'));
 
 // CHEF
 const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
 const Personnels = lazy(() => import('./Chef_hierarchique/Components/Personnels/Personnels.jsx'));
 const Demandes = lazy(() => import('./Chef_hierarchique/Components/Demandes/Demandes.jsx'));
+const Calendar = lazy(() => import('./Chef_hierarchique/Components/Calendar/Calendar.jsx'));
+
 // Collaborateurs
 const Authentication = lazy(() => import('./collaborateurs/Authentification/Authentication.jsx'));
 const DemandeConge = lazy(() => import('./collaborateurs/Demandes/Conge/CongeForm.jsx'));
+const Profile = lazy(() => import('./collaborateurs/Profile/Profile.jsx'));
+const DemandesCollaborateur = lazy(() => import('./collaborateurs/Profile/Demandes.jsx'));
+
+
 const DemandeFormation = lazy(() => import('./collaborateurs/Demandes/Formation/FormationForm.jsx'));
 const DemandeAutorisation = lazy(() => import('./collaborateurs/Demandes/Autorisation/AutorisationForm.jsx'));
 const DemandePreAvance = lazy(() => import('./collaborateurs/Demandes/Avance/Avance.jsx'));
@@ -29,7 +36,6 @@ const DemandeDocument = lazy(() => import('./collaborateurs/Demandes/Document/Do
 const AccueilCollaborateurs = lazy(() => import('./collaborateurs/Accueil/Accueil.jsx'));
 
 // AppGen
-
 const CompanyHome = lazy(() => import('./AppHome/Home/Home.jsx'));
 
 //Not
@@ -53,12 +59,15 @@ function App() {
   <Route path="/AccueilCHEF" element={<AccueilCHEF />} />
           <Route path="/Personnels" element={<Personnels />} />
           <Route path="/Demandes" element={<Demandes />} />
-          
+          <Route path="/Calendar" element={<Calendar />} />
 
-            {/* chef hierarchique */}
+
+            {/* RH */}
   <Route path="/AccueilRH" element={<AccueilRH />} />
           <Route path="/PersonnelsRH" element={<PersonnelsRH />} />
           <Route path="/DemandesRH" element={<DemandesRH />} />
+          <Route path="/CalendarRH" element={<CalendarRH />} />
+
 
 
           {/* Collaborateurs */}
@@ -69,6 +78,9 @@ function App() {
           <Route path="/DemandePreAvance" element={<DemandePreAvance />} />
           <Route path="/DemandeDocument" element={<DemandeDocument />} />
           <Route path="/AccueilCollaborateurs" element={<AccueilCollaborateurs />} />
+          <Route path="/Profile" element={<Profile />} />
+          <Route path="/DemandesCollaborateur" element={<DemandesCollaborateur />} />
+
 
           {/* AppGen */}
           <Route path="/CompanyHome" element={<CompanyHome />} />
