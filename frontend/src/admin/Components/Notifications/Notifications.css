@@ -1,12 +1,14 @@
-.accueil-containernt{
+/* Global Container */
+.accueil-containernt {
   font-family: "Roboto", sans-serif;
   display: flex;
   height: 100vh;
-  background: linear-gradient(135deg, #f3e6ff, #d9c8f0);
+  background: linear-gradient(135deg, #e9dff7, #cbb2f0);
   overflow: hidden;
   padding-top: 70px; 
 }
 
+/* Content Wrapper */
 .contenttf {
   flex: 1;
   padding: 20px;
@@ -14,94 +16,119 @@
   flex-direction: column;
   overflow-y: auto;
 }
+
 /* Notification Section */
 .notification-section {
-    background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 20px;
-    animation: fadeIn 0.5s ease-in-out;
-  }
-  
-  .notification-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  
-  .notification-header h2 {
-    color: #0e135f;
-    font-size: 1.5em;
-    margin: 0;
-  }
-  
-  .notification-badge {
-    background-color: #ff3b3b;
-    color: #fff;
-    font-size: 12px;
-    font-weight: bold;
-    border-radius: 50%;
-    padding: 5px 10px;
-  }
-  
-  .notification-list {
-    margin-top: 20px;
-  }
-  
-  .notification {
-    display: flex;
-    align-items: center;
-    background: #f7f7f7;
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 10px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-  }
-  
-  .notification:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-  }
-  
-  .notification img {
-    width: 30px;
-    margin-right: 20px;
-  }
-  
-  .notification p {
-    margin: 0;
-    color: #333;
-    font-size: 1em;
-  }
-  
-  .notification-timestamp {
-    font-size: 0.8em;
-    color: gray;
-    margin-top: 5px;
-  }
-  
-  .notification.unread {
-    background-color: #f9f9f9;
-    border-left: 9px solid blue;
-    font-weight: bold;
+  background: white;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 25px;
+  margin-bottom: 20px;
+  animation: fadeIn 0.5s ease-in-out;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
 
+.notification-section:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Header */
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.notification-header h2 {
+  color: #4c0080;
+  font-size: 1.8em;
+  font-weight: bold;
+  margin: 0;
+}
+
+.notification-badge {
+  background-color: #ff3b3b;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 50%;
+  padding: 6px 12px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Notification List */
+.notification-list {
+  margin-top: 20px;
+}
+
+/* Notification Card */
+.notification {
+  display: flex;
+  align-items: center;
+  background: #f9f9ff;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: relative;
+}
+
+.notification:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Icon */
+.notification img {
+  width: 35px;
+  margin-right: 18px;
+  filter: drop-shadow(2px 2px 5px rgba(0, 0, 0, 0.1));
+}
+
+/* Message */
+.notification p {
+  margin: 0;
+  color: #333;
+  font-size: 1em;
+  flex: 1;
+}
+
+/* Timestamp */
+.notification-timestamp {
+  font-size: 0.9em;
+  color: gray;
+  text-align: right;
+}
+
+/* Unread Notification */
+.notification.unread {
+  background: #eef2ff;
+  border-left: 8px solid #4c00ff;
+  font-weight: bold;
+}
+
+/* Read Notification */
+.notification.read {
+  background: #ffffff;
+  opacity: 0.7;
+}
+
+/* Hover Effect for Read Notifications */
+.notification.read:hover {
+  opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
-  .notification.read {
-    background-color: #ffffff;
-    opacity: 0.6;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  
-  /* Animations */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  
+}
