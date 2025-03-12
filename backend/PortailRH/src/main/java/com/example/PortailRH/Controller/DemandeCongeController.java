@@ -27,7 +27,8 @@ import java.util.concurrent.TimeUnit;
 @RestController
 @RequestMapping("/api/demande-conge")
 public class DemandeCongeController {
-
+    @Autowired
+    private SseController sseController;
     @Autowired
     private DemandeCongeRepository demandeCongeRepository;
 
@@ -155,6 +156,7 @@ public class DemandeCongeController {
                     System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
                 }
             }
+            sseController.sendUpdate("created", savedDemande);
 
             // Return a JSON response
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(

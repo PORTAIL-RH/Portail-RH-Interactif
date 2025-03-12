@@ -7,6 +7,7 @@ import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -33,7 +34,8 @@ public class DemandePreAvanceController {
     private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
     @Autowired
     private PersonnelRepository personnelRepository;
-
+    @Autowired
+    private SseController sseController;
     @GetMapping
     public List<DemandePreAvance> getAllDemandes() {
         return demandePreAvanceRepository.findAll();
@@ -111,7 +113,12 @@ public class DemandePreAvanceController {
 
             // Save the demandePreAvance to the database
             DemandePreAvance savedDemande = demandePreAvanceRepository.save(demandePreAvance);
-            return ResponseEntity.ok(savedDemande);
+            sseController.sendUpdate("created", savedDemande);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de congé créée avec succès",
+                    "demandeId", savedDemande.getId()
+            ));
         } catch (MontantDepasseException e) {
             return ResponseEntity.badRequest().body(e.getMessage()); // Return 400 Bad Request with the exception message
         } catch (Exception e) {

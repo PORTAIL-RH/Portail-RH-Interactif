@@ -131,7 +131,7 @@ const Authentication = () => {
                 case 'RH':
                   navigate('/AccueilRH');
                   break;
-                case 'Chef Hiérarchique': // Ensure this matches the database role name
+                case 'chef hiérarchique': // Ensure this matches the database role name
                   navigate('/AccueilCHEF');
                   break;
                 case 'Admin':
