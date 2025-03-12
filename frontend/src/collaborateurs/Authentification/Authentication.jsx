@@ -13,6 +13,8 @@ const Authentication = () => {
     prenom: '',
     matricule: '',
     code_soc: '',
+    service: '',
+
     email: '',
     password: '',
     confirmPassword: '',
@@ -41,6 +43,8 @@ const Authentication = () => {
       matricule: formData.matricule.trim(),
       email: formData.email.trim(),
       code_soc: formData.code_soc.trim(),
+      service: formData.service.trim(),
+
       motDePasse: formData.password.trim(),
       confirmationMotDePasse: formData.confirmPassword.trim(),
       role: 'collaborateur',
@@ -111,14 +115,52 @@ const Authentication = () => {
               localStorage.setItem('usermatricule', formData.matricule);
               localStorage.setItem('userCodeSoc', userData.code_soc);
   
-              // Store serviceId if the user is a "Chef Hiérarchique" or "collaborateur"
-              if (role === 'Chef Hiérarchique' || role === 'collaborateur') {
-                if (service && service.serviceId) {
-                  localStorage.setItem('userServiceId', service.serviceId);
-                  console.log('Service ID stored:', service.serviceId);
+              // Check if the service is defined and resolve it if it's a DBRef
+              if (service && service.$ref === 'Services') {
+                // Resolve the DBRef to get the service details
+                const serviceResponse = await fetch(`http://localhost:8080/api/Services/${service.$id}`, {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                  },
+                });
+  
+                if (serviceResponse.ok) {
+                  const serviceData = await serviceResponse.json();
+                  console.log('Service Data:', serviceData);
+  
+                  // Store the serviceId and serviceName
+                  if (serviceData.serviceId) {
+                    localStorage.setItem('userServiceId', serviceData.serviceId);
+                    console.log('Service ID stored:', serviceData.serviceId);
+                  } else {
+                    console.error('Service ID not found in service data:', serviceData);
+                  }
+  
+                  if (serviceData.serviceName) {
+                    localStorage.setItem('userServiceName', serviceData.serviceName);
+                    console.log('Service Name stored:', serviceData.serviceName);
+                  } else {
+                    console.error('Service Name not found in service data:', serviceData);
+                  }
                 } else {
-                  console.error('Service ID not found for user:', userData);
+                  const errorText = await serviceResponse.text();
+                  console.error('Error resolving service DBRef:', errorText);
                 }
+              } else if (service && service.serviceId) {
+                // If service is already an object with serviceId, store it directly
+                localStorage.setItem('userServiceId', service.serviceId);
+                console.log('Service ID stored:', service.serviceId);
+  
+                if (service.serviceName) {
+                  localStorage.setItem('userServiceName', service.serviceName);
+                  console.log('Service Name stored:', service.serviceName);
+                } else {
+                  console.error('Service Name not found in service object:', service);
+                }
+              } else {
+                console.error('Service is not a valid DBRef or object:', service);
               }
   
               alert('Login successful!');
@@ -131,7 +173,7 @@ const Authentication = () => {
                 case 'RH':
                   navigate('/AccueilRH');
                   break;
-                case 'chef hiérarchique': // Ensure this matches the database role name
+                case 'Chef Hiérarchique': // Ensure this matches the database role name
                   navigate('/AccueilCHEF');
                   break;
                 case 'Admin':
@@ -155,10 +197,10 @@ const Authentication = () => {
         alert(`Error: ${errorText}`);
       }
     } catch (error) {
+      console.error('Login error:', error);
       alert('An error occurred while logging in.');
     }
   };
-
   return (
     <div className="body">
       <div className="auth-containerl">

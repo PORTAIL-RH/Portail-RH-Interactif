@@ -27,7 +27,7 @@ const DemandesAutorisation = () => {
   const fetchDemandes = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
-
+  
       // Check if demande-autorisation data is cached in localStorage
       const cachedDemandesAutorisation = localStorage.getItem("demandesAutorisation");
       if (cachedDemandesAutorisation) {
@@ -37,37 +37,36 @@ const DemandesAutorisation = () => {
         setLoading(false);
         return;
       }
-
+  
       // Fetch demande-autorisation from the API
-      const formationResponse = await fetch("http://localhost:8080/api/demande-autorisation", {
+      const response = await fetch("http://localhost:8080/api/demande-autorisation", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
-
-      if (!formationResponse.ok) {
-        const errorText = await formationResponse.text();
-        throw new Error(`Formation request failed: ${formationResponse.status} - ${errorText}`);
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Request failed: ${response.status} - ${errorText}`);
       }
-
-      const formationData = await formationResponse.json();
-
-      // Get the serviceName of the connected Chef Hiérarchique from local storage
-      const userService = JSON.parse(localStorage.getItem("userService"));
-      const chefServiceName = userService?.serviceName;
-
-      // Filter demands to include only those from personnel with role "Collaborateur" and the same serviceName
-      const filteredData = formationData.filter((demande) => {
+  
+      const data = await response.json();
+  
+      // Get the serviceId of the connected Chef Hiérarchique from local storage
+      const userServiceId = localStorage.getItem("userServiceId");
+  
+      // Filter demandes to include only those from personnel with role "collaborateur" and the same serviceId
+      const filteredData = data.filter((demande) => {
         const isCollaborateur = demande.matPers?.role === "collaborateur";
-        const hasSameService = demande.matPers?.serviceName === chefServiceName;
+        const hasSameService = demande.matPers?.serviceId === userServiceId;
         return isCollaborateur && hasSameService;
       });
-
+  
       // Cache the filtered data in localStorage
       localStorage.setItem("demandesAutorisation", JSON.stringify(filteredData));
-
+  
       setDemandes(filteredData);
       setFilteredDemandes(filteredData);
       setLoading(false);

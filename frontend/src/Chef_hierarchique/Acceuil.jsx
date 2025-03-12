@@ -54,13 +54,14 @@ const Accueil = () => {
         const data = await response.json();
         console.log("Fetched data:", data); // Debugging
 
-        const userService = JSON.parse(localStorage.getItem("userService") || "{}");
-        const connectedUserServiceName = userService?.serviceName || "";
+        // Get the serviceId of the connected user from local storage
+        const userServiceName = localStorage.getItem("userServiceName");
 
+        // Filter demandes to include only those from personnel with role "collaborateur" and the same serviceId
         const filteredData = data.filter(
           (demande) =>
             demande.matPers?.role === "collaborateur" &&
-            demande.matPers?.serviceName?.toLowerCase() === connectedUserServiceName.toLowerCase()
+            demande.matPers?.serviceName === userServiceName
         );
         console.log("Filtered data:", filteredData); // Debugging
 
