@@ -18,7 +18,7 @@ public class FichierJointService {
         Fichier_joint fichierJoint = new Fichier_joint();
         fichierJoint.setFilename(file.getOriginalFilename());
         fichierJoint.setFileType(file.getContentType());
-        fichierJoint.setData(file.getBytes());
-        return fichierJointRepository.save(fichierJoint);
+        fichierJoint.setFilePath("assets\\demandesdocuments/" + file.getOriginalFilename()); // Set the file path
+        return fichierJointRepository.save(fichierJoint); // Save the object and generate an ID
     }
 }

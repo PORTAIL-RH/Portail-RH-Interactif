@@ -19,6 +19,8 @@ public class WebConfig implements WebMvcConfigurer {
         // Allow frontend origin (React app running on localhost:3000)
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
+                "http://localhost:3001",
+
                 "http://localhost:8081",
                 "http://192.168.1.52", //islem
                 "http://172.20.10.2", //islem-fifi
