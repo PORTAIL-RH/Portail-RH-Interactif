@@ -2,7 +2,9 @@ package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.LoginResponse;
 import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.Service;
 import com.example.PortailRH.Repository.PersonnelRepository;
+import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/Personnel")
@@ -23,7 +26,8 @@ public class PersonnelController {
 
     @Autowired
     private PersonnelRepository personnelRepository;
-
+    @Autowired
+    private ServiceRepository serviceRepository;
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -256,19 +260,21 @@ public class PersonnelController {
 
     // Retrieve personnel by ID
     @GetMapping("/byId/{id}")
-    public ResponseEntity<?> getPersonnelById(@PathVariable String id) {
-        try {
-            // Find the personnel by ID
-            Personnel personnel = personnelRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Personnel non trouvé avec l'ID : " + id));
-
-            return ResponseEntity.ok(personnel);
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la récupération du personnel : " + ex.getMessage());
+    public ResponseEntity<Personnel> getPersonnelById(@PathVariable String id) {
+        Optional<Personnel> personnel = personnelRepository.findById(id);
+        if (personnel.isPresent()) {
+            Personnel user = personnel.get();
+            // Ensure the service field is populated
+            if (user.getService() == null && user.getRole().equals("Chef Hiérarchique")) {
+                // Fetch the service for the Chef Hiérarchique
+                Service service = serviceRepository.findByChefHierarchiqueId(id);
+                user.setService(service);
+            }
+            return ResponseEntity.ok(user);
+        } else {
+            return ResponseEntity.notFound().build();
         }
     }
-
 
 
 

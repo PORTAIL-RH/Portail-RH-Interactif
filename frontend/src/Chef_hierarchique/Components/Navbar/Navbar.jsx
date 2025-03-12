@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import useNotifications from "./useNotifications";
+import NotificationModal from "./NotificationModal";
 import { Link } from "react-router-dom";
 import "./Navbar.css";
 import bellIcon from "../../../assets/bell1.png";
@@ -15,29 +17,11 @@ const Navbar = () => {
   const [error, setError] = useState(null);
   const [theme, setTheme] = useState("light"); // State for theme (light or dark)
   const [notifications, setNotifications] = useState([]); // State for notifications
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Effect to initialize theme
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  // Function to toggle between themes
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
-
-  // Retrieve userId from localStorage
-  const userId = localStorage.getItem("userId");
+  const role = "Chef Hiérarchique"; // Ensure this is stable
+  const userId = localStorage.getItem("userId"); // Retrieve userId from localStorage
+  const { notifications: hookNotifications, unviewedCount, fetchNotifications, markAsRead } = useNotifications(role, userId);
 
   // Fetch user data
   useEffect(() => {
@@ -81,13 +65,9 @@ const Navbar = () => {
       // Handle updates based on type
       switch (type) {
         case "new_notification":
-          // Update notifications state
           setNotifications((prevNotifications) => {
             const updatedNotifications = [...prevNotifications, data];
-
-            // Save updated notifications to localStorage
             localStorage.setItem("notifications", JSON.stringify(updatedNotifications));
-
             return updatedNotifications;
           });
           break;
@@ -97,7 +77,6 @@ const Navbar = () => {
           // Handle demande updates (e.g., refresh data on other pages)
           console.log("Demande updated:", data);
 
-          // Map the `typeDemande` field to the correct localStorage key
           const demandeTypeMap = {
             formation: "demandesFormation",
             PreAvnace: "demandesPreAvance",
@@ -107,32 +86,17 @@ const Navbar = () => {
           };
 
           const localStorageKey = demandeTypeMap[data.typeDemande] || "demandesOther";
-
-          // Debug: Log the localStorage key
-          console.log("LocalStorage key:", localStorageKey);
-
-          // Retrieve existing demandes from localStorage
           const demandes = JSON.parse(localStorage.getItem(localStorageKey) || "[]");
 
-          // Debug: Log existing demandes
-          console.log("Existing demandes:", demandes);
-
-          // Update the specific demande
           let updatedDemandes;
           if (type === "created") {
-            // Add the new demande to the list
             updatedDemandes = [...demandes, data];
           } else {
-            // Update the existing demande
             updatedDemandes = demandes.map((demande) =>
               demande.id === data.id ? { ...demande, ...data } : demande
             );
           }
 
-          // Debug: Log updated demandes
-          console.log("Updated demandes:", updatedDemandes);
-
-          // Save updated demandes to localStorage
           localStorage.setItem(localStorageKey, JSON.stringify(updatedDemandes));
           break;
 
@@ -146,7 +110,6 @@ const Navbar = () => {
       eventSource.close();
     };
 
-    // Cleanup on component unmount
     return () => {
       eventSource.close();
     };
@@ -159,6 +122,36 @@ const Navbar = () => {
       setNotifications(JSON.parse(savedNotifications));
     }
   }, []);
+
+  // Toggle notifications modal
+  const toggleNotifications = () => {
+    setIsNotificationsOpen((prev) => !prev);
+  };
+
+  // Mark notification as read
+  const handleMarkAsRead = async (id) => {
+    await markAsRead(id);
+    fetchNotifications(); // Refresh notifications after marking as read
+  };
+
+  // Theme toggle logic
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    localStorage.setItem("theme", newTheme);
+  };
 
   if (loading) {
     return <div className="navbar">Loading user data...</div>;
@@ -182,10 +175,19 @@ const Navbar = () => {
           {theme === "light" ? <FiMoon /> : <FiSun />}
         </button>
         <div className="notification-icon">
-          <img src={bellIcon} alt="Notifications" onError={(e) => { e.target.src = "/placeholder.svg"; }} />
-          <span className="notification-badge">{notifications.length}</span>
+          {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+          <img src={bellIcon} alt="Bell Icon" className="icon-notif" onClick={toggleNotifications} />
         </div>
       </div>
+      {isNotificationsOpen && (
+        <NotificationModal
+          notifications={notifications}
+          unviewedCount={unviewedCount}
+          markAsRead={handleMarkAsRead}
+          userServiceId={userId}
+          onClose={() => setIsNotificationsOpen(false)}
+        />
+      )}
     </nav>
   );
 };

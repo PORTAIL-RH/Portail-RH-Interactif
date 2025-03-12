@@ -13,7 +13,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "Personnel")
 @Data
-@AllArgsConstructor // Lombok annotation to generate a constructor with all fields
+@AllArgsConstructor
 public class Personnel {
 
     @Id
@@ -119,6 +119,22 @@ public class Personnel {
 
     public String getId() {
         return id;
+    }
+
+    public Service getService() {
+        return service;
+    }
+
+    public void setService(Service service) {
+        this.service = service;
+    }
+
+    public Personnel getChefHierarchique() {
+        return chefHierarchique;
+    }
+
+    public void setChefHierarchique(Personnel chefHierarchique) {
+        this.chefHierarchique = chefHierarchique;
     }
 
     public void setId(String id) {
