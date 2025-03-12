@@ -9,13 +9,13 @@ import matricule from '../../assets/code.png';
 const Authentication = () => {
   const [action, setAction] = useState('Login');
   const [formData, setFormData] = useState({
-    nom: '', 
-    prenom: '', 
-    matricule: '', 
-    code_soc: '', 
-    email: '', 
-    password: '', 
-    confirmPassword: ''
+    nom: '',
+    prenom: '',
+    matricule: '',
+    code_soc: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
   });
 
   const navigate = useNavigate();
@@ -36,14 +36,14 @@ const Authentication = () => {
     }
 
     const requestBody = {
-      nom: formData.nom.trim(),  
+      nom: formData.nom.trim(),
       prenom: formData.prenom.trim(),
       matricule: formData.matricule.trim(),
       email: formData.email.trim(),
-      code_soc:formData.code_soc.trim(),
+      code_soc: formData.code_soc.trim(),
       motDePasse: formData.password.trim(),
       confirmationMotDePasse: formData.confirmPassword.trim(),
-      role: 'collaborateur'
+      role: 'collaborateur',
     };
 
     console.log('Request body: ', requestBody);
@@ -52,7 +52,7 @@ const Authentication = () => {
       const response = await fetch('http://localhost:8080/api/Personnel/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
@@ -90,7 +90,7 @@ const Authentication = () => {
           localStorage.setItem('authToken', token);
           localStorage.setItem('userId', id);
   
-          // Fetch user details by ID to get the role
+          // Fetch user details by ID to get the role and service
           const userResponse = await fetch(`http://localhost:8080/api/Personnel/byId/${id}`, {
             method: 'GET',
             headers: {
@@ -101,31 +101,27 @@ const Authentication = () => {
   
           if (userResponse.ok) {
             const userData = await userResponse.json();
-            const { role } = userData;
+            const { role, service } = userData;
+  
+            console.log('User Role:', role); // Log the role to verify it matches
+            console.log('User Service:', service); // Log the service for debugging
+  
             if (role) {
               localStorage.setItem('userRole', role);
               localStorage.setItem('usermatricule', formData.matricule);
               localStorage.setItem('userCodeSoc', userData.code_soc);
   
-              alert('Login successful!');
-  
-              // If the user is a Chef Hiérarchique, fetch their service
-              if (role === 'chef hiérarchique') {
-                const serviceResponse = await fetch(`http://localhost:8080/api/services/by-chef/${id}`, {
-                  method: 'GET',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                  },
-                });
-  
-                if (serviceResponse.ok) {
-                  const serviceData = await serviceResponse.json();
-                  localStorage.setItem('userService', JSON.stringify(serviceData)); // Store service in local storage
+              // Store serviceId if the user is a "Chef Hiérarchique" or "collaborateur"
+              if (role === 'Chef Hiérarchique' || role === 'collaborateur') {
+                if (service && service.serviceId) {
+                  localStorage.setItem('userServiceId', service.serviceId);
+                  console.log('Service ID stored:', service.serviceId);
                 } else {
-                  console.error('Error fetching service data:', await serviceResponse.text());
+                  console.error('Service ID not found for user:', userData);
                 }
               }
+  
+              alert('Login successful!');
   
               // Role-based redirection
               switch (role) {
@@ -135,12 +131,14 @@ const Authentication = () => {
                 case 'RH':
                   navigate('/AccueilRH');
                   break;
-                case 'chef hiérarchique':
+                case 'Chef Hiérarchique': // Ensure this matches the database role name
                   navigate('/AccueilCHEF');
                   break;
-                default:
+                case 'Admin':
                   navigate('/Accueil');
                   break;
+                default:
+                  navigate('/'); // Default redirection
               }
             } else {
               alert('Role not found in user data.');

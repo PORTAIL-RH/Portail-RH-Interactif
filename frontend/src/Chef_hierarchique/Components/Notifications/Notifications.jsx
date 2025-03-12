@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import useNotifications from "../Navbar/useNotifications";
 import bellIcon from "../../../assets/bell.png";
@@ -7,38 +7,42 @@ import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
 
 const Notifications = () => {
-  const role = "Admin"; // Rôle de l'utilisateur actuel
-  const { notifications = [], unviewedCount, setUnviewedCount, fetchNotifications, error } = useNotifications(role);
+  const role = "Chef Hiérarchique"; // Rôle de l'utilisateur
+  const [userServiceId, setUserServiceId] = useState(null);
 
-  const markAsRead = async (id) => {
-    try {
-      const token = localStorage.getItem("authToken");
-      await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Mettre à jour le compteur de notifications non lues
-      setUnviewedCount((prev) => Math.max(prev - 1, 0));
-
-      // Recharger les notifications
-      await fetchNotifications();
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error);
+  // Fetch userServiceId from local storage
+  useEffect(() => {
+    const storedServiceId = localStorage.getItem("userServiceId");
+    if (storedServiceId) {
+      setUserServiceId(storedServiceId);
+    } else {
+      console.error("userServiceId not found in local storage");
     }
-  };
+  }, []);
 
-  // ✅ Filtrer et trier les notifications pour l'admin
+  const { notifications, unviewedCount, markAsRead, error } = useNotifications(role, userServiceId);
+
+  // Filtrer et trier les notifications
   const sortedNotifications = [...notifications]
-    .filter((notification) => notification.role === role) // Filtrer par rôle
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Trier par date (du plus récent au plus ancien)
+    .filter((notification) => {
+      return (
+        notification.role === role &&
+        notification.serviceId === userServiceId
+      );
+    })
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  console.log("All Notifications:", notifications);
+  console.log("Filtered Notifications:", sortedNotifications);
+  console.log("Role:", role, "Service ID:", userServiceId);
+
+  if (!userServiceId) {
+    return <p>Loading...</p>; // Handle case where userServiceId is not yet available
+  }
 
   return (
     <div className="accueil-containernt">
-      <Navbar />
+      <Navbar userServiceId={userServiceId} />
       <Sidebar />
       <div className="contenttf">
         <div className="notification-section">
@@ -53,18 +57,16 @@ const Notifications = () => {
             <div className="notification-list">
               {sortedNotifications.map((notification) => {
                 const notificationDate = new Date(notification.timestamp);
-
-                // Vérifier si la date est valide
                 if (isNaN(notificationDate.getTime())) {
                   console.error("Invalid date value:", notification.timestamp);
-                  return null; // Ignorer cette notification si la date est invalide
+                  return null;
                 }
 
                 return (
                   <div
                     key={notification.id}
                     className={`notification ${notification.viewed ? "read" : "unread"}`}
-                    onClick={() => !notification.viewed && markAsRead(notification.id)} // Marquer comme lue uniquement si elle n'est pas déjà lue
+                    onClick={() => !notification.viewed && markAsRead(notification.id)}
                   >
                     <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
                     <p>{notification.message}</p>

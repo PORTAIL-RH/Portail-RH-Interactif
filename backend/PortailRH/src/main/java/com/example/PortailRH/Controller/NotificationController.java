@@ -19,46 +19,54 @@ public class NotificationController {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
-    // Create a new notification and broadcast it
+    // Créer une nouvelle notification pour un rôle spécifique
     @PostMapping
-    public ResponseEntity<?> createNotification(@RequestBody String message) {
-        notificationService.createNotification(message);
-        messagingTemplate.convertAndSend("/topic/notifications", message);
-        return ResponseEntity.ok("Notification created and sent.");
+    public ResponseEntity<?> createNotification(@RequestBody Notification notification) {
+        Notification savedNotification = notificationService.createNotification(notification.getMessage(), notification.getRole(), notification.getServiceId());
+        return ResponseEntity.ok(savedNotification);
     }
 
-    // Fetch all notifications
+    // Récupérer les notifications par rôle et serviceId (optionnel)
     @GetMapping
-    public ResponseEntity<List<Notification>> getAllNotifications() {
-        List<Notification> notifications = notificationService.getAllNotifications();
+    public ResponseEntity<List<Notification>> getNotifications(
+            @RequestParam String role,
+            @RequestParam(required = false) String serviceId) { // serviceId est optionnel
+        List<Notification> notifications;
+        if (serviceId != null && !serviceId.isEmpty()) {
+            // Filtrer par rôle et serviceId
+            notifications = notificationService.getNotificationsByRoleAndServiceId(role, serviceId);
+        } else {
+            // Filtrer uniquement par rôle
+            notifications = notificationService.getNotificationsByRole(role);
+        }
         return ResponseEntity.ok(notifications);
     }
 
-    // Fetch only unread (unviewed) notifications
+    // Récupérer uniquement les notifications non lues pour un rôle spécifique
     @GetMapping("/unread")
-    public ResponseEntity<List<Notification>> getUnviewedNotifications() {
-        List<Notification> notifications = notificationService.getUnviewedNotifications();
+    public ResponseEntity<List<Notification>> getUnviewedNotifications(@RequestParam String role) {
+        List<Notification> notifications = notificationService.getUnviewedNotificationsByRole(role);
         return ResponseEntity.ok(notifications);
     }
 
-    // Mark a notification as viewed
+    // Marquer une notification comme vue
     @PostMapping("/{id}/view")
     public ResponseEntity<?> markAsViewed(@PathVariable String id) {
         notificationService.markAsViewed(id);
         return ResponseEntity.ok("Notification marked as viewed.");
     }
 
-    // Fetch all notifications count
+    // Récupérer le nombre total de notifications
     @GetMapping("/nbr")
     public ResponseEntity<Integer> getTotalNotificationsnb() {
         List<Notification> notifications = notificationService.getAllNotifications();
         return ResponseEntity.ok(notifications.size());
     }
 
-    // Fetch only unread (unviewed) notifications count
+    // Récupérer le nombre de notifications non lues pour un rôle spécifique
     @GetMapping("/unreadnbr")
-    public ResponseEntity<Integer> getUnviewedNotificationsnb() {
-        List<Notification> notifications = notificationService.getUnviewedNotifications();
+    public ResponseEntity<Integer> getUnviewedNotificationsnb(@RequestParam String role) {
+        List<Notification> notifications = notificationService.getUnviewedNotificationsByRole(role);
         return ResponseEntity.ok(notifications.size());
     }
 }

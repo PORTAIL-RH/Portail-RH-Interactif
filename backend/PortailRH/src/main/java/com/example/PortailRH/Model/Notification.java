@@ -17,6 +17,10 @@ public class Notification {
 
     private boolean viewed;
 
+    private String role; // Nouveau champ pour spécifier le rôle
+
+    private String serviceId; // Nouveau champ pour spécifier le serviceId
+
     // Getters and Setters
     public String getId() {
         return id;
@@ -48,5 +52,21 @@ public class Notification {
 
     public void setViewed(boolean viewed) {
         this.viewed = viewed;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(String serviceId) {
+        this.serviceId = serviceId;
     }
 }

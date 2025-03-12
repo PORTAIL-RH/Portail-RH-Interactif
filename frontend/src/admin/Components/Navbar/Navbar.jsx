@@ -5,7 +5,8 @@ import bellIcon from "../../../assets/bell1.png";
 import NotificationModal from "./NotificationModal";
 
 const Navbar = () => {
-  const { unviewedCount, fetchNotifications, setUnviewedCount } = useNotifications();
+  const role = "Admin"; // Récupérez le rôle de l'utilisateur (par exemple, depuis le contexte ou l'API)
+  const { unviewedCount, fetchNotifications, setUnviewedCount } = useNotifications(role);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   // Re-fetch notifications whenever unviewedCount changes
@@ -27,7 +28,9 @@ const Navbar = () => {
         {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
         <img src={bellIcon} alt="Bell Icon" className="icon-notif" onClick={toggleNotifications} />
       </div>
-      {isNotificationsOpen && <NotificationModal setUnviewedCount={setUnviewedCount} />}
+      {isNotificationsOpen && 
+      <NotificationModal setUnviewedCount={setUnviewedCount} />
+      }
     </nav>
   );
 };

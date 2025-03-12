@@ -1,12 +1,11 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.DemandeConge;
-import com.example.PortailRH.Model.Fichier_joint;
-import com.example.PortailRH.Model.Personnel;
-import com.example.PortailRH.Model.Reponse;
+import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Repository.DemandeCongeRepository;
 import com.example.PortailRH.Repository.FichierJointRepository;
+import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,7 +36,13 @@ public class DemandeCongeController {
 
     @Autowired
     private FichierJointService fichierJointService;
+    @Autowired
+    private NotificationService notificationService;
+    @Autowired
+    private PersonnelRepository personnelRepository;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
     // 1. Get all demands
     @GetMapping
     public List<DemandeConge> getAllDemandes() {
@@ -119,6 +125,36 @@ public class DemandeCongeController {
 
             // Save the request
             DemandeConge savedDemande = demandeCongeRepository.save(demande);
+
+
+            // Send a notification
+            // Fetch the personnel details to get the service and chef hiérarchique
+            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
+            if (personnelOptional.isPresent()) {
+                Personnel personnelDetails = personnelOptional.get();
+                Service servicePersonnel = personnelDetails.getService();
+
+                // Send a notification to RH
+                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
+                notificationService.createNotification(notificationMessageRH, "RH", null);
+
+                // Check if the personnel has a service and if the chef hiérarchique is in the same service
+                if (servicePersonnel != null) {
+                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+
+                    if (chefHierarchique != null) {
+                        // Send a notification to the chef hiérarchique
+                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
+
+                        // Create a notification with role and serviceId
+                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getServiceId());
+                    } else {
+                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
+                    }
+                } else {
+                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
+                }
+            }
 
             // Return a JSON response
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(

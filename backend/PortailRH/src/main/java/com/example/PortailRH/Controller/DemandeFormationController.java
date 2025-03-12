@@ -1,16 +1,15 @@
 package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.*;
-import com.example.PortailRH.Repository.DemandeFormationRepository;
-import com.example.PortailRH.Repository.ThemeRepository;
-import com.example.PortailRH.Repository.TitreRepository;
-import com.example.PortailRH.Repository.TypeRepository;
+import com.example.PortailRH.Repository.*;
 import com.example.PortailRH.Service.DemandeFormationService;
 import com.example.PortailRH.Service.FichierJointService;
+import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/demande-formation")
@@ -40,7 +40,12 @@ public class DemandeFormationController {
     private FichierJointService fichierJointService;
     @Autowired
     private DemandeFormationRepository demandeFormationRepository;
-
+    @Autowired
+    private NotificationService notificationService;
+    @Autowired
+    private PersonnelRepository personnelRepository;
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
 
     @GetMapping
     public ResponseEntity<List<DemandeFormation>> getAllDemandes() {
@@ -97,6 +102,35 @@ public class DemandeFormationController {
             if (file != null && !file.isEmpty()) {
                 Fichier_joint fichier = fichierJointService.saveFile(file);
                 demandeFormation.getFiles().add(fichier);
+            }
+
+            // Send a notification
+            // Fetch the personnel details to get the service and chef hiérarchique
+            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
+            if (personnelOptional.isPresent()) {
+                Personnel personnelDetails = personnelOptional.get();
+                Service servicePersonnel = personnelDetails.getService();
+
+                // Send a notification to RH
+                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
+                notificationService.createNotification(notificationMessageRH, "RH", null);
+
+                // Check if the personnel has a service and if the chef hiérarchique is in the same service
+                if (servicePersonnel != null) {
+                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+
+                    if (chefHierarchique != null) {
+                        // Send a notification to the chef hiérarchique
+                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
+
+                        // Create a notification with role and serviceId
+                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getServiceId());
+                    } else {
+                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
+                    }
+                } else {
+                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
+                }
             }
 
             // Save the request

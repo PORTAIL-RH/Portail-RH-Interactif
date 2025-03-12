@@ -7,7 +7,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
 
 const Notifications = () => {
-  const role = "Admin"; // Rôle de l'utilisateur actuel
+  const role = "RH"; // Rôle de l'utilisateur actuel
   const { notifications = [], unviewedCount, setUnviewedCount, fetchNotifications, error } = useNotifications(role);
 
   const markAsRead = async (id) => {

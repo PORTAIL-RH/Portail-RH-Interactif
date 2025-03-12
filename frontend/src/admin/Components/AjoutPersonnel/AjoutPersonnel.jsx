@@ -98,16 +98,7 @@ const PersonnelForm = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="code_soc">Code Soc</label>
-            <input
-              type="text"
-              id="code_soc"
-              value={code_soc} // Bind to code_soc state
-              onChange={(e) => setCodeSoc(e.target.value)} // Update code_soc state
-              placeholder="Entrez le code soc"
-            />
-          </div>
+          
 
           <button type="submit" className="submit-btn">
             Ajouter Personnel
