@@ -1,15 +1,15 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.DemandeAutorisation;
-import com.example.PortailRH.Model.Fichier_joint;
-import com.example.PortailRH.Model.Personnel;
-import com.example.PortailRH.Model.Reponse;
+import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.DemandeAutorisationRepository;
+import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Service.FichierJointService;
+import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,21 +17,29 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/demande-autorisation")
 public class DemandeAutorisationController {
-    @Autowired
-    private SseController sseController;
+
     @Autowired
     private DemandeAutorisationRepository demandeAutorisationRepository;
 
     @Autowired
     private FichierJointService fichierJointService;
+
+    @Autowired
+    private NotificationService notificationService;
+    @Autowired
+    private PersonnelRepository personnelRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
+
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemande(
@@ -45,67 +53,87 @@ public class DemandeAutorisationController {
             @RequestParam("matPersId") String matPersId) {
 
         try {
-            // Convertir les dates en objets Date
+            // Validate required fields
+            if (dateDebut == null || texteDemande == null || heureSortieStr == null || heureRetourStr == null ||
+                    codAutorisation == null || codeSoc == null || matPersId == null) {
+                return ResponseEntity.badRequest().body("Tous les champs obligatoires doivent être remplis.");
+            }
+
+            // Convert date to Date object
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             Date startDate = dateFormat.parse(dateDebut);
 
-            // Convertir les heures en LocalTime
+            // Convert time to LocalTime
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
             LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
             LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
 
-
-
-// Extraire l'heure et les minutes
-            int horaireSortie = heureSortie.getHour();
-            int minuteSortie = heureSortie.getMinute();
-            int horaireRetour = heureRetour.getHour();
-            int minuteRetour = heureRetour.getMinute();
-
-// Créer une nouvelle demande d'autorisation
+            // Create a new authorization request
             DemandeAutorisation demande = new DemandeAutorisation();
             demande.setDateDebut(startDate);
             demande.setTypeDemande("autorisation");
             demande.setTexteDemande(texteDemande);
-            demande.setHoraireSortie(horaireSortie);
-            demande.setMinuteSortie(minuteSortie);
-            demande.setHoraireRetour(horaireRetour);
-            demande.setMinuteRetour(minuteRetour);
-
-// Ajouter ces lignes pour corriger le problème :
-            demande.setHeureSortie(horaireSortie);  // Fixer l'heureSortie avec la valeur correcte
-            demande.setHeureRetour(horaireRetour);  // Fixer l'heureRetour avec la valeur correcte
-
+            demande.setHoraireSortie(heureSortie.getHour());
+            demande.setMinuteSortie(heureSortie.getMinute());
+            demande.setHoraireRetour(heureRetour.getHour());
+            demande.setMinuteRetour(heureRetour.getMinute());
             demande.setCodAutorisation(codAutorisation);
             demande.setCodeSoc(codeSoc);
 
-// Associer le personnel
+            // Associate personnel
             Personnel personnel = new Personnel();
             personnel.setId(matPersId);
             demande.setMatPers(personnel);
 
-// Gérer l'upload du fichier s'il existe
+            // Handle file upload if present
             if (file != null && !file.isEmpty()) {
                 Fichier_joint fichier = fichierJointService.saveFile(file);
                 demande.setFiles(List.of(fichier));
             }
 
-// Enregistrer la demande
-            DemandeAutorisation savedDemande=demandeAutorisationRepository.save(demande);
-            sseController.sendUpdate("created", savedDemande);
+            // Save the request
+            demandeAutorisationRepository.save(demande);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "message", "Demande de AUTORISATION créée avec succès",
-                    "demandeId", savedDemande.getId()
-            ));
+            // Fetch the personnel details to get the service and chef hiérarchique
+            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
+            if (personnelOptional.isPresent()) {
+                Personnel personnelDetails = personnelOptional.get();
+                Service servicePersonnel = personnelDetails.getService();
 
+                // Send a notification to RH
+                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
+                notificationService.createNotification(notificationMessageRH, "RH", null);
+
+                // Check if the personnel has a service and if the chef hiérarchique is in the same service
+                if (servicePersonnel != null) {
+                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+
+                    if (chefHierarchique != null) {
+                        // Send a notification to the chef hiérarchique
+                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
+
+                        // Create a notification with role and serviceId
+                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getServiceId());
+                    } else {
+                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
+                    }
+                } else {
+                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
+                }
+            }
+
+            return ResponseEntity.status(HttpStatus.CREATED).body("Demande d'autorisation créée avec succès");
 
         } catch (ParseException e) {
-            return ResponseEntity.badRequest().body("Format de date invalide.");
+            return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body("Format d'heure invalide. Utilisez le format 'HH:mm'.");
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Une erreur est survenue : " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Une erreur est survenue : " + e.getMessage());
         }
     }
+
 
     @GetMapping
     public ResponseEntity<List<DemandeAutorisation>> getAllDemandes() {

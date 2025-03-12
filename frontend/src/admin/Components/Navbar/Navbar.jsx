@@ -1,63 +1,36 @@
 import React, { useState, useEffect } from "react";
-import { Link } from 'react-router-dom';
+import useNotifications from "./useNotifications";
 import "./Navbar.css";
 import bellIcon from "../../../assets/bell1.png";
-import NotificationModal from "./NotificationModal"; // Update the path if necessary
+import NotificationModal from "./NotificationModal";
 
 const Navbar = () => {
-  const [unviewedCount, setUnviewedCount] = useState(0);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false); // State to toggle notifications view
+  const role = "Admin"; // Récupérez le rôle de l'utilisateur (par exemple, depuis le contexte ou l'API)
+  const { unviewedCount, fetchNotifications, setUnviewedCount } = useNotifications(role);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  // Fetch unread notifications count
+  // Re-fetch notifications whenever unviewedCount changes
   useEffect(() => {
-    const fetchUnreadNotifications = async () => {
-      try {
-        const token = localStorage.getItem("authToken");
+    fetchNotifications();
+  }, [unviewedCount, fetchNotifications]);
 
-        const response = await fetch("http://localhost:8080/api/notifications/unread", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const notifications = await response.json();
-          setUnviewedCount(notifications.length);
-        } else {
-          console.error(`Failed to fetch unread notifications. Status: ${response.status}`);
-        }
-      } catch (error) {
-        console.error("Error fetching unread notifications:", error);
-      }
-    };
-
-    fetchUnreadNotifications();
-  }, []);
-
-  // Toggle notification popover visibility
-  const toggleNotifications = () => {
+  const toggleNotifications = async () => {
     setIsNotificationsOpen(!isNotificationsOpen);
+    if (!isNotificationsOpen) {
+      await fetchNotifications();
+    }
   };
 
   return (
     <nav className="navbar">
       <div className="navbar-text">Welcome, Admin</div>
       <div className="notification-container">
-        {unviewedCount > 0 && (
-          <span className="notification-badge">{unviewedCount}</span>
-        )}
-        <img
-          src={bellIcon}
-          alt="Bell Icon"
-          className="icon-notif"
-          onClick={toggleNotifications} // Toggle the notifications popover
-        />
+        {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+        <img src={bellIcon} alt="Bell Icon" className="icon-notif" onClick={toggleNotifications} />
       </div>
-
-      {/* Display Notifications Popover if it's open */}
-      {isNotificationsOpen && <NotificationModal />}
+      {isNotificationsOpen && 
+      <NotificationModal setUnviewedCount={setUnviewedCount} />
+      }
     </nav>
   );
 };

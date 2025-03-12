@@ -3,10 +3,12 @@ package com.example.PortailRH.Service;
 import com.example.PortailRH.Model.Notification;
 import com.example.PortailRH.Repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class NotificationService {
@@ -14,33 +16,69 @@ public class NotificationService {
     @Autowired
     private NotificationRepository notificationRepository;
 
-    // Create a new notification
-    public Notification createNotification(String message) {
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
+
+    // Create a new notification with role and serviceId
+    public Notification createNotification(String message, String role, String serviceId) {
         Notification notification = new Notification();
         notification.setMessage(message);
         notification.setTimestamp(LocalDateTime.now());
-        notification.setViewed(false); // Initially unviewed
-        return notificationRepository.save(notification);
+        notification.setViewed(false);
+        notification.setRole(role); // Set the role
+        notification.setServiceId(serviceId); // Set the serviceId
+
+        Notification savedNotification = notificationRepository.save(notification);
+
+        // Send real-time update via WebSocket
+        messagingTemplate.convertAndSend("/topic/notifications/" + role, savedNotification);
+
+        return savedNotification;
     }
 
-    // Fetch all notifications
+    // Get all notifications
     public List<Notification> getAllNotifications() {
         return notificationRepository.findAll();
     }
 
-    // Fetch only unread (unviewed) notifications
+    // Get unviewed notifications
     public List<Notification> getUnviewedNotifications() {
-        return notificationRepository.findByViewedFalse(); // Use the custom query
+        return notificationRepository.findByViewedFalse();
+    }
+
+    // Get unviewed notifications for a specific role
+    public List<Notification> getUnviewedNotificationsByRole(String role) {
+        return notificationRepository.findByRoleAndViewedFalse(role);
+    }
+
+    // Get unviewed notifications for a specific role and serviceId
+    public List<Notification> getUnviewedNotificationsByRoleAndServiceId(String role, String serviceId) {
+        return notificationRepository.findByRoleAndServiceIdAndViewedFalse(role, serviceId);
     }
 
     // Mark a notification as viewed
     public boolean markAsViewed(String id) {
-        Notification notification = notificationRepository.findById(id).orElse(null);
-        if (notification != null) {
-            notification.setViewed(true); // Set the notification as viewed
-            notificationRepository.save(notification); // Save the updated notification
+        Optional<Notification> optionalNotification = notificationRepository.findById(id);
+        if (optionalNotification.isPresent()) {
+            Notification notification = optionalNotification.get();
+            notification.setViewed(true);
+            notificationRepository.save(notification);
+
+            // Send real-time update via WebSocket
+            messagingTemplate.convertAndSend("/topic/notifications/" + notification.getRole(), getUnviewedNotificationsByRole(notification.getRole()).size());
+
             return true;
         }
-        return false; // Return false if the notification doesn't exist
+        return false; // Notification not found
+    }
+
+    // Get notifications by role
+    public List<Notification> getNotificationsByRole(String role) {
+        return notificationRepository.findByRole(role);
+    }
+
+    // Get notifications by role and serviceId
+    public List<Notification> getNotificationsByRoleAndServiceId(String role, String serviceId) {
+        return notificationRepository.findByRoleAndServiceId(role, serviceId);
     }
 }

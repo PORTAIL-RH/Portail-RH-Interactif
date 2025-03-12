@@ -14,7 +14,7 @@ const PersonnelForm = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!matricule || !email || !code_soc) {
       setErrorMessage('Veuillez remplir tous les champs.');
       setSuccessMessage('');
@@ -44,7 +44,7 @@ const PersonnelForm = () => {
       setErrorMessage('');
       setMatricule('');
       setEmail('');
-      setCodeSoc(''); // Reset code_soc field
+      setCodeSoc('');
     } catch (error) {
       setErrorMessage(error.message);
       setSuccessMessage('');
@@ -63,6 +63,18 @@ const PersonnelForm = () => {
         {successMessage && <div className="success-message">{successMessage}</div>}
 
         <form onSubmit={handleSubmit} className="personnel-form">
+
+          <div className="form-group">
+            <label htmlFor="code">Code société</label>
+            <input
+              type="input"
+              id="codeSoc"
+              value={code_soc}
+              onChange={(e) => setCodeSoc(e.target.value)}
+              placeholder="Entrez code société"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="matricule">Matricule</label>
             <input
@@ -86,16 +98,7 @@ const PersonnelForm = () => {
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="code_soc">Code Soc</label>
-            <input
-              type="text"
-              id="code_soc"
-              value={code_soc} // Bind to code_soc state
-              onChange={(e) => setCodeSoc(e.target.value)} // Update code_soc state
-              placeholder="Entrez le code soc"
-            />
-          </div>
+          
 
           <button type="submit" className="submit-btn">
             Ajouter Personnel
