@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -46,7 +47,8 @@ public class DemandeFormationController {
     private PersonnelRepository personnelRepository;
     @Autowired
     private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
-
+    @Autowired
+    private SseController sseController;
     @GetMapping
     public ResponseEntity<List<DemandeFormation>> getAllDemandes() {
         List<DemandeFormation> demandes = demandeFormationRepository.findAll();
@@ -135,8 +137,12 @@ public class DemandeFormationController {
 
             // Save the request
             DemandeFormation createdDemande = demandeFormationService.createDemandeFormation(demandeFormation);
-            return new ResponseEntity<>(createdDemande, HttpStatus.CREATED);
+            sseController.sendUpdate("created", createdDemande);
 
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de congé créée avec succès",
+                    "demandeId", createdDemande.getId_libre_demande()
+            ));
         } catch (ParseException e) {
             return new ResponseEntity<>("Format de date invalide.", HttpStatus.BAD_REQUEST);
         } catch (IOException e) {

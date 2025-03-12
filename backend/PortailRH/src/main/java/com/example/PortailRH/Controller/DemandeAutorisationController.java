@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -39,7 +40,8 @@ public class DemandeAutorisationController {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
-
+    @Autowired
+    private SseController sseController;
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemande(
@@ -92,7 +94,7 @@ public class DemandeAutorisationController {
             }
 
             // Save the request
-            demandeAutorisationRepository.save(demande);
+            DemandeAutorisation savedDemande=demandeAutorisationRepository.save(demande);
 
             // Fetch the personnel details to get the service and chef hiérarchique
             Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
@@ -122,8 +124,12 @@ public class DemandeAutorisationController {
                 }
             }
 
-            return ResponseEntity.status(HttpStatus.CREATED).body("Demande d'autorisation créée avec succès");
+            sseController.sendUpdate("created", savedDemande);
 
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de AUTORISATION créée avec succès",
+                    "demandeId", savedDemande.getId()
+            ));
         } catch (ParseException e) {
             return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
         } catch (DateTimeParseException e) {

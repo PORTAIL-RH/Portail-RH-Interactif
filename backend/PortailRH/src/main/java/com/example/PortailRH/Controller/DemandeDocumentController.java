@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -33,7 +34,8 @@ public class DemandeDocumentController {
     private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
     @Autowired
     private PersonnelRepository personnelRepository;
-
+    @Autowired
+    private SseController sseController;
     // Récupérer toutes les demandes
     @GetMapping
     public List<DemandeDocument> getAllDemandes() {
@@ -112,7 +114,12 @@ public class DemandeDocumentController {
 
             // Save the DemandeDocument object
             DemandeDocument createdDemande = demandeDocumentRepository.save(demandeDocument);
-            return new ResponseEntity<>(createdDemande, HttpStatus.CREATED);
+            sseController.sendUpdate("created", createdDemande);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de congé créée avec succès",
+                    "demandeId", createdDemande.getId()
+            ));
 
         } catch (IOException e) {
             return new ResponseEntity<>("Erreur lors du traitement du fichier.", HttpStatus.INTERNAL_SERVER_ERROR);
