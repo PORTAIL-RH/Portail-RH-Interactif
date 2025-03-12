@@ -117,7 +117,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/traiter/{id}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/candidatures").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidatures").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/candidats").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidats").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/upload/cv").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/upload/cv/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidatures/${candidatureId}").permitAll()
 
+                        .requestMatchers(HttpMethod.GET, "/sse/updates").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidats/byCandidature/{candidatureId}").permitAll()
 
 
                         .anyRequest().authenticated()

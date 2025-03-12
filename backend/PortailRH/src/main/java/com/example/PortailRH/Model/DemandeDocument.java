@@ -27,6 +27,9 @@ public class DemandeDocument {
     @DBRef(lazy = true)
     private Collection<Fichier_joint> Files = new ArrayList<>();
 
+    @DBRef(lazy = true)
+    private Collection<Fichier_joint> FilesReponse = new ArrayList<>();
+
     public String getTexteDemande() {
         return TexteDemande;
     }
@@ -64,6 +67,14 @@ public class DemandeDocument {
     /*public String getCodeSoc() {
         return matPers != null ? matPers.getCode_soc() : null;
     }*/
+
+    public Collection<Fichier_joint> getFilesReponse() {
+        return FilesReponse;
+    }
+
+    public void setFilesReponse(Collection<Fichier_joint> filesReponse) {
+        FilesReponse = filesReponse;
+    }
 
     public Reponse getReponseChef() {
         return reponseChef;

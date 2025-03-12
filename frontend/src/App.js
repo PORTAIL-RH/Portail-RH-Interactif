@@ -19,7 +19,22 @@ const CalendarRH = lazy(() => import('./RH/Components/Calendar/Calendar.jsx'));
 // CHEF
 const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
 const Personnels = lazy(() => import('./Chef_hierarchique/Components/Personnels/Personnels.jsx'));
-const Demandes = lazy(() => import('./Chef_hierarchique/Components/Demandes/Demandes.jsx'));
+const ProfileCHEF = lazy(() => import('./Chef_hierarchique/Components/Profile/Profile.jsx'));
+const DemandesCHEF = lazy(() => import('./Chef_hierarchique/Components/DemandesCHEF/DemandesCHEF.jsx'));
+const AjoutDemandeFormation = lazy(() => import('./Chef_hierarchique/Components/AjoutDemande/Formation.jsx'));
+const AjoutDemandeConge = lazy(() => import('./Chef_hierarchique/Components/AjoutDemande/Conge.jsx'));
+const AjoutDemandePreAvance = lazy(() => import('./Chef_hierarchique/Components/AjoutDemande/PreAvance.jsx'));
+const AjoutDemandeDocument = lazy(() => import('./Chef_hierarchique/Components/AjoutDemande/Document.jsx'));
+const AjoutDemandeAutorisation = lazy(() => import('./Chef_hierarchique/Components/AjoutDemande/Autorisation.jsx'));
+const Candidatures = lazy(() => import('./Chef_hierarchique/Components/Candidats/Candidatures.jsx'));
+const Candidats = lazy(() => import('./Chef_hierarchique/Components/Candidats/Candidats.jsx'));
+
+const Formation = lazy(() => import('./Chef_hierarchique/Components/Demandes/Formation.jsx'));
+const Conge = lazy(() => import('./Chef_hierarchique/Components/Demandes/Conge.jsx'));
+const Document = lazy(() => import('./Chef_hierarchique/Components/Demandes/Document.jsx'));
+const Autorisation = lazy(() => import('./Chef_hierarchique/Components/Demandes/Autorisation.jsx'));
+const PreAvance = lazy(() => import('./Chef_hierarchique/Components/Demandes/PreAvance.jsx'));
+
 const Calendar = lazy(() => import('./Chef_hierarchique/Components/Calendar/Calendar.jsx'));
 
 // Collaborateurs
@@ -58,10 +73,23 @@ function App() {
   {/* chef hierarchique */}
   <Route path="/AccueilCHEF" element={<AccueilCHEF />} />
           <Route path="/Personnels" element={<Personnels />} />
-          <Route path="/Demandes" element={<Demandes />} />
+          <Route path="/Formation" element={<Formation />} />
+          <Route path="/Conge" element={<Conge />} />
+          <Route path="/Document" element={<Document />} />
+          <Route path="/Autorisation" element={<Autorisation />} />
+          <Route path="/PreAvance" element={<PreAvance />} />
           <Route path="/Calendar" element={<Calendar />} />
+          <Route path="/ProfileCHEF" element={<ProfileCHEF />} />
+          <Route path="/DemandesCHEF" element={<DemandesCHEF />} />
+          <Route path="/AjoutDemandeAutorisation" element={<AjoutDemandeAutorisation />} />
+          <Route path="/AjoutDemandeFormation" element={<AjoutDemandeFormation />} />
+          <Route path="/AjoutDemandePreAvance" element={<AjoutDemandePreAvance />} />
+          <Route path="/AjoutDemandeDocument" element={<AjoutDemandeDocument />} />
+          <Route path="/AjoutDemandeConge" element={<AjoutDemandeConge />} />
+          <Route path="/candidats/:id" element={<Candidats />} />
+          <Route path="/Candidatures" element={<Candidatures />} />
 
-
+          
             {/* RH */}
   <Route path="/AccueilRH" element={<AccueilRH />} />
           <Route path="/PersonnelsRH" element={<PersonnelsRH />} />

@@ -1,174 +1,239 @@
-import React from 'react';
-import './Home.css';
-import homeImage from '../../assets/home.png';
-import logo from '../../assets/logo.png';
-import { Link } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaComment } from 'react-icons/fa';
-import { FaFacebook, FaTwitter, FaInstagram, FaLinkedin } from 'react-icons/fa';
-import ShinyText from './ShinyText';
 
+import { useState, useEffect } from "react"
+import "./Home.css"
+import Navbar from "../NavBar/Nav.jsx"
+import Footer from "../Footer/Footer.jsx"
+import ApplicationModal from "./ApplicationModal.jsx"
 
-function Home() {
+const Candidates = () => {
+  const [formData, setFormData] = useState({
+    nom: "",
+    prenom: "",
+    age: "",
+    email: "",
+    numTel: "",
+    cvFilePath: "",
+    cv: null,
+    candidature: {
+      id: "", // Initialize as empty
+    },
+  })
+
+  const [activeTab, setActiveTab] = useState("openings")
+  const [jobOpenings, setJobOpenings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedCandidatureId, setSelectedCandidatureId] = useState("")
+
+  // Fetch job openings from the backend API
+  useEffect(() => {
+    const fetchJobOpenings = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/api/candidatures")
+        if (!response.ok) {
+          throw new Error("Failed to fetch job openings")
+        }
+        const data = await response.json()
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format received from the server")
+        }
+        setJobOpenings(data)
+      } catch (error) {
+        setError(error.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchJobOpenings()
+  }, [])
+
+  const handleSubmitApplication = async (formData) => {
+    try {
+      // Retrieve the authentication token
+      const token = localStorage.getItem("authToken")
+      if (!token) {
+        throw new Error("Authentication token not found. Please log in.")
+      }
+
+      // Ensure a file is selected
+      if (!formData.cv) {
+        throw new Error("Please select a CV file to upload.")
+      }
+
+      // Create a new FormData object for the candidate data
+      const candidatFormData = new FormData()
+      candidatFormData.append("nom", formData.nom)
+      candidatFormData.append("prenom", formData.prenom)
+      candidatFormData.append("age", formData.age)
+      candidatFormData.append("email", formData.email)
+      candidatFormData.append("numTel", formData.numTel)
+      candidatFormData.append("candidatureId", formData.candidatureId)
+      candidatFormData.append("cv", formData.cv) // Append the CV file
+
+      // Log the FormData for debugging
+      for (const [key, value] of candidatFormData.entries()) {
+        console.log(key, value)
+      }
+
+      // Send the FormData to the backend
+      const response = await fetch("http://localhost:8080/api/candidats", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`, // Include the token in the request headers
+        },
+        body: candidatFormData, // Send FormData as the body
+      })
+
+      // Handle the response
+      if (!response.ok) {
+        const errorData = await response.text() // Handle plain text or JSON responses
+        throw new Error(errorData || "Failed to submit application")
+      }
+
+      alert("Application submitted successfully!")
+      // Reset form data
+      setFormData({
+        nom: "",
+        prenom: "",
+        age: "",
+        email: "",
+        numTel: "",
+        cv: null,
+        candidature: {
+          id: "",
+        },
+      })
+    } catch (error) {
+      console.error("Error submitting application:", error)
+      alert(error.message || "Failed to submit application. Please try again.")
+    }
+  }
+
+  const handleApplyClick = (candidatureId) => {
+    console.log("Candidature ID:", candidatureId) // Debugging
+    setSelectedCandidatureId(candidatureId)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setSelectedCandidatureId("")
+  }
+
+  if (loading) {
+    return <div className="loading-message">Loading job openings...</div>
+  }
+
+  if (error) {
+    return <div className="error-message">Error: {error}</div>
+  }
+
   return (
-    <div className="company-website-homepage">
-         {/* Section d'en-tête */}
-         <div className="header">
-        <div className="logo">
-        <img src={logo} alt="Accueil" />
-        </div>
-        <div className="nav-links">
-        <Link to="/CompanyHome" className="nav-link">Home</Link>
-        <span className="nav-link">À propos</span>
-          <span className="nav-link">Nos Services</span>
-          <span className="nav-link">Contactez-nous</span>
-          <Link to="/Form" className="nav-link">Rejoignez-nous</Link>
+    <div className="candidates-page">
+      <Navbar transparent={true} />
 
-        </div>
-        <div className="sign-in-container">
-      <Link to="/" className="sign-in-link">
-        <ShinyText 
-          text="Se Connecter" 
-          disabled={false} 
-          speed={1.5} 
-          className="sign-in-button" 
-        />
-      </Link>
+      <main>
+        <section className="hero-section">
+          <div className="container">
+            <h1>Rejoignez Notre Équipe d'Innovateurs</h1>
+            <p>
+              Découvrez des opportunités de carrière passionnantes et participez à notre mission de créer des solutions
+              technologiques de pointe.
+            </p>
+            <button className="primary-button" onClick={() => handleApplyClick("")}>
+              Postuler Maintenant
+            </button>
+          </div>
+        </section>
+
+        <section className="why-join-section">
+          <div className="container">
+            <h2>Pourquoi Rejoindre Société Arab Soft ?</h2>
+            <div className="benefits-grid">
+              <div className="benefit-card">
+                <div className="benefit-icon growth-icon"></div>
+                <h3>Croissance Professionnelle</h3>
+                <p>Opportunités d'apprentissage continu et voies d'avancement de carrière pour tous les employés.</p>
+              </div>
+              <div className="benefit-card">
+                <div className="benefit-icon innovation-icon"></div>
+                <h3>Culture d'Innovation</h3>
+                <p>Travailler sur des projets de pointe et contribuer vos idées dans un environnement collaboratif.</p>
+              </div>
+              <div className="benefit-card">
+                <div className="benefit-icon balance-icon"></div>
+                <h3>Équilibre Vie Professionnelle-Personnelle</h3>
+                <p>Arrangements de travail flexibles et politiques qui respectent votre temps personnel.</p>
+              </div>
+              <div className="benefit-card">
+                <div className="benefit-icon benefits-icon"></div>
+                <h3>Avantages Compétitifs</h3>
+                <p>Assurance santé complète, plans de retraite et autres avantages précieux.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="tabs-section">
+          <div className="container">
+            <div className="tabs">
+              <button
+                className={`tab-button ${activeTab === "openings" ? "active" : ""}`}
+                onClick={() => setActiveTab("openings")}
+              >
+                Offres d'Emploi
+              </button>
+            </div>
+
+            <div className="tab-content">
+              <div className="openings-content">
+                <h2>Postes Disponibles</h2>
+                <div className="job-listings">
+                  {jobOpenings?.length === 0 ? (
+                    <p>Aucune offre d'emploi disponible pour le moment.</p>
+                  ) : (
+                    jobOpenings?.map((job) => (
+                      <div className="job-card" key={job.id}>
+                        <h3>{job.description}</h3>
+                        <div className="job-details">
+                          <span className="department">{job.service}</span>
+                          <span className="location">Tunis, Tunisie</span>
+                        </div>
+                        <p className="job-description">{job.exigences}</p>
+                        <div className="requirements">
+                          <h4>Compétences Requises:</h4>
+                          <ul>
+                            {job.skills?.map((skill, index) => (
+                              <li key={index}>{skill}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <button className="secondary-button" onClick={() => handleApplyClick(job.id)}>
+                          Postuler pour ce poste
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <ApplicationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        candidatureId={selectedCandidatureId}
+        onSubmit={handleSubmitApplication}
+      />
+
+      <Footer />
     </div>
-      </div>
-
-      {/* Section Héro */}
-      <div className="hero-section">
-        <div className="hero-text">
-          <h1>Fournir des solutions de pointe dans le secteur technologique</h1>
-          <p>
-            ArabSoft est une entreprise tunisienne leader dans le domaine des solutions informatiques, offrant des services innovants et adaptés aux besoins de nos clients.
-          </p>
-          <div className="learn-more-button">
-            <span>En savoir plus</span>
-          </div>
-        </div>
-        <div className="hero-image">
-          <img src={homeImage} alt="Accueil" />
-        </div>
-      </div>
-
-      {/* Section À propos de l'entreprise */}
-      <div className="about-company-section">
-        <h2>À propos d'ArabSoft</h2>
-        <p>
-          ArabSoft est une société tunisienne spécialisée dans le développement de solutions logicielles sur mesure. Nous nous engageons à fournir des solutions innovantes qui aident nos clients à atteindre leurs objectifs d'affaires.
-        </p>
-      </div>
-
-      {/* Section Nos services */}
-      <div className="our-services-section">
-        <h2>Nos Services</h2>
-        <div className="service-cards">
-          <div className="service-card">
-            <h3>Solutions pour Entreprises Non-IT</h3>
-            <p>
-              Nous offrons des solutions personnalisées pour les entreprises hors secteur technologique, adaptées à leurs besoins spécifiques.
-            </p>
-            <div className="learn-more-button">
-              <span>En savoir plus</span>
-            </div>
-          </div>
-          <div className="service-card">
-            <h3>Développement de Logiciels</h3>
-            <p>
-              ArabSoft fournit des services de développement de logiciels de qualité, en utilisant les dernières technologies et méthodologies.
-            </p>
-            <div className="learn-more-button">
-              <span>En savoir plus</span>
-            </div>
-          </div>
-          <div className="service-card">
-            <h3>Consulting en IT</h3>
-            <p>
-              Nous offrons des services de conseil pour aider les entreprises à optimiser leurs systèmes informatiques et à mettre en œuvre les meilleures pratiques technologiques.
-            </p>
-            <div className="learn-more-button">
-              <span>En savoir plus</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      {/* Section Contactez-nous */}
-      <div className="contact-us-section">
-        <h2>Contactez-nous</h2>
-        <form>
-          <div className="input-group">
-            <i><FaUser /></i>
-            <input type="text" placeholder="Nom Complet" />
-          </div>
-          <div className="input-group">
-            <i><FaEnvelope /></i>
-            <input type="email" placeholder="Adresse Email" />
-          </div>
-          <div className="input-group">
-            <i><FaComment /></i>
-            <textarea placeholder="Votre Message"></textarea>
-          </div>
-          <button type="submit">Envoyer le Message</button>
-        </form>
-      </div>
-
-      {/* Section Footer */}
-      <footer className="footer">
-        <div className="footer-content">
-          {/* Section À propos */}
-          <div className="footer-section">
-            <h4>À propos d'ArabSoft</h4>
-            <p>
-              ArabSoft est une société innovante en Tunisie, spécialisée dans le développement de solutions logicielles et le conseil en informatique pour diverses industries.
-            </p>
-          </div>
-
-          {/* Section Liens rapides */}
-          <div className="footer-section">
-            <h4>Liens rapides</h4>
-            <ul className="footer-links">
-              <li><a href="#">Accueil</a></li>
-              <li><a href="#">À propos</a></li>
-              <li><a href="#">Services</a></li>
-              <li><a href="#">Contact</a></li>
-            </ul>
-          </div>
-
-          {/* Section Réseaux sociaux */}
-          <div className="footer-section">
-            <h4>Suivez-nous</h4>
-            <div className="social-icons">
-              <a href="#" aria-label="Facebook"><FaFacebook /></a>
-              <a href="#" aria-label="Twitter"><FaTwitter /></a>
-              <a href="#" aria-label="Instagram"><FaInstagram /></a>
-              <a href="#" aria-label="LinkedIn"><FaLinkedin /></a>
-            </div>
-          </div>
-
-          {/* Section Infos de contact */}
-          <div className="footer-section">
-            <h4>Informations de contact</h4>
-            <p>Email: info@arabsoft.com</p>
-            <p>Téléphone: +216 123 456 789</p>
-            <p>Adresse: Rue Exemple, Tunis, Tunisie</p>
-          </div>
-        </div>
-
-        {/* Ligne de séparation */}
-        <div className="footer-divider"></div>
-
-        {/* Bas du footer */}
-        <div className="footer-bottom">
-          <p>
-            &copy; {new Date().getFullYear()} ArabSoft. Tous droits réservés. |{' '}
-            <a href="#">Politique de confidentialité</a> | <a href="#">Conditions d'utilisation</a>
-          </p>
-        </div>
-      </footer>
-    </div>
-  );
+  )
 }
 
-export default Home;
+export default Candidates
+

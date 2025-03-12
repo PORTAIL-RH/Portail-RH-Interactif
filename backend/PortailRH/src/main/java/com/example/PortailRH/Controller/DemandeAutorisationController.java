@@ -19,12 +19,14 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/demande-autorisation")
 public class DemandeAutorisationController {
-
+    @Autowired
+    private SseController sseController;
     @Autowired
     private DemandeAutorisationRepository demandeAutorisationRepository;
 
@@ -89,8 +91,13 @@ public class DemandeAutorisationController {
             }
 
 // Enregistrer la demande
-            demandeAutorisationRepository.save(demande);
-            return ResponseEntity.status(HttpStatus.CREATED).body("Demande d'autorisation créée avec succès");
+            DemandeAutorisation savedDemande=demandeAutorisationRepository.save(demande);
+            sseController.sendUpdate("created", savedDemande);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "message", "Demande de AUTORISATION créée avec succès",
+                    "demandeId", savedDemande.getId()
+            ));
 
 
         } catch (ParseException e) {

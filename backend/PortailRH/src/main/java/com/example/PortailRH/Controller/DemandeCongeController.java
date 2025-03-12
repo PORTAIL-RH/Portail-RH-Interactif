@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 @RestController
 @RequestMapping("/api/demande-conge")
 public class DemandeCongeController {
+    @Autowired
+    private SseController sseController; // Autowire the SseController instance
 
     @Autowired
     private DemandeCongeRepository demandeCongeRepository;
@@ -59,7 +61,7 @@ public class DemandeCongeController {
             @RequestParam("snjTempDep") String snjTempDep,
             @RequestParam("snjTempRetour") String snjTempRetour,
             @RequestParam("codeSoc") String codeSoc,
-            @RequestParam(value = "file", required = false) MultipartFile file, // Fichier facultatif
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam("matPersId") String matPersId,
             @RequestParam("nbrJours") String nbrJours) {
 
@@ -120,7 +122,9 @@ public class DemandeCongeController {
             // Save the request
             DemandeConge savedDemande = demandeCongeRepository.save(demande);
 
-            // Return a JSON response
+            // Notify all connected clients
+            sseController.sendUpdate("created", savedDemande);
+
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                     "message", "Demande de congé créée avec succès",
                     "demandeId", savedDemande.getId()
@@ -135,6 +139,7 @@ public class DemandeCongeController {
                     "message", "Erreur lors du traitement du fichier."
             ));
         }
+
     }
     // 4. Update a demand
     @PutMapping("/{id}")
@@ -150,9 +155,25 @@ public class DemandeCongeController {
             existingDemande.setReponseChef(demandeUpdated.getReponseChef());
             existingDemande.setReponseRH(demandeUpdated.getReponseRH());
 
-            // Save and return the updated demande
-            demandeCongeRepository.save(existingDemande);
+            // Save the updated demande
+            DemandeConge updatedDemande = demandeCongeRepository.save(existingDemande);
+
+            // Notify all connected clients
+            sseController.sendUpdate("updated", updatedDemande);
+
             return ResponseEntity.ok("Demande mise à jour avec succès");
+        }).orElse(ResponseEntity.notFound().build());
+    }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteDemande(@PathVariable String id) {
+        return demandeCongeRepository.findById(id).map(demande -> {
+            // Notify all connected clients before deleting
+            sseController.sendUpdate("deleted", demande);
+
+            // Delete the demande
+            demandeCongeRepository.delete(demande);
+
+            return ResponseEntity.ok("Demande supprimée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
     @GetMapping("/personnel/{matPersId}")

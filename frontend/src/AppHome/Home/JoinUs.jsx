@@ -1,236 +1,247 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import './JoinUs.css';
-import logo from '../../assets/logo.png';
-import { Link } from 'react-router-dom';
-import ShinyText from './ShinyText';
-const Form = () => {
-  const [progress, setProgress] = useState(0);
-  const [formData, setFormData] = useState({
-    sexe: '',
-    dateNaissance: '',
-    situation: '',
-    phone: '',
-    nbrEnfants: '',
-    cin: '',
-  });
-  const [errors, setErrors] = useState({});
-  const [submitMessage, setSubmitMessage] = useState('');
 
-  const calculateProgress = () => {
-    const filledFields = Object.values(formData).filter(
-      (field) => field !== '' && field !== '0'
-    ).length;
-    return Math.round((filledFields / Object.keys(formData).length) * 100);
-  };
+import { useState } from "react"
+import "./JoinUs.css"
 
-  useEffect(() => {
-    setProgress(calculateProgress());
-  }, [formData]);
+const JobPlatform = () => {
+  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [selectedType, setSelectedType] = useState("All")
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.sexe) newErrors.sexe = 'Le sexe est requis.';
-    if (!formData.dateNaissance) newErrors.dateNaissance = 'La date de naissance est requise.';
-    if (!formData.situation) newErrors.situation = 'La situation est requise.';
-    if (!formData.phone || !/^\d{8,}$/.test(formData.phone)) {
-      newErrors.phone = 'Entrez un numéro de téléphone valide.';
-    }
-    if (formData.nbrEnfants < 0) newErrors.nbrEnfants = 'Le nombre d\'enfants doit être supérieur ou égal à 0.';
-    if (!formData.cin || !/^\d{8}$/.test(formData.cin)) {
-      newErrors.cin = 'Entrez un CIN valide (8 chiffres).';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const getProgressBarColor = () => {
-    const colorStep = Math.floor(progress / 10);
-    const colors = [
-        '#add8e6', // Light Blue
-        '#87ceeb', // Sky Blue
-        '#4682b4', // Steel Blue
-        '#5f9ea0', // Cadet Blue
-        '#6495ed', // Cornflower Blue
-        '#1e90ff', // Dodger Blue
-        '#4169e1', // Royal Blue
-        '#0000ff', // Blue
-        '#0000cd', // Medium Blue
-        '#00008b'  // Dark Blue
-      ];
-      
-    return colors[colorStep];
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      try {
-        const userId = localStorage.getItem('userId');
-        if (!userId) {
-          setSubmitMessage('Utilisateur non identifié.');
-          return;
-        }
-
-        const response = await axios.post(
-          'http://localhost:8080/api/newCondidat', 
-          { ...formData, userId }
-        );
-
-        if (response.status === 200) {
-          setSubmitMessage('Informations enregistrées avec succès.');
-        } else {
-          setSubmitMessage('Une erreur est survenue.');
-        }
-      } catch (error) {
-        setSubmitMessage('Erreur lors de l\'enregistrement : ' + error.message);
-      }
-    }
-  };
+  const jobListings = [
+    {
+      id: 1,
+      title: "Data Analytics Business Analyst",
+      category: "Engineering + Remote",
+      location: "Ithaca, New York",
+      type: "Contract",
+      salary: "$65 per hour",
+      experience: "5 Years",
+      timePosted: "12 Hours ago",
+    },
+    {
+      id: 2,
+      title: "Senior Software Engineer",
+      category: "Engineering + Remote",
+      location: "Mountain View, CA",
+      type: "Full-time",
+      salary: "$150k - $180k",
+      experience: "5 Years",
+      timePosted: "1 Day ago",
+    },
+    {
+      id: 3,
+      title: "UX Designer",
+      category: "Design",
+      location: "San Francisco, CA",
+      type: "Contract",
+      salary: "$75 per hour",
+      experience: "3 Years",
+      timePosted: "2 Days ago",
+    },
+    {
+      id: 4,
+      title: "Product Manager",
+      category: "Marketing & Creative",
+      location: "New York, NY",
+      type: "Full-time",
+      salary: "$130k - $160k",
+      experience: "4 Years",
+      timePosted: "3 Days ago",
+    },
+    {
+      id: 5,
+      title: "Frontend Developer",
+      category: "Engineering + Remote",
+      location: "Remote",
+      type: "Full-time",
+      salary: "$120k - $150k",
+      experience: "3 Years",
+      timePosted: "1 Week ago",
+    },
+  ]
 
   return (
-<div>   
-     <div className="headerj">
-    <div className="logoj">
-    <img src={logo} alt="Accueil" />
-    </div>
-    <div className="nav-linksj">
-      <Link to="/CompanyHome" className="nav-linkj">Home</Link>
-      <span className="nav-linkj">À propos</span>
-      <span className="nav-linkj">Nos Services</span>
-      <span className="nav-linkj">Contactez-nous</span>
-      <Link to="/Form" className="nav-linkj">Rejoignez-nous</Link>
-
-    </div>
-    <div >
-    <ShinyText text="Se Connecter" disabled={false} speed={1.5} className='sign-in-buttonj' />
-    </div>
-  </div>
-    <div className="form-container">
-      <div className="form-box">
-        <h2 className="form-title">Informations Personnelles</h2>
-
-        <div className="progress-container">
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{
-                width: `${progress}%`,
-                backgroundColor: getProgressBarColor(),
-              }}
-            ></div>
+    <div className="platform-container">
+      {/* Header */}
+      <header className="platform-header">
+        <div className="header-left">
+          <div className="logo">M</div>
+          <button className="browse-opportunities">Browse Opportunities</button>
+        </div>
+        <div className="header-right">
+          <div className="notifications">
+            <span className="notification-icon">🔔</span>
           </div>
-          <p className="progress-text">{progress}% Complété</p>
+          <div className="profile">
+            <img src="/placeholder.svg?height=32&width=32" alt="Profile" className="profile-image" />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="platform-main">
+        {/* Welcome Banner */}
+        <div className="welcome-banner">
+          <div className="welcome-content">
+            <h1>Hi, Welcome!</h1>
+            <h2>Your Next Job Opportunity</h2>
+          </div>
+          <div className="contact-info">
+            <div className="contact-person">
+              <img src="/placeholder.svg?height=48&width=48" alt="Contact" className="contact-image" />
+              <div className="contact-details">
+                <p>Account Manager</p>
+                <p>+1 650-245-5567</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Sexe</label>
-            <select
-              name="sexe"
-              value={formData.sexe}
-              onChange={handleChange}
-              className={`form-select ${errors.sexe ? 'error' : ''}`}
-            >
-              <option value="">Sélectionner...</option>
-              <option value="M">Homme</option>
-              <option value="F">Femme</option>
-            </select>
-            {errors.sexe && <p className="error-message">{errors.sexe}</p>}
-          </div>
+        <div className="platform-content">
+          {/* Sidebar */}
+          <aside className="sidebar">
+            <div className="search-box">
+              <input type="text" placeholder="Search Jobs" />
+              <select defaultValue="All Location">
+                <option>All Location</option>
+                <option>Remote</option>
+                <option>On-site</option>
+                <option>Hybrid</option>
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Date de naissance</label>
-            <input
-              type="date"
-              name="dateNaissance"
-              value={formData.dateNaissance}
-              onChange={handleChange}
-              className={`form-input ${errors.dateNaissance ? 'error' : ''}`}
-            />
-            {errors.dateNaissance && <p className="error-message">{errors.dateNaissance}</p>}
-          </div>
+            <div className="filter-section">
+              <h3>Employee Type</h3>
+              <ul>
+                <li>
+                  <input type="checkbox" id="fulltime" />
+                  <label htmlFor="fulltime">Full-time</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="freelance" />
+                  <label htmlFor="freelance">Freelance</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="contract" />
+                  <label htmlFor="contract">Contract</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="intern" />
+                  <label htmlFor="intern">Intern</label>
+                </li>
+              </ul>
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Situation</label>
-            <select
-              name="situation"
-              value={formData.situation}
-              onChange={handleChange}
-              className={`form-select ${errors.situation ? 'error' : ''}`}
-            >
-              <option value="">Sélectionner...</option>
-              <option value="marie">Marié</option>
-              <option value="celib">Célibataire</option>
-              <option value="divorce">Divorcé</option>
-            </select>
-            {errors.situation && <p className="error-message">{errors.situation}</p>}
-          </div>
+            <div className="filter-section">
+              <h3>Job Category</h3>
+              <ul>
+                <li>
+                  <input type="checkbox" id="engineering" />
+                  <label htmlFor="engineering">Engineering</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="design" />
+                  <label htmlFor="design">Design</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="marketing" />
+                  <label htmlFor="marketing">Marketing & Creative</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="finance" />
+                  <label htmlFor="finance">Finance & Accounting</label>
+                </li>
+              </ul>
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Téléphone</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="Entrez le numéro de téléphone"
-              className={`form-input ${errors.phone ? 'error' : ''}`}
-            />
-            {errors.phone && <p className="error-message">{errors.phone}</p>}
-          </div>
+            <div className="filter-section">
+              <h3>Experience</h3>
+              <ul>
+                <li>
+                  <input type="checkbox" id="entry" />
+                  <label htmlFor="entry">Less than 1 Year</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="junior" />
+                  <label htmlFor="junior">1-2 Years</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="mid" />
+                  <label htmlFor="mid">3-5 Years</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="senior" />
+                  <label htmlFor="senior">5 Years +</label>
+                </li>
+              </ul>
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Nombre d'enfants</label>
-            <input
-              type="number"
-              name="nbrEnfants"
-              value={formData.nbrEnfants}
-              onChange={handleChange}
-              className={`form-input ${errors.nbrEnfants ? 'error' : ''}`}
-            />
-            {errors.nbrEnfants && <p className="error-message">{errors.nbrEnfants}</p>}
-          </div>
+            <div className="filter-section">
+              <h3>Last Updated</h3>
+              <ul>
+                <li>
+                  <input type="checkbox" id="recent" />
+                  <label htmlFor="recent">Recently</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="24h" />
+                  <label htmlFor="24h">24 Hours</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="week" />
+                  <label htmlFor="week">1 Week</label>
+                </li>
+                <li>
+                  <input type="checkbox" id="anytime" />
+                  <label htmlFor="anytime">Anytime</label>
+                </li>
+              </ul>
+            </div>
+          </aside>
 
-          <div className="form-group">
-            <label className="form-label">CIN</label>
-            <input
-              type="text"
-              name="cin"
-              value={formData.cin}
-              onChange={handleChange}
-              placeholder="Entrez le CIN"
-              className={`form-input ${errors.cin ? 'error' : ''}`}
-            />
-            {errors.cin && <p className="error-message">{errors.cin}</p>}
-          </div>
+          {/* Job Listings */}
+          <section className="job-listings">
+            {jobListings.map((job) => (
+              <div className="job-card" key={job.id}>
+                <div className="job-info">
+                  <h3>{job.title}</h3>
+                  <p className="job-category">{job.category}</p>
+                  <div className="job-details">
+                    <span className="experience">
+                      <span className="icon">⏳</span>
+                      {job.experience}
+                    </span>
+                    <span className="type">
+                      <span className="icon">📋</span>
+                      {job.type}
+                    </span>
+                    <span className="salary">
+                      <span className="icon">💰</span>
+                      {job.salary}
+                    </span>
+                  </div>
+                </div>
+                <div className="job-meta">
+                  <div className="location">
+                    <span className="icon">📍</span>
+                    {job.location}
+                  </div>
+                  <div className="time-posted">{job.timePosted}</div>
+                  <button className="apply-button">1 Click Apply</button>
+                </div>
+              </div>
+            ))}
 
-          <button
-            type="submit"
-            className={`submit-button ${progress === 100 ? 'complete' : 'incomplete'}`}
-            disabled={progress !== 100}
-            style={{
-              backgroundColor: getProgressBarColor(),
-            }}
-          >
-            Soumettre
-          </button>
-        </form>
-        {submitMessage && <p className="submit-message">{submitMessage}</p>}
-      </div>
-    </div>    </div>
+            <div className="pagination">
+              <button disabled>← Prev</button>
+              <span className="current-page">1</span>
+              <button>Next →</button>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  )
+}
 
-  );
-};
+export default JobPlatform
 
-export default Form;

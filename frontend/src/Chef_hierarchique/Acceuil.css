@@ -1,138 +1,466 @@
-/* General Container - No animation here */
-.accueil-containerp {
-  font-family: "Roboto", sans-serif;
+/* Dashboard Layout */
+.app-container {
   display: flex;
-  height: 100vh;
-  background: linear-gradient(135deg, #e6e6ff, #c8cbf0);
-  padding-top: 70px;
+  min-height: 100vh;
+}
+
+.dashboard-container {
+  flex: 1;
+  margin-left: 250px; /* Match sidebar width */
+  transition: margin-left 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar.collapsed ~ .dashboard-container {
+  margin-left: 70px; /* Match collapsed sidebar width */
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 1.5rem;
+  background-color: #f9fafb;
+}
+
+.dashboard-header {
+  margin-bottom: 2rem;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.theme-toggle-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.25rem;
+  color: #6b7280;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #4f46e5;
+}
+
+.dashboard-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0;
+}
+
+.dashboard-header p {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+/* Dashboard Grid Layout */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.refresh-button {
+  background-color: #4f46e5;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+}
+
+.refresh-button:hover {
+  background-color: #4338ca;
+}
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.card-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.card-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #4f46e5;
+  margin: 0;
+}
+
+.card-content {
+  padding: 1.5rem;
+}
+
+/* Stat Cards */
+.stat-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.5rem;
+  flex: 1;
+  min-width: 180px;
+  transition: background-color 0.2s ease;
+}
+
+.stat-card:hover {
+  background-color: #f3f4f6;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.5rem;
+  margin-right: 1rem;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.stat-icon.activated {
+  background-color: #10b981;
+}
+
+.stat-icon.non-activated {
+  background-color: #f59e0b;
+}
+
+.stat-icon.total {
+  background-color: #4f46e5;
+}
+
+.stat-icon.unread {
+  background-color: #ef4444;
+}
+
+.stat-icon.total-notifications {
+  background-color: #6366f1;
+}
+
+.stat-details h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 0.25rem 0;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+/* Gender Distribution */
+.gender-distribution .card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.gender-chart {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+}
+
+.gender-bars {
+  flex: 1;
+  min-width: 250px;
+}
+
+.gender-bar-container {
+  margin-bottom: 1.5rem;
+}
+
+.gender-label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+.gender-label svg {
+  margin-right: 0.5rem;
+}
+
+.male-icon {
+  color: #4f46e5;
+}
+
+.female-icon {
+  color: #ec4899;
+}
+
+.gender-bar-wrapper {
+  position: relative;
+  height: 1.5rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
   overflow: hidden;
 }
 
-/* Content Area */
-.contentp {
-  flex: 1;
-  padding: 20px;
+.gender-bar {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 1s ease-out;
+}
+
+.male-bar {
+  background-color: #4f46e5;
+}
+
+.female-bar {
+  background-color: #ec4899;
+}
+
+.gender-percentage {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: white;
+}
+
+/* Pie Chart */
+.gender-pie-chart {
   display: flex;
   flex-direction: column;
-  gap: 30px;
-  overflow: auto;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 200px;
 }
 
-/* Main Content - No animation here */
-.main-contentp {
+.pie-chart {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  margin-bottom: 1rem;
+}
+
+.pie-chart-legend {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+}
+
+.legend-color {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  margin-right: 0.5rem;
+}
+
+.male-color {
+  background-color: #4f46e5;
+}
+
+.female-color {
+  background-color: #ec4899;
+}
+
+/* Recent Requests */
+.requests-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.request-type {
+  background-color: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.5rem;
   text-align: center;
-  padding: 30px;
-  background: #ffffff;
-  border-radius: 15px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.main-contentp h1 {
-  font-size: 2.5rem;
-  color: #0e135f;
-  margin-bottom: 20px;
+.request-type:hover {
+  transform: translateY(-2px);
+  background-color: #f3f4f6;
 }
 
-.main-contentp p {
-  font-size: 1.2rem;
-  color: #555;
-  margin-top: 10px;
+.request-type h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0 0 0.5rem 0;
 }
 
-/* Personnel Section - Apply fade-in animation here */
-.personnel-section {
-  background-color: #ffffff;
-  padding: 40px;
-  border-radius: 15px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  margin-top: 30px;
-  opacity: 0; /* Start as invisible */
-  animation: fadeInContainer 1s ease-in-out forwards; /* Apply animation */
-}
-
-/* Notifications Section - Apply fade-in animation here */
-.notifications-section {
-  background-color: #ffffff;
-  padding: 40px;
-  border-radius: 15px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  margin-top: 30px;
-  opacity: 0; /* Start as invisible */
-  animation: fadeInContainer 1s ease-in-out forwards; /* Apply animation */
-}
-
-.notifications-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
-}
-
-.personnel-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 30px;
-  margin-top: 30px;
-}
-
-/* Animation for fading in the cards */
-.personnel-card,
-.notification-card {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  opacity: 0; /* Start as invisible */
-  animation: fadeInCards 1s ease-in-out forwards;
-  animation-delay: 0.2s; /* Delay for each card */
-}
-
-/* Animation to fade in cards */
-@keyframes fadeInCards {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.personnel-card:hover,
-.notification-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.personnel-card h3,
-.notification-card h3 {
-  margin: 0;
+.request-type p {
   font-size: 1.5rem;
-  color: #0e135f;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
 }
 
-.personnel-card p,
-.notification-card p {
-  font-size: 1.2rem;
-  color: #333;
-  margin-top: 10px;
+/* Dark Mode Styles */
+.dark .dashboard-content {
+  background-color: #0e1525; /* Very dark navy/black background */
 }
 
-.activated-personnel {
-  background-color: #e0e8fa;
+.dark .dashboard-header h1 {
+  color: #f9fafb;
 }
 
-.non-activated-personnel {
-  background-color: #cdcbdd;
+.dark .dashboard-header p {
+  color: #9ca3af;
 }
 
-/* Animation for fading in the container */
-@keyframes fadeInContainer {
-  0% {
-    opacity: 0;
+.dark .theme-toggle-button {
+  color: #9ca3af;
+}
+
+.dark .theme-toggle-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #6366f1;
+}
+
+.dark .dashboard-card {
+  background-color: #1a2233; /* Slightly lighter than the background */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .card-header {
+  border-bottom: 1px solid #2d3748;
+  background-color: rgba(99, 102, 241, 0.05);
+}
+
+.dark .card-header h2 {
+  color: #6366f1;
+}
+
+.dark .stat-card {
+  background-color: #131e36; /* Slightly lighter than card background */
+}
+
+.dark .stat-card:hover {
+  background-color: #1c2a47;
+}
+
+.dark .stat-details h3 {
+  color: #9ca3af;
+}
+
+.dark .stat-value {
+  color: #f9fafb;
+}
+
+.dark .gender-label {
+  color: #d1d5db;
+}
+
+.dark .gender-bar-wrapper {
+  background-color: #2d3748;
+}
+
+.dark .request-type {
+  background-color: #131e36; /* Matching stat-card background */
+}
+
+.dark .request-type:hover {
+  background-color: #1c2a47;
+}
+
+.dark .request-type h3 {
+  color: #9ca3af;
+}
+
+.dark .request-type p {
+  color: #f9fafb;
+}
+
+/* App container background in dark mode */
+.dark.app-container {
+  background-color: #0e1525; /* Very dark navy/black background */
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
-  100% {
-    opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    margin-left: 0;
+  }
+
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .stat-cards {
+    flex-direction: column;
+  }
+
+  .stat-card {
+    width: 100%;
+  }
+
+  .gender-chart {
+    flex-direction: column;
   }
 }
+
+@media (max-width: 480px) {
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .card-header h2 {
+    font-size: 1.125rem;
+  }
+
+  .requests-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
