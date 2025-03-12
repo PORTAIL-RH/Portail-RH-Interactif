@@ -28,7 +28,7 @@ const useNotifications = (role) => {
         setUnviewedCount(data.filter((notif) => !notif.viewed && notif.role === role).length);
       } else {
         setError(`Erreur: ${response.status}`);
-      }
+      } 
     } catch (error) {
       setError("Impossible de récupérer les notifications.");
     }

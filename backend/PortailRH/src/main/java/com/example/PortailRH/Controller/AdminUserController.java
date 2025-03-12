@@ -1,13 +1,11 @@
 package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.AdminUser;
-import com.example.PortailRH.Model.Service;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.AdminUserService;
-import com.example.PortailRH.Util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -41,21 +39,21 @@ public class AdminUserController {
                         .body(Map.of("message", "Role is required."));
             }
 
-            // Validate serviceId for "collaborateur" role
-            if (role.equals("collaborateur") && (serviceId == null || serviceId.isEmpty())) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("message", "Service ID is required for 'collaborateur' role."));
-            }
-
-            // For non-collaborateur roles, set serviceId to null
-            if (!role.equals("collaborateur")) {
+            // Validate serviceId for "collaborateur" and "Chef Hiérarchique" roles
+            if ((role.equals("collaborateur") || role.equals("Chef Hiérarchique"))) {
+                if (serviceId == null || serviceId.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body(Map.of("message", "Service ID is required for '" + role + "' role."));
+                }
+            } else {
+                // For other roles, set serviceId to null
                 serviceId = null;
             }
 
             // Call the service method
             adminUserService.activateCollaborateur(id, role, serviceId);
 
-            return ResponseEntity.ok(Map.of("message", "Collaborateur activé avec succès !"));
+            return ResponseEntity.ok(Map.of("message", "Personnel activé avec succès !"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", e.getMessage()));
@@ -64,6 +62,7 @@ public class AdminUserController {
                     .body(Map.of("message", "Une erreur est survenue : " + e.getMessage()));
         }
     }
+
     /**
      * Deactivate a collaborator by ID.
      */
@@ -72,7 +71,7 @@ public class AdminUserController {
         try {
             adminUserService.desactivateCollaborateur(id);
             Map<String, String> response = new HashMap<>();
-            response.put("message", "Collaborateur désactivé avec succès !");
+            response.put("message", "Personnel désactivé avec succès !");
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             Map<String, String> response = new HashMap<>();

@@ -75,14 +75,19 @@ const Personnel = () => {
   }, []);
 
   // Handle role change
+
   const handleRoleChange = (e) => {
     const role = e.target.value;
     setSelectedRole(role);
-    // Automatically set service to null for RH and Chef Hiérarchique
-    if (role === "RH" || role === "chef hierarchique") {
-      setSelectedService("");
+  
+    // Enable service selection for "chef hierarchique" or "collaborateur"
+    if (role === "Chef Hiérarchique" || role === "collaborateur") {
+      setSelectedService(selectedService || ""); // Keep the selected service if already selected
+    } else {
+      setSelectedService(""); // Reset service selection if not "chef hierarchique" or "collaborateur"
     }
   };
+  
 
   // Handle service change
   const handleServiceChange = (e) => {
@@ -97,7 +102,7 @@ const Personnel = () => {
         return;
       }
       // Only check for service if the role is "collaborateur"
-      if (selectedRole === "collaborateur" && !selectedService) {
+      if (selectedRole === "collaborateur" || selectedRole ==="Chef Hiérarchique" && !selectedService) {
         alert("Please select a service before activating!");
         return;
       }
@@ -113,9 +118,14 @@ const Personnel = () => {
       action === "activate"
         ? JSON.stringify({
             role: selectedRole,
-            serviceId: selectedRole === "collaborateur" ? selectedService : null, // Only send serviceId for Collaborateur
+            serviceId: selectedRole === "collaborateur"|| selectedRole ==="Chef Hiérarchique" ? selectedService : null, // Only send serviceId for Collaborateur
           })
         : null;
+        //console to check
+        console.log("Request Body:", JSON.stringify({
+          role: selectedRole,
+          serviceId: selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique" ? selectedService : null,
+        }));
 
     try {
       const response = await fetch(endpoint, {
@@ -137,7 +147,7 @@ const Personnel = () => {
                   active: action === "activate",
                   role: selectedRole,
                   service:
-                    selectedRole === "collaborateur"
+                    selectedRole === "collaborateur" || selectedRole ==="Chef Hiérarchique"
                       ? services.find((s) => s.serviceId === selectedService)
                       : null,
                 }
@@ -156,11 +166,16 @@ const Personnel = () => {
   // Handle the form submit for updating personnel
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
+    
+    // Ensure serviceId is sent for the correct roles
     const updatedPersonnel = {
       ...editingPersonnel,
       role: selectedRole,
-      serviceId: selectedRole === "collaborateur" ? selectedService : null,
+      serviceId: (selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique") 
+        ? (selectedService || editingPersonnel.serviceId)  // Ensure a value is set
+        : null,
     };
+  
     try {
       const response = await fetch(
         `http://localhost:8080/api/personnel/updateAllFields/${updatedPersonnel.id}`,
@@ -172,7 +187,7 @@ const Personnel = () => {
           body: JSON.stringify(updatedPersonnel),
         }
       );
-
+  
       if (response.ok) {
         const updatedData = await response.json();
         setPersonnel((prevPersonnel) =>
@@ -185,13 +200,15 @@ const Personnel = () => {
         setSelectedRole("");
         setSelectedService("");
       } else {
-        alert("Failed to update personnel.");
+        const errorMsg = await response.text();
+        alert(`Failed to update personnel. Server Response: ${errorMsg}`);
       }
     } catch (error) {
+      console.error("Error updating personnel:", error);
       alert("Error updating personnel. Please try again.");
     }
   };
-
+  
   // Handle cancel editing
   const handleCancelEdit = () => {
     setEditingPersonnel(null);
@@ -297,7 +314,7 @@ const Personnel = () => {
                     {person.active ? (
                       <span>{person.service?.serviceName || "N/A"}</span>
                     ) : (
-                      selectedRole === "collaborateur" && (
+                      (selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique") && (
                         <select
                           value={selectedService}
                           onChange={handleServiceChange}
@@ -313,6 +330,7 @@ const Personnel = () => {
                       )
                     )}
                   </td>
+
                   <td>
                     <button
                       onClick={() => handleValidate(person.id, "activate")}
@@ -393,7 +411,23 @@ const Personnel = () => {
                   </option>
                 ))}
               </select>
-              {selectedRole === "collaborateur" && (
+              {selectedRole === "collaborateur"  && (
+                <>
+                  <label>Service:</label>
+                  <select
+                    value={selectedService}
+                    onChange={handleServiceChange}
+                  >
+                    <option value="">Select Service</option>
+                    {services.map((service) => (
+                      <option key={service.serviceId} value={service.serviceId}>
+                        {service.serviceName}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {selectedRole === "Chef Hiérarchique"  && (
                 <>
                   <label>Service:</label>
                   <select

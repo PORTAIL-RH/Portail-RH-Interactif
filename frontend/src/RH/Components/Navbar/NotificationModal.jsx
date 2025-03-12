@@ -6,7 +6,7 @@ import "./NotificationModal.css";
 import useNotifications from "./useNotifications";
 
 const NotificationModal = ({ setUnviewedCount }) => {
-  const role = "Admin"; // Rôle de l'utilisateur actuel
+  const role = "RH"; // Rôle de l'utilisateur actuel
   const { notifications, unviewedCount, fetchNotifications, error } = useNotifications(role);
   const navigate = useNavigate();
 
@@ -19,10 +19,10 @@ const NotificationModal = ({ setUnviewedCount }) => {
   };
 
   const handleViewMore = () => {
-    navigate("/Notifications");
+    navigate("/Notificationsrh");
   };
 
-  // ✅ Filtrer et trier les notifications pour l'admin
+  // ✅ Filtrer et trier les notifications 
   const sortedNotifications = [...notifications]
     .filter((notification) => !notification.viewed && notification.role === role) // Filtrer par rôle et non lues
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Trier par date décroissante

@@ -65,7 +65,7 @@ public class PersonnelController {
                 personnelRepository.save(existingPersonnel);
 
                 // Send a notification
-                notificationService.createNotification("Le Personnel " + personnel.getNom() + " " + personnel.getPrenom() + " a été mis à jour.");
+                notificationService.createNotification("Le Personnel " + personnel.getNom() + " " + personnel.getPrenom() + " a été mis à jour.","Admin", null);
 
                 // Generate JWT token
                 String token = jwtUtil.generateToken(existingPersonnel.getEmail());
@@ -186,7 +186,7 @@ public class PersonnelController {
             personnelRepository.save(newPersonnel);
 
             // Send a notification
-            notificationService.createNotification("Un nouveau Personnel ajouté avec le matricule : " + matricule);
+            notificationService.createNotification("Un nouveau Personnel ajouté avec le matricule : " + matricule,"Admin", null);
 
             // Generate JWT token
             String token = jwtUtil.generateToken(email);

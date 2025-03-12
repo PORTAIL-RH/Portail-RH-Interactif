@@ -48,9 +48,9 @@ public class AdminUserService {
 
         // Validate service for "collaborateur" role
         Service service = null;
-        if (role.equals("collaborateur")) {
+        if ((role.equals("collaborateur") || role.equals("Chef Hiérarchique"))) {
             if (serviceId == null || serviceId.isEmpty()) {
-                throw new IllegalArgumentException("Service ID is required for 'collaborateur' role.");
+                throw new IllegalArgumentException("Service ID is required .");
             }
             service = serviceRepository.findById(serviceId)
                     .orElseThrow(() -> new IllegalArgumentException("Service non trouvé avec l'ID : " + serviceId));

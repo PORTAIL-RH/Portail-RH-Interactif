@@ -17,34 +17,46 @@ public class NotificationService {
     private NotificationRepository notificationRepository;
 
     @Autowired
-    private SimpMessagingTemplate messagingTemplate; // 🔥 Ajout du WebSocket
+    private SimpMessagingTemplate messagingTemplate;
 
-    // ✅ Créer une nouvelle notification + envoyer via WebSocket
-    public Notification createNotification(String message) {
+    // Create a new notification with role and serviceId
+    public Notification createNotification(String message, String role, String serviceId) {
         Notification notification = new Notification();
         notification.setMessage(message);
         notification.setTimestamp(LocalDateTime.now());
-        notification.setViewed(false); // Non lu par défaut
+        notification.setViewed(false);
+        notification.setRole(role); // Set the role
+        notification.setServiceId(serviceId); // Set the serviceId
 
         Notification savedNotification = notificationRepository.save(notification);
 
-        // 🔥 Envoi en temps réel via WebSocket
-        messagingTemplate.convertAndSend("/topic/notifications", getUnviewedNotifications().size());
+        // Send real-time update via WebSocket
+        messagingTemplate.convertAndSend("/topic/notifications/" + role, savedNotification);
 
         return savedNotification;
     }
 
-    // ✅ Récupérer toutes les notifications
+    // Get all notifications
     public List<Notification> getAllNotifications() {
         return notificationRepository.findAll();
     }
 
-    // ✅ Récupérer uniquement les notifications non lues
+    // Get unviewed notifications
     public List<Notification> getUnviewedNotifications() {
         return notificationRepository.findByViewedFalse();
     }
 
-    // ✅ Marquer une notification comme "vue" et envoyer l'update WebSocket
+    // Get unviewed notifications for a specific role
+    public List<Notification> getUnviewedNotificationsByRole(String role) {
+        return notificationRepository.findByRoleAndViewedFalse(role);
+    }
+
+    // Get unviewed notifications for a specific role and serviceId
+    public List<Notification> getUnviewedNotificationsByRoleAndServiceId(String role, String serviceId) {
+        return notificationRepository.findByRoleAndServiceIdAndViewedFalse(role, serviceId);
+    }
+
+    // Mark a notification as viewed
     public boolean markAsViewed(String id) {
         Optional<Notification> optionalNotification = notificationRepository.findById(id);
         if (optionalNotification.isPresent()) {
@@ -52,11 +64,21 @@ public class NotificationService {
             notification.setViewed(true);
             notificationRepository.save(notification);
 
-            // 🔥 Mise à jour en temps réel via WebSocket
-            messagingTemplate.convertAndSend("/topic/notifications", getUnviewedNotifications().size());
+            // Send real-time update via WebSocket
+            messagingTemplate.convertAndSend("/topic/notifications/" + notification.getRole(), getUnviewedNotificationsByRole(notification.getRole()).size());
 
             return true;
         }
-        return false; // Notification inexistante
+        return false; // Notification not found
+    }
+
+    // Get notifications by role
+    public List<Notification> getNotificationsByRole(String role) {
+        return notificationRepository.findByRole(role);
+    }
+
+    // Get notifications by role and serviceId
+    public List<Notification> getNotificationsByRoleAndServiceId(String role, String serviceId) {
+        return notificationRepository.findByRoleAndServiceId(role, serviceId);
     }
 }

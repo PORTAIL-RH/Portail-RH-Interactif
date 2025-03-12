@@ -15,12 +15,16 @@ const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
 const PersonnelsRH = lazy(() => import('./RH/Components/Personnels/Personnels.jsx'));
 const DemandesRH = lazy(() => import('./RH/Components/Demandes/Demandes.jsx')); 
 const CalendarRH = lazy(() => import('./RH/Components/Calendar/Calendar.jsx'));
+const Notificationsrh = lazy(() => import('./RH/Components/Notifications/Notifications.jsx'));
+const NotificationModalrh = lazy(() => import('./RH/Components/Navbar/NotificationModal.jsx'));
 
 // CHEF
 const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
 const Personnels = lazy(() => import('./Chef_hierarchique/Components/Personnels/Personnels.jsx'));
 const Demandes = lazy(() => import('./Chef_hierarchique/Components/Demandes/Demandes.jsx'));
 const Calendar = lazy(() => import('./Chef_hierarchique/Components/Calendar/Calendar.jsx'));
+const Notificationschef = lazy(() => import('./Chef_hierarchique/Components/Notifications/Notifications.jsx'));
+const NotificationModalchef = lazy(() => import('./Chef_hierarchique/Components/Navbar/NotificationModal.jsx'));
 
 // Collaborateurs
 const Authentication = lazy(() => import('./collaborateurs/Authentification/Authentication.jsx'));
@@ -60,15 +64,16 @@ function App() {
           <Route path="/Personnels" element={<Personnels />} />
           <Route path="/Demandes" element={<Demandes />} />
           <Route path="/Calendar" element={<Calendar />} />
-
+          <Route path="/Notificationschef" element={<Notificationschef />} />
+          <Route path="/NotificationModalchef" element={<NotificationModalchef />} />
 
             {/* RH */}
   <Route path="/AccueilRH" element={<AccueilRH />} />
           <Route path="/PersonnelsRH" element={<PersonnelsRH />} />
           <Route path="/DemandesRH" element={<DemandesRH />} />
           <Route path="/CalendarRH" element={<CalendarRH />} />
-
-
+          <Route path="/Notificationsrh" element={<Notificationsrh />} />
+          <Route path="/NotificationModalrh" element={<NotificationModalrh />} />
 
           {/* Collaborateurs */}
           <Route path="/" element={<Authentication />} />

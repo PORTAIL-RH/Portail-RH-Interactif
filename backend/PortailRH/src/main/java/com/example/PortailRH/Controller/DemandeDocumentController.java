@@ -1,22 +1,21 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.DemandeDocument;
-import com.example.PortailRH.Model.Fichier_joint;
-import com.example.PortailRH.Model.Personnel;
-import com.example.PortailRH.Model.Reponse;
+import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.DemandeDocumentRepository;
+import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Service.FichierJointService;
+import com.example.PortailRH.Service.NotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -27,7 +26,13 @@ public class DemandeDocumentController {
     private DemandeDocumentRepository demandeDocumentRepository;
     @Autowired
     private FichierJointService fichierJointService;
+    @Autowired
+    private NotificationService notificationService;
 
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
+    @Autowired
+    private PersonnelRepository personnelRepository;
 
     // Récupérer toutes les demandes
     @GetMapping
@@ -74,6 +79,35 @@ public class DemandeDocumentController {
             if (file != null && !file.isEmpty()) {
                 Fichier_joint fichier = fichierJointService.saveFile(file);
                 demandeDocument.getFiles().add(fichier); // Assuming DemandeDocument has a List<Fichier_joint> field
+            }
+
+            // Send a notification
+            // Fetch the personnel details to get the service and chef hiérarchique
+            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
+            if (personnelOptional.isPresent()) {
+                Personnel personnelDetails = personnelOptional.get();
+                Service servicePersonnel = personnelDetails.getService();
+
+                // Send a notification to RH
+                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
+                notificationService.createNotification(notificationMessageRH, "RH", null);
+
+                // Check if the personnel has a service and if the chef hiérarchique is in the same service
+                if (servicePersonnel != null) {
+                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+
+                    if (chefHierarchique != null) {
+                        // Send a notification to the chef hiérarchique
+                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
+
+                        // Create a notification with role and serviceId
+                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getServiceId());
+                    } else {
+                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
+                    }
+                } else {
+                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
+                }
             }
 
             // Save the DemandeDocument object

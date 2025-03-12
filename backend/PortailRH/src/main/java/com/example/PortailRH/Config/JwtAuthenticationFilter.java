@@ -82,6 +82,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/admin/activate-personnel") ||
                 requestURI.startsWith("/api/admin/desactivate-personnel") ||
                 requestURI.startsWith("/api//updateAllFields/{id}")||
+                requestURI.startsWith("/api/personnel/updateAllFields")||
                 requestURI.startsWith("/api/notifications")) {
             System.out.println("Skipping JWT filter for: " + requestURI); // Log skipped URIs
             filterChain.doFilter(request, response);
