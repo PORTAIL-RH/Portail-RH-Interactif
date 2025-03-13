@@ -19,11 +19,10 @@ public class CandidatureController {
 
     // Create a new Candidature
     @PostMapping
-    public Candidature createCandidature(@RequestBody Candidature candidature) {
-        // Définir la date d'ajout de la postulation
+    public ResponseEntity<Candidature> createCandidature(@RequestBody Candidature candidature) {
         candidature.setDateAjoutPostulation(new Date());
-        // Sauvegarder la candidature (le statut sera calculé dynamiquement via getStatus())
-        return candidatureRepository.save(candidature);
+        Candidature savedCandidature = candidatureRepository.save(candidature);
+        return ResponseEntity.status(201).body(savedCandidature); // Ensure status is 201
     }
 
     // Get all Candidatures

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from "react";
 import './AjoutPersonnel.css';
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
+
 
 const PersonnelForm = () => {
   const [matricule, setMatricule] = useState('');
@@ -10,7 +11,25 @@ const PersonnelForm = () => {
   const [personnelList, setPersonnelList] = useState([]);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [theme, setTheme] = useState("light");
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+  // Fonction pour basculer entre les thèmes
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    localStorage.setItem("theme", newTheme);
+  };
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,9 +71,10 @@ const PersonnelForm = () => {
   };
 
   return (
-    <div className="accueil-containerajpp">
-      <Navbar />
+    <div className={`app-container ${theme}`}>
       <Sidebar />
+      <div className="personnel-container">
+        <Navbar />
       <div className="personnel-form-container">
         <h2>Ajouter un Personnel</h2>
 
@@ -118,6 +138,8 @@ const PersonnelForm = () => {
         </div>
       </div>
     </div>
+    </div>
+
   );
 };
 
