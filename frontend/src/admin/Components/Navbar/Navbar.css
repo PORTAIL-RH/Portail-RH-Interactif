@@ -1,69 +1,330 @@
-/* Navbar.css */
-
+/* Main Navbar Container */
 .navbar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #000220;
-  padding: 20px 20px;
-  color: white;
-  font-family: Arial, sans-serif;
-  box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  height: 60px;
+  padding: 0 25px;
+  background-color: #1a2233;
+  color: #ffffff;
+  border-bottom: 1px solid #2d3748;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  transition: all 0.3s ease;
 }
 
-.navbar-text {
-  font-size: 18px;
-  font-weight: bold;
+/* Dark mode styles for navbar */
+.dark .navbar {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
+/* Welcome Text */
+.navbar-welcome {
+  display: flex;
+  align-items: center;
+}
+
+.welcome-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e2e8f0;
+  position: relative;
+  padding-left: 12px;
+}
+
+.welcome-text::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 70%;
+  width: 3px;
+  background: linear-gradient(to bottom, #6366f1, #818cf8);
+  border-radius: 2px;
+}
+
+/* Navbar Actions */
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+  background: none;
+  border: none;
+  color: #a0aec0;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background-color: #2a3349;
+  color: #6366f1;
+}
+
+/* Notification Container */
 .notification-container {
   position: relative;
+}
+
+.notification-button {
+  background: none;
+  border: none;
   cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.notification-button:hover {
+  background-color: #2a3349;
+}
+
+.notification-icon-img {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.2s;
+}
+
+.notification-button:hover .notification-icon-img {
+  transform: scale(1.1);
+}
+
+/* Notification Badge */
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: #e53e3e;
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 2px solid #1a2233;
+  z-index: 1;
+}
+
+/* Loading and Error States */
+.navbar.loading,
+.navbar.error {
+  justify-content: center;
+  font-size: 14px;
+  color: #a0aec0;
+}
+
+.navbar.error {
+  color: #fc8181;
+}
+
+.dark .navbar-text {
+  color: #f1f5f9;
+}
+
+/* Theme Toggle Button */
+.theme-toggle-button {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-toggle-button::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #f1f5f9;
+  border-radius: 50%;
+  z-index: -1;
+  transform: scale(0);
+  transition: transform 0.3s ease;
+}
+
+.theme-toggle-button:hover::before {
+  transform: scale(1);
+}
+
+.theme-toggle-button:hover {
+  color: #4f46e5;
+}
+
+.dark .theme-toggle-button {
+  color: #e2e8f0;
+}
+
+.dark .theme-toggle-button::before {
+  background-color: #334155;
+}
+
+/* Notification Icon */
+.notification-icon {
+  position: relative;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-icon:hover {
+  background-color: #f1f5f9;
+}
+
+.dark .notification-icon:hover {
+  background-color: #334155;
 }
 
 .icon-notif {
-  width: 35px;
-  height: 35px;
-  margin-right:30px;
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease;
 }
 
-.notification-badge {
-  background-color: #ff3b3b; 
-  color: #fff; 
-  font-size: 12px; 
-  font-weight: bold;
-  border-radius: 50%; 
-  padding: 2px 5px;
-  margin-left: 20px; 
-  display: inline-block;
+.notification-icon:hover .icon-notif {
+  transform: scale(1.1);
 }
 
-/* For smaller screens */
+/* User Profile */
+.user-profile {
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-image {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.profile-image:hover {
+  border-color: #4f46e5;
+  transform: scale(1.05);
+}
+
+.dark .profile-image {
+  border-color: #475569;
+}
+
+.dark .profile-image:hover {
+  border-color: #6366f1;
+}
+
+/* Notification Modal Styles */
+.notification-modal {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: 350px;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  z-index: 50;
+  animation: slideInRight 0.3s ease-out;
+  border: 1px solid #e5e7eb;
+}
+
+.dark .notification-modal {
+  background-color: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Adjustments */
 @media (max-width: 768px) {
   .navbar {
-    flex-direction: column;
-    text-align: center;
-    padding: 15px 10px;
+    padding: 0 15px;
+  }
+
+  .welcome-text {
+    font-size: 13px;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .navbar {
+    padding: 0.75rem 1rem;
   }
 
   .navbar-text {
-    margin-bottom: 10px;
+    font-size: 0.9rem;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .icon-notif {
-    width: 20px;
-    height: 20px;
-  }
-
-  .notification-badge {
-    top: -3px;
-    right: -3px;
-    font-size: 10px;
-    padding: 3px 5px;
+  .notification-modal {
+    width: 300px;
+    right: 10px;
   }
 }
+
+@media (max-width: 480px) {
+  .welcome-text {
+    max-width: 120px;
+  }
+  .navbar-text {
+    max-width: 120px;
+  }
+
+  .notification-modal {
+    width: calc(100% - 20px);
+    right: 10px;
+    max-height: calc(100vh - 74px);
+    overflow-y: auto;
+  }
+}
+

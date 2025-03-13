@@ -7,8 +7,18 @@ const Notifications = lazy(() => import('./admin/Components/Notifications/Notifi
 const Personnel = lazy(() => import('./admin/Components/Personnel/Personnels.jsx'));
 const Apropos = lazy(() => import('./admin/Components/Apropos/Apropos.jsx'));
 const NotificationModal = lazy(() => import('./admin/Components/Navbar/NotificationModal.jsx'));
-const Addpers = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPersonnel.jsx'));
+const AjoutPersonnel = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPersonnel.jsx'));
+const AjoutRole = lazy(() => import('./admin/Components/AjoutRole/AjoutRole.jsx'));
+const AjoutService = lazy(() => import('./admin/Components/AjoutService/AjoutService.jsx'));
+const AjoutCandidature = lazy(() => import('./admin/Components/AjoutCandidature/AjoutCandidature.jsx'));
 
+const ProfileADMIN = lazy(() => import('./admin/Components/Profile/Profile.jsx'));
+const AjoutDemandeFormationADMIN = lazy(() => import('./admin/Components/AjoutDemande/Formation.jsx'));
+const AjoutDemandeCongeADMIN = lazy(() => import('./admin/Components/AjoutDemande/Conge.jsx'));
+const AjoutDemandePreAvanceADMIN = lazy(() => import('./admin/Components/AjoutDemande/PreAvance.jsx'));
+const AjoutDemandeDocumentADMIN = lazy(() => import('./admin/Components/AjoutDemande/Document.jsx'));
+const AjoutDemandeAutorisationADMIN = lazy(() => import('./admin/Components/AjoutDemande/Autorisation.jsx'));
+const DemandesADMIN = lazy(() => import('./admin/Components/DemandesADMIN/DemandesADMIN.jsx'));
 
 // RH
 const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
@@ -83,8 +93,22 @@ function App() {
           <Route path="/Personnel" element={<Personnel />} />
           <Route path="/Apropos" element={<Apropos />} />
           <Route path="/NotificationModal" element={<NotificationModal />} />
-          <Route path="/Addpers" element={<Addpers />} />
-          
+          <Route path="/AjoutPersonnel" element={<AjoutPersonnel />} />
+          <Route path="/AjoutRole" element={<AjoutRole />} />
+          <Route path="/AjoutService" element={<AjoutService />} />
+          <Route path="/AjoutCandidature" element={<AjoutCandidature />} />
+
+          <Route path="/ProfileADMIN" element={<ProfileADMIN />} />
+          <Route path="/AjoutDemandeAutorisationADMIN" element={<AjoutDemandeAutorisationADMIN />} />
+          <Route path="/AjoutDemandeFormationADMIN" element={<AjoutDemandeFormationADMIN />} />
+          <Route path="/AjoutDemandePreAvanceADMIN" element={<AjoutDemandePreAvanceADMIN />} />
+          <Route path="/AjoutDemandeDocumentADMIN" element={<AjoutDemandeDocumentADMIN />} />
+          <Route path="/AjoutDemandeCongeADMIN" element={<AjoutDemandeCongeADMIN />} />
+          <Route path="/DemandesADMIN" element={<DemandesADMIN />} />
+
+
+
+
   {/* chef hierarchique */}
   <Route path="/AccueilCHEF" element={<AccueilCHEF />} />
           <Route path="/Personnels" element={<Personnels />} />
