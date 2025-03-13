@@ -1,312 +1,390 @@
-import React, { useState, useEffect } from 'react';
-import './Formation.css';
+import { useState, useEffect } from "react"
+import { FiFile, FiCalendar, FiBookOpen, FiList, FiTag, FiUpload } from "react-icons/fi"
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import './Formation.css';
 
 const FormationForm = () => {
   const [formData, setFormData] = useState({
-    nbrJours: '',
-    dateDebut: '',
-    typeDemande: '',
-    texteDemande: '',
-    titre: '',
-    type: '',
-    theme: '',
-    annee_f: '',
-    codeSoc: '',
-    matPers: '',
+    nbrJours: "",
+    dateDebut: "",
+    typeDemande: "formation",
+    texteDemande: "",
+    titre: "",
+    type: "",
+    theme: "",
+    annee_f: new Date().getFullYear().toString(),
+    codeSoc: "",
+    matPers: "",
     file: null,
-  });
+  })
 
-  const [errors, setErrors] = useState({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const [titres, setTitres] = useState([]);
-  const [types, setTypes] = useState({});
-  const [themes, setThemes] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const [file, setFile] = useState(null);
+  const [errors, setErrors] = useState({})
+  const [titres, setTitres] = useState([])
+  const [types, setTypes] = useState({})
+  const [themes, setThemes] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [file, setFile] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    fetchTitres();
-  }, []);
+    fetchTitres()
+
+    // Get user data from localStorage
+    const userId = localStorage.getItem("userId")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
+
+    if (userId && userCodeSoc) {
+      setFormData((prev) => ({
+        ...prev,
+        codeSoc: userCodeSoc,
+        matPers: userId,
+      }))
+    }
+  }, [])
 
   const fetchTitres = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
-      const response = await fetch('http://localhost:8080/api/titres/');
+      const response = await fetch("http://localhost:8080/api/titres/")
       if (!response.ok) {
-        throw new Error('Erreur réseau');
+        throw new Error("Erreur réseau")
       }
-      const data = await response.json();
+      const data = await response.json()
 
       const adaptedData = data.map((titre) => ({
         ...titre,
-        types: titre.types?.map((type) => ({
-          ...type,
-          nom: type.type,
-          themes: type.themes?.map((theme) => ({
-            ...theme,
-            nom: theme.theme,
+        types:
+          titre.types?.map((type) => ({
+            ...type,
+            nom: type.type,
+            themes:
+              type.themes?.map((theme) => ({
+                ...theme,
+                nom: theme.theme,
+              })) || [],
           })) || [],
-        })) || [],
-      }));
+      }))
 
-      setTitres(adaptedData);
+      setTitres(adaptedData)
 
-      const typesMap = {};
-      const themesMap = {};
+      const typesMap = {}
+      const themesMap = {}
 
       adaptedData.forEach((titre) => {
-        typesMap[titre.id] = titre.types || [];
+        typesMap[titre.id] = titre.types || []
         titre.types?.forEach((type) => {
-          themesMap[type.id] = type.themes || [];
-        });
-      });
+          themesMap[type.id] = type.themes || []
+        })
+      })
 
-      setTypes(typesMap);
-      setThemes(themesMap[formData.type] || []);
+      setTypes(typesMap)
+      setThemes(themesMap[formData.type] || [])
     } catch (err) {
-      setError('Erreur lors du chargement des données');
-      toast.error('Erreur lors du chargement des données');
-      console.error(err);
+      setError("Erreur lors du chargement des données")
+      toast.error("Erreur lors du chargement des données")
+      console.error(err)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  const handleSidebarToggle = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  }
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-    setErrors({ ...errors, [name]: '' });
-  };
+    const { name, value } = e.target
+    setFormData({ ...formData, [name]: value })
+    setErrors({ ...errors, [name]: "" })
+  }
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
+    setFile(e.target.files[0])
+  }
 
   const validateForm = () => {
-    const newErrors = {};
-    if (!formData.nbrJours) newErrors.nbrJours = 'Nombre de Jours est requis';
-    if (!formData.dateDebut) newErrors.dateDebut = 'Date Début est requise';
-    if (!formData.texteDemande) newErrors.texteDemande = 'Texte Demande est requis';
+    const newErrors = {}
+    if (!formData.nbrJours) newErrors.nbrJours = "Nombre de Jours est requis"
+    if (!formData.dateDebut) newErrors.dateDebut = "Date Début est requise"
+    if (!formData.texteDemande) newErrors.texteDemande = "Texte Demande est requis"
+    if (!formData.titre) newErrors.titre = "Titre est requis"
+    if (!formData.type) newErrors.type = "Type est requis"
+    if (!formData.theme) newErrors.theme = "Thème est requis"
 
-    setErrors(newErrors);
-    console.log("Validation errors:", newErrors); 
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log("Form submission triggered");
-
-    const userId = localStorage.getItem('userId');
-    const authToken = localStorage.getItem('authToken');
-    const userCodeSoc = localStorage.getItem('userCodeSoc');
-
-    if (!authToken || !userId || ! userCodeSoc) {
-      setError('Missing token or user ID');
-      toast.error('Missing token or user ID');
-      return;
-    }
-
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      typeDemande: "formation",
-      codeSoc: userCodeSoc,
-
-    }));
-
-    if (!validateForm()) {
-      toast.error('Veuillez corriger les erreurs dans le formulaire.');
-      return;
-    }
-
-    const formDataToSend = new FormData();
-    formDataToSend.append('nbrJours', formData.nbrJours); 
-    formDataToSend.append('dateDebut', formData.dateDebut);
-    formDataToSend.append('typeDemande', "formation");
-    formDataToSend.append('texteDemande', formData.texteDemande);
-    formDataToSend.append('titre', formData.titre);
-    formDataToSend.append('type', formData.type);
-    formDataToSend.append('theme', formData.theme);
-    formDataToSend.append('annee_f', formData.annee_f);
-    formDataToSend.append('codeSoc', formData.codeSoc);
-    formDataToSend.append('matPersId', userId);
-    formDataToSend.append('file', file);
-
-    try {
-      const response = await fetch('http://localhost:8080/api/demande-formation/create', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: formDataToSend,
-      });
-
-      console.log("Response status:", response.status);
-      const contentType = response.headers.get('content-type');
-      if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const errorResult = await response.json();
-          console.error("Server error:", errorResult);
-          toast.error('Erreur lors de la soumission du formulaire: ' + (errorResult.message || 'Erreur inconnue'));
-        } else {
-          const errorText = await response.text();
-          console.error("Server error:", errorText);
-          toast.error('Erreur lors de la soumission du formulaire: ' + errorText);
-        }
-        return;
-      }
-
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        console.log('Form submitted successfully:', result);
-        toast.success('Formulaire soumis avec succès !');
-        setError('');
-      } else {
-        const resultText = await response.text();
-        console.log('Form submitted successfully:', resultText);
-        toast.success('Formulaire soumis avec succès !');
-        setError('');
-      }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error('Erreur lors de la soumission du formulaire: ' + error.message);
-    }
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleTypeChange = (e) => {
-    const selectedType = e.target.value;
-    setFormData({ ...formData, type: selectedType, theme: '' });
+    const selectedType = e.target.value
+    setFormData({ ...formData, type: selectedType, theme: "" })
 
     if (formData.titre && types[formData.titre]) {
-      const typeObject = types[formData.titre].find((type) => type.id === selectedType);
+      const typeObject = types[formData.titre].find((type) => type.id === selectedType)
       if (typeObject) {
-        setThemes(typeObject.themes || []);
+        setThemes(typeObject.themes || [])
       } else {
-        setThemes([]);
+        setThemes([])
       }
     }
-  };
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!validateForm()) {
+      toast.error("Veuillez corriger les erreurs dans le formulaire.")
+      return
+    }
+
+    setIsSubmitting(true)
+
+    const userId = localStorage.getItem("userId")
+    const authToken = localStorage.getItem("authToken")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
+
+    if (!authToken || !userId || !userCodeSoc) {
+      setError("Token ou ID utilisateur manquant")
+      toast.error("Token ou ID utilisateur manquant")
+      setIsSubmitting(false)
+      return
+    }
+
+    const formDataToSend = new FormData()
+    formDataToSend.append("nbrJours", formData.nbrJours)
+    formDataToSend.append("dateDebut", formData.dateDebut)
+    formDataToSend.append("typeDemande", "formation")
+    formDataToSend.append("texteDemande", formData.texteDemande)
+    formDataToSend.append("titre", formData.titre)
+    formDataToSend.append("type", formData.type)
+    formDataToSend.append("theme", formData.theme)
+    formDataToSend.append("annee_f", formData.annee_f)
+    formDataToSend.append("codeSoc", userCodeSoc)
+    formDataToSend.append("matPersId", userId)
+
+    if (file) {
+      formDataToSend.append("file", file)
+    }
+
+    try {
+      const response = await fetch("http://localhost:8080/api/demande-formation/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: formDataToSend,
+      })
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
+          const errorResult = await response.json()
+          throw new Error(errorResult.message || "Erreur inconnue")
+        } else {
+          const errorText = await response.text()
+          throw new Error(errorText || "Erreur inconnue")
+        }
+      }
+
+      toast.success("Demande de formation soumise avec succès !")
+
+      // Reset form
+      setFormData({
+        nbrJours: "",
+        dateDebut: "",
+        typeDemande: "formation",
+        texteDemande: "",
+        titre: "",
+        type: "",
+        theme: "",
+        annee_f: new Date().getFullYear().toString(),
+        codeSoc: userCodeSoc,
+        matPers: userId,
+        file: null,
+      })
+      setFile(null)
+      setError(null)
+    } catch (error) {
+      console.error("Erreur lors de la soumission du formulaire:", error)
+      toast.error(`Erreur lors de la soumission du formulaire: ${error.message}`)
+      setError(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
-    <div className="app">
+    <div className="dashboard-container">
       <Navbar />
-      <Sidebar isSidebarOpen={isSidebarOpen} onToggle={handleSidebarToggle} />
-
-      <div className="content">
-        <form className="form" onSubmit={handleSubmit}>
-          <h2>Demande de Formation</h2>
-
-          {loading && <div className="loading">Chargement...</div>}
-          {error && <div className="error">{error}</div>}
-
-          <div className="form-row-2">
-          <div className="form-group">
-    <label>Date Début:</label>
-    <input
-      type="date"
-      name="dateDebut"
-      value={formData.dateDebut}
-      onChange={handleChange}
-      required
-    />
-    {errors.dateDebut && <span className="error">{errors.dateDebut}</span>}
-  </div>
-  <div className="form-group">
-    <label>Nombre de Jours:</label>
-    <input
-      type="number"
-      name="nbrJours"
-      value={formData.nbrJours}
-      onChange={handleChange}
-      required
-      min="1"
-    />
-    {errors.nbrJours && <span className="error">{errors.nbrJours}</span>}
-  </div>
-
-  
-</div>
-
-          <div className="form-row-3">
-            <div className="form-group">
-              <label>Titre de la formation:</label>
-              <select name="titre" value={formData.titre} onChange={handleChange} required>
-                <option value="">Sélectionnez un titre</option>
-                {titres.map(titre => (
-                  <option key={titre.id} value={titre.id}>
-                    {titre.titre}
-                  </option>
-                ))}
-              </select>
-              {errors.titre && <span className="error">{errors.titre}</span>}
-            </div>
-            <div className="form-group">
-              <label>Type de la formation:</label>
-              <select name="type" value={formData.type} onChange={handleTypeChange} required>
-                <option value="">Sélectionnez un type</option>
-                {types[formData.titre]?.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.type}
-                  </option>
-                ))}
-              </select>
-              {errors.type && <span className="error">{errors.type}</span>}
-            </div>
-            <div className="form-group">
-              <label>Thème de la formation:</label>
-              <select name="theme" value={formData.theme} onChange={handleChange} required>
-                <option value="">Sélectionnez un thème</option>
-                {Array.isArray(themes) && themes.map((theme) => (
-                  <option key={theme.id} value={theme.id}>
-                    {theme.nom}
-                  </option>
-                ))}
-              </select>
-              {errors.theme && <span className="error">{errors.theme}</span>}
-            </div>
+      <div className="main-content">
+        <Sidebar />
+        <div className="content-area">
+          <div className="page-header">
+            <h1>Demande de Formation</h1>
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de formation</p>
           </div>
 
-          <div className="form-group">
-            <label>Texte Demande:</label>
-            <textarea name="texteDemande" value={formData.texteDemande} onChange={handleChange} required></textarea>
-            {errors.texteDemande && <span className="error">{errors.texteDemande}</span>}
-          </div>
+          <div className="form-card">
+            {loading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Chargement des données...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                {error && <div className="error-message">{error}</div>}
 
-          <div className="form-group">
-            <label>Fichier Joint : (optionnel)</label>
-            <input type="file" name="file" onChange={handleFileChange} />
-          </div>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="dateDebut">
+                      <FiCalendar className="form-icon" />
+                      Date de début
+                    </label>
+                    <input
+                      type="date"
+                      id="dateDebut"
+                      name="dateDebut"
+                      value={formData.dateDebut}
+                      onChange={handleChange}
+                      className={errors.dateDebut ? "error" : ""}
+                    />
+                    {errors.dateDebut && <span className="error-text">{errors.dateDebut}</span>}
+                  </div>
 
-          <button type="submit" className="submit-button">Soumettre</button>
-        </form>
+                  <div className="form-group">
+                    <label htmlFor="nbrJours">
+                      <FiCalendar className="form-icon" />
+                      Nombre de jours
+                    </label>
+                    <input
+                      type="number"
+                      id="nbrJours"
+                      name="nbrJours"
+                      value={formData.nbrJours}
+                      onChange={handleChange}
+                      min="1"
+                      className={errors.nbrJours ? "error" : ""}
+                    />
+                    {errors.nbrJours && <span className="error-text">{errors.nbrJours}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="titre">
+                      <FiBookOpen className="form-icon" />
+                      Titre de la formation
+                    </label>
+                    <select
+                      id="titre"
+                      name="titre"
+                      value={formData.titre}
+                      onChange={handleChange}
+                      className={errors.titre ? "error" : ""}
+                    >
+                      <option value="">Sélectionnez un titre</option>
+                      {titres.map((titre) => (
+                        <option key={titre.id} value={titre.id}>
+                          {titre.titre}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.titre && <span className="error-text">{errors.titre}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="type">
+                      <FiList className="form-icon" />
+                      Type de formation
+                    </label>
+                    <select
+                      id="type"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleTypeChange}
+                      className={errors.type ? "error" : ""}
+                      disabled={!formData.titre}
+                    >
+                      <option value="">Sélectionnez un type</option>
+                      {types[formData.titre]?.map((type) => (
+                        <option key={type.id} value={type.id}>
+                          {type.type}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.type && <span className="error-text">{errors.type}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="theme">
+                      <FiTag className="form-icon" />
+                      Thème de formation
+                    </label>
+                    <select
+                      id="theme"
+                      name="theme"
+                      value={formData.theme}
+                      onChange={handleChange}
+                      className={errors.theme ? "error" : ""}
+                      disabled={!formData.type}
+                    >
+                      <option value="">Sélectionnez un thème</option>
+                      {Array.isArray(themes) &&
+                        themes.map((theme) => (
+                          <option key={theme.id} value={theme.id}>
+                            {theme.nom}
+                          </option>
+                        ))}
+                    </select>
+                    {errors.theme && <span className="error-text">{errors.theme}</span>}
+                  </div>
+                </div>
+
+                <div className="form-group full-width">
+                  <label htmlFor="texteDemande">
+                    <FiFile className="form-icon" />
+                    Description de la demande
+                  </label>
+                  <textarea
+                    id="texteDemande"
+                    name="texteDemande"
+                    value={formData.texteDemande}
+                    onChange={handleChange}
+                    rows="4"
+                    className={errors.texteDemande ? "error" : ""}
+                    placeholder="Décrivez votre demande de formation..."
+                  ></textarea>
+                  {errors.texteDemande && <span className="error-text">{errors.texteDemande}</span>}
+                </div>
+
+                <div className="form-group full-width">
+                  <label htmlFor="file">
+                    <FiUpload className="form-icon" />
+                    Pièce jointe (optionnel)
+                  </label>
+                  <div className="file-input-container">
+                    <input type="file" id="file" name="file" onChange={handleFileChange} />
+                    <div className="file-input-text">{file ? file.name : "Choisir un fichier"}</div>
+                  </div>
+                </div>
+
+                <div className="form-actions">
+                  <button type="button" className="cancel-button" onClick={() => window.history.back()}>
+                    Annuler
+                  </button>
+                  <button type="submit" className="submit-button" disabled={isSubmitting}>
+                    {isSubmitting ? "Soumission en cours..." : "Soumettre la demande"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
       </div>
-
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
-  );
-};
+  )
+}
 
-export default FormationForm;
+export default FormationForm
+

@@ -73,17 +73,27 @@ const Accueil = () => {
       })
       .catch((error) => console.error("Error fetching personnel data:", error));
 
-    // Fetch notifications
-    fetch("http://localhost:8080/api/notifications/unreadnbr")
-      .then((response) => response.json())
+      // Fetch notifications
+      fetch("http://localhost:8080/api/notifications/unreadnbr?role=Admin")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
       .then((data) => setUnviewedCount(data))
       .catch((error) => console.error("Error fetching unread notifications:", error));
 
-    fetch("http://localhost:8080/api/notifications/nbr")
-      .then((response) => response.json())
+
+      fetch("http://localhost:8080/api/notifications/nbr?role=Admin")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
       .then((data) => setTotalNotifications(data))
       .catch((error) => console.error("Error fetching total notifications:", error));
-
    
 
     // Listen for SSE updates
@@ -136,7 +146,7 @@ const Accueil = () => {
                 </button>
               </div>
             </div>
-            <p>Bienvenue, CHEF. Voici ce qui se passe avec votre équipe aujourd'hui.</p>
+            <p>Bienvenue, Admin. Voici ce qui se passe avec votre équipe aujourd'hui.</p>
           </div>
 
           <div className="dashboard-grid">

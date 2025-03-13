@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import useNotifications from "./useNotifications"
 import NotificationModal from "./NotificationModal"
@@ -160,7 +158,7 @@ const Navbar = () => {
     <nav className="navbar">
       <div className="navbar-welcome">
         <span className="welcome-text">
-          Welcome, {userData.firstName} {userData.lastName}
+          RH. Welcome, {userData.firstName} {userData.lastName}
         </span>
       </div>
       <div className="navbar-actions">

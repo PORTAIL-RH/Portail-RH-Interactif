@@ -1,122 +1,200 @@
-/* Sidebar styles */
+/* Sidebar Styles */
 .sidebar {
   position: fixed;
-  top: 100px;
-  left: -250px;
-  height: calc(100% - 100px); /* Adjust height to account for top position */
+  top: 60px; /* Match navbar height */
+  left: 0;
+  height: calc(100vh - 60px);
   width: 250px;
-  background-color: #000220; /* Semi-transparent background */
-  color: white;
-  padding: 2rem 1.5rem;
-  transition: all 0.3s ease-in-out;
-  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  backdrop-filter: blur(10px); /* Blur effect for modern look */
+  background: #2c3e50;
+  color: #ecf0f1;
+  transition: all 0.3s ease;
+  z-index: 100;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.sidebar.open {
-  transform: translateX(250px);
+.sidebar.closed {
+  width: 70px;
+  transform: translateX(0);
 }
 
-.sidebar-toggle {
-  position: absolute;
-  top: 20px;
-  left: 100%;
-  transform: translateX(20px);
-  background-color: #000220;
-  color: white;
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #ecf0f1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.toggle-btn {
+  background: transparent;
   border: none;
-  padding: 10px 15px;
-  font-size: 1.5rem;
-  border-radius: 50%;
+  color: #ecf0f1;
   cursor: pointer;
-  transition: background-color 0.3s, transform 0.3s;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
 }
 
-.sidebar-toggle:hover {
-  background-color: #b96a29;
-  transform: translateX(20px) scale(1.1);
+.toggle-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Styling for the sidebar links */
-.sidebar ul {
-  list-style-type: none;
+.sidebar-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar-item {
+  position: relative;
+  margin: 5px 0;
+}
+
+.sidebar-item.active .sidebar-link {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-left: 4px solid #4f46e5;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  color: #ecf0f1;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  border-left: 4px solid transparent;
+}
+
+.dropdown-trigger {
+  cursor: pointer;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-icon {
+  font-size: 1.2rem;
+  min-width: 24px;
+  margin-right: 10px;
+  color: #ecf0f1;
+}
+
+.sidebar.closed .sidebar-text {
+  display: none;
+}
+
+.dropdown-arrow {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s;
+}
+
+.dropdown-menu {
+  max-height: 0;
+  overflow: hidden;
+  list-style: none;
+  padding-left: 0;
+  transition: max-height 0.3s ease;
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.dropdown-menu.open {
+  max-height: 300px; /* Adjust based on content */
+}
+
+.dropdown-menu.open {
+  max-height: 300px; /* Ajustez en fonction du contenu */
+}
+
+.sidebar.collapsed .dropdown-menu {
+  position: absolute;
+  left: 70px;
+  top: 0;
+  width: 180px;
+  background-color: #34495e;
+  border-radius: 0 4px 4px 0;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  max-height: 0;
+  overflow: hidden;
+}
+.sidebar.collapsed .sidebar-item:hover .dropdown-menu {
+  max-height: 300px;
+}
+/* Animation for dropdown arrow */
+.dropdown-menu.open + .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-item {
   padding: 0;
 }
 
-.sidebar ul li {
-  margin: 1.5rem 0;
-}
-
-.sidebar ul li a {
-  color: #ecf0f1;
-  font-size: 1.2rem;
-  text-decoration: none;
-  transition: color 0.3s, transform 0.3s;
+.dropdown-link {
   display: block;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
+  padding: 10px 15px 10px 49px;
+  color: #ecf0f1;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
 }
 
-.sidebar ul li a:hover {
-  color: #b96a29;
-  background-color: rgba(255, 255, 255, 0.1);
-  transform: translateX(10px);
+.dropdown-link:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Adding a more modern feel to the sidebar */
-.sidebar ul li a {
-  position: relative;
-  padding-left: 1.5rem;
-  font-weight: 500;
+.sidebar.closed .dropdown-link {
+  padding: 10px 15px;
 }
 
-.sidebar ul li a::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  background-color: #b96a29;
+
+
+/* Show sidebar button */
+.show-sidebar-button {
+  position: fixed;
+  top: 70px;
+  left: 10px;
+  z-index: 40;
+  background-color: #4f46e5;
+  color: white;
+  border: none;
   border-radius: 50%;
-  transform: translateY(-50%);
-  transition: background-color 0.3s, transform 0.3s;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
 }
 
-.sidebar ul li a:hover::before {
-  background-color: #ecf0f1;
-  transform: translateY(-50%) scale(1.2);
+.show-sidebar-button:hover {
+  background-color: #4338ca;
+  transform: scale(1.05);
 }
 
-/* Close sidebar animation when window size is small */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 200px;
-    left: -200px;
-  }
-
-  .sidebar.open {
-    transform: translateX(200px);
-  }
-
-  .sidebar-toggle {
-    left: 15px;
-  }
-
-  .sidebar ul li a {
-    font-size: 1rem;
-    padding: 0.5rem;
-  }
-}
-
-/* Additional hover effects for the sidebar */
-.sidebar:hover {
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
-}
-
-/* Background overlay when sidebar is open */
+/* Sidebar Overlay */
 .sidebar-overlay {
   position: fixed;
   top: 0;
@@ -124,10 +202,34 @@
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
-  display: none;
+  z-index: 40;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
 }
 
-.sidebar-overlay.open {
-  display: block;
+.sidebar-overlay.active {
+  opacity: 1;
+  visibility: visible;
 }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    width: 280px;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar.closed {
+    transform: translateX(-100%);
+  }
+
+  .content-area {
+    margin-left: 0 !important;
+  }
+}
+

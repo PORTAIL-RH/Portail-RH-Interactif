@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
@@ -8,7 +8,8 @@ const useNotifications = (role, userServiceId) => {
   const [error, setError] = useState("");
   const clientRef = useRef(null);
 
-  const fetchNotifications = async () => {
+  // Memoized function to fetch notifications
+  const fetchNotifications = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
       let url = "http://localhost:8080/api/notifications";
@@ -34,63 +35,52 @@ const useNotifications = (role, userServiceId) => {
         const data = await response.json();
         console.log("Notifications reçues:", data);
         setNotifications(data);
-        setUnviewedCount(data.filter((notif) => !notif.viewed).length);
+        setUnviewedCount(data.filter((notif) => !notif.viewed).length); // Update unviewed count
       } else {
-        const errorText = await response.text(); // Handle plain text error messages
-        console.error("Error fetching notifications:", errorText);
+        const errorText = await response.text();
+        console.error("Erreur lors de la récupération des notifications:", errorText);
         setError(`Erreur: ${errorText}`);
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.error("Erreur lors de la récupération des notifications:", error);
       setError("Impossible de récupérer les notifications.");
     }
-  };
+  }, [role, userServiceId]);
 
-  const fetchUnreadCount = async () => {
+  // Function to mark a notification as read
+  const markAsRead = async (id) => {
     try {
       const token = localStorage.getItem("authToken");
-      let url = "http://localhost:8080/api/notifications/unreadnbr";
-      
-      // Add query parameters
-      const params = new URLSearchParams();
-      params.append("role", role);
-      if (role === "Chef Hiérarchique" && userServiceId) {
-        params.append("serviceId", userServiceId);
-      }
-
-      url += `?${params.toString()}`;
-
-      const response = await fetch(url, {
-        method: "GET",
+      await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Unread count:", data);
-        setUnviewedCount(data);
-      } else {
-        const errorText = await response.text(); // Handle plain text error messages
-        console.error("Error fetching unread count:", errorText);
-        setError(`Erreur: ${errorText}`);
-      }
+      // Update unviewed count
+      setUnviewedCount((prev) => Math.max(prev - 1, 0));
+
+      // Update the notification in the list
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === id ? { ...notif, viewed: true } : notif
+        )
+      );
     } catch (error) {
-      console.error("Error fetching unread count:", error);
-      setError("Impossible de récupérer le nombre de notifications non lues.");
+      console.error("Erreur lors de la mise à jour de la notification:", error);
     }
   };
 
+  // Initialize WebSocket and fetch notifications
   useEffect(() => {
     if (!userServiceId) {
-      console.error("userServiceId is undefined");
+      console.error("userServiceId est indéfini");
       return;
     }
 
     fetchNotifications();
-    fetchUnreadCount(); // Fetch unread count
 
     const token = localStorage.getItem("authToken");
     const client = new Client({
@@ -103,12 +93,14 @@ const useNotifications = (role, userServiceId) => {
     client.onConnect = () => {
       console.log("✅ WebSocket connecté");
 
-      // Subscribe to notifications for the Chef Hiérarchique
+      // Subscribe to notifications for the specified role
       client.subscribe(`/topic/notifications/${role}`, (message) => {
         const newNotification = JSON.parse(message.body);
         if (newNotification.serviceId === userServiceId) {
           setNotifications((prev) => [newNotification, ...prev]);
-          setUnviewedCount((prevCount) => prevCount + 1);
+          if (!newNotification.viewed) {
+            setUnviewedCount((prevCount) => prevCount + 1); // Increment unviewed count
+          }
         }
       });
     };
@@ -116,34 +108,14 @@ const useNotifications = (role, userServiceId) => {
     client.activate();
     clientRef.current = client;
 
+    // Cleanup WebSocket on unmount
     return () => {
       client.deactivate();
       console.log("❌ WebSocket déconnecté");
     };
-  }, [role, userServiceId]);
+  }, [role, userServiceId, fetchNotifications]);
 
-  const markAsRead = async (id) => {
-    try {
-      const token = localStorage.getItem("authToken");
-      await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Mettre à jour le compteur de notifications non lues
-      setUnviewedCount((prev) => Math.max(prev - 1, 0));
-
-      // Recharger les notifications
-      await fetchNotifications();
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error);
-    }
-  };
-
-  return { notifications, unviewedCount, setUnviewedCount, fetchNotifications, markAsRead, error };
+  return { notifications, unviewedCount, fetchNotifications, markAsRead, error };
 };
 
 export default useNotifications;

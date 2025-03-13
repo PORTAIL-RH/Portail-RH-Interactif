@@ -1,238 +1,252 @@
-import React, { useState, useEffect } from 'react';
-import './AutorisationForm.css';
+import { useState, useEffect } from "react"
+import { FiCalendar, FiClock, FiFileText, FiUpload } from "react-icons/fi"
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import "../common-form.css"
 
 const AutorisationForm = () => {
   const [formData, setFormData] = useState({
-    dateDebut: '',
-    heureSortie: '',
-    heureRetour: '',
-    codeSoc: '', 
-    texteDemande: '',
-    cod_autorisation: '',
-    matPersId: '',
-  });
+    dateDebut: "",
+    heureSortie: "",
+    heureRetour: "",
+    codeSoc: "",
+    texteDemande: "",
+    cod_autorisation: "",
+    matPersId: "",
+  })
 
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState('');
+  const [file, setFile] = useState(null)
+  const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    const userCodeSoc = localStorage.getItem('userCodeSoc');
+    const userId = localStorage.getItem("userId")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
 
     if (userId && userCodeSoc) {
       setFormData((prevData) => ({
         ...prevData,
         codeSoc: userCodeSoc,
         matPersId: userId,
-      }));
+      }))
     }
-  }, []);
+  }, [])
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target
     setFormData({
       ...formData,
       [name]: value,
-    });
-  };
+    })
+
+    // Clear error for this field if it exists
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+  }
 
   const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
+    setFile(e.target.files[0])
+  }
 
   const validateForm = () => {
-    const errors = {};
+    const newErrors = {}
 
-    if (!formData.dateDebut) {
-      errors.dateDebut = 'La date est requise.';
-    }
+    if (!formData.dateDebut) newErrors.dateDebut = "La date est requise"
+    if (!formData.heureSortie) newErrors.heureSortie = "L'heure de sortie est requise"
+    if (!formData.heureRetour) newErrors.heureRetour = "L'heure de retour est requise"
+    if (!formData.texteDemande) newErrors.texteDemande = "Le texte de la demande est requis"
 
-    if (!formData.heureSortie) {
-      errors.heureSortie = "L'heure de sortie est requise.";
-    }
-
-    if (!formData.heureRetour) {
-      errors.heureRetour = "L'heure de retour est requise.";
-    }
-
-    if (!formData.texteDemande) {
-      errors.texteDemande = 'Le texte de la demande est requis.';
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setError(Object.values(errors).join(' ')); 
-      toast.error('Veuillez corriger les erreurs dans le formulaire.');
-      return false;
-    }
-
-    setError('');
-    return true;
-  };
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!validateForm()) {
-      return;
+      toast.error("Veuillez corriger les erreurs dans le formulaire")
+      return
     }
 
-    const userId = localStorage.getItem('userId');
-    const authToken = localStorage.getItem('authToken');
+    setIsSubmitting(true)
+
+    const userId = localStorage.getItem("userId")
+    const authToken = localStorage.getItem("authToken")
 
     if (!authToken || !userId) {
-      toast.error('Token ou ID utilisateur manquant');
-      return;
+      toast.error("Token ou ID utilisateur manquant")
+      setIsSubmitting(false)
+      return
     }
 
-    const formDataToSend = new FormData();
-    formDataToSend.append('dateDebut', formData.dateDebut);
-    formDataToSend.append('heureSortie', formData.heureSortie);
-    formDataToSend.append('heureRetour', formData.heureRetour);
-    formDataToSend.append('codeSoc', formData.codeSoc); 
-    formDataToSend.append('texteDemande', formData.texteDemande);
-    formDataToSend.append('codAutorisation', formData.cod_autorisation);
-    formDataToSend.append('matPersId', userId);
+    const formDataToSend = new FormData()
+    formDataToSend.append("dateDebut", formData.dateDebut)
+    formDataToSend.append("heureSortie", formData.heureSortie)
+    formDataToSend.append("heureRetour", formData.heureRetour)
+    formDataToSend.append("codeSoc", formData.codeSoc)
+    formDataToSend.append("texteDemande", formData.texteDemande)
+    formDataToSend.append("codAutorisation", formData.cod_autorisation)
+    formDataToSend.append("matPersId", userId)
 
     if (file) {
-      formDataToSend.append('file', file);
+      formDataToSend.append("file", file)
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-autorisation/create', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8080/api/demande-autorisation/create", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: formDataToSend,
-      });
+      })
 
-      const contentType = response.headers.get('content-type');
       if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const errorResult = await response.json();
-          toast.error('Erreur lors de la soumission du formulaire : ' + (errorResult.message || 'Erreur inconnue'));
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
+          const errorResult = await response.json()
+          throw new Error(errorResult.message || "Erreur inconnue")
         } else {
-          const errorText = await response.text();
-          toast.error('Erreur lors de la soumission du formulaire : ' + errorText);
+          const errorText = await response.text()
+          throw new Error(errorText || "Erreur inconnue")
         }
-        return;
       }
 
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        console.log('Formulaire soumis avec succès :', result);
-        toast.success('Demande d\'autorisation soumise avec succès !');
-        setError('');
-      } else {
-        const resultText = await response.text();
-        console.log('Formulaire soumis avec succès :', resultText);
-        toast.success('Demande d\'autorisation soumise avec succès !');
-        setError('');
-      }
+      toast.success("Demande d'autorisation soumise avec succès !")
+
+      // Reset form
+      setFormData({
+        dateDebut: "",
+        heureSortie: "",
+        heureRetour: "",
+        codeSoc: formData.codeSoc,
+        texteDemande: "",
+        cod_autorisation: "",
+        matPersId: userId,
+      })
+      setFile(null)
     } catch (error) {
-      console.error('Erreur lors de la soumission du formulaire :', error);
-      toast.error('Erreur lors de la soumission du formulaire : ' + error.message);
+      console.error("Erreur lors de la soumission du formulaire:", error)
+      toast.error(`Erreur lors de la soumission du formulaire: ${error.message}`)
+    } finally {
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div className="d-flex">
-      <Sidebar />
-      <div className="main-content flex-grow-1">
-        <Navbar />
-        <div className="container mt-4">
-          <form onSubmit={handleSubmit} className="autorisation-form container p-4 shadow rounded">
-            <h2 className="text-center mb-4">Formulaire d'Autorisation</h2>
+    <div className="dashboard-container">
+      <Navbar />
+      <div className="main-content">
+        <Sidebar />
+        <div className="content-area">
+          <div className="page-header">
+            <h1>Demande d'Autorisation</h1>
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande d'autorisation</p>
+          </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
+          <div className="form-card">
+            <form onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label htmlFor="dateDebut">
+                    <FiCalendar className="form-icon" />
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    id="dateDebut"
+                    name="dateDebut"
+                    value={formData.dateDebut}
+                    onChange={handleChange}
+                    className={errors.dateDebut ? "error" : ""}
+                  />
+                  {errors.dateDebut && <span className="error-text">{errors.dateDebut}</span>}
+                </div>
 
-            <div className="form-row">
-              <div>
-                <label htmlFor="dateDebut" className="form-label">Date</label>
-                <input
-                  type="date"
-                  id="dateDebut"
-                  name="dateDebut"
-                  className="form-control"
-                  value={formData.dateDebut}
-                  onChange={handleChange}
-                  required
-                />
+                <div className="form-group">
+                  <label htmlFor="heureSortie">
+                    <FiClock className="form-icon" />
+                    Heure de Sortie
+                  </label>
+                  <input
+                    type="time"
+                    id="heureSortie"
+                    name="heureSortie"
+                    value={formData.heureSortie}
+                    onChange={handleChange}
+                    className={errors.heureSortie ? "error" : ""}
+                  />
+                  {errors.heureSortie && <span className="error-text">{errors.heureSortie}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="heureRetour">
+                    <FiClock className="form-icon" />
+                    Heure de Retour
+                  </label>
+                  <input
+                    type="time"
+                    id="heureRetour"
+                    name="heureRetour"
+                    value={formData.heureRetour}
+                    onChange={handleChange}
+                    className={errors.heureRetour ? "error" : ""}
+                  />
+                  {errors.heureRetour && <span className="error-text">{errors.heureRetour}</span>}
+                </div>
               </div>
-            </div>
 
-            <div className="form-row">
-              <div>
-                <label htmlFor="heureSortie" className="form-label">Heure de Sortie</label>
-                <input
-                  type="time"
-                  id="heureSortie"
-                  name="heureSortie"
-                  className="form-control"
-                  value={formData.heureSortie}
+              <div className="form-group full-width">
+                <label htmlFor="texteDemande">
+                  <FiFileText className="form-icon" />
+                  Texte de la Demande
+                </label>
+                <textarea
+                  id="texteDemande"
+                  name="texteDemande"
+                  value={formData.texteDemande}
                   onChange={handleChange}
-                  required
-                />
+                  rows="4"
+                  className={errors.texteDemande ? "error" : ""}
+                  placeholder="Décrivez votre demande d'autorisation..."
+                ></textarea>
+                {errors.texteDemande && <span className="error-text">{errors.texteDemande}</span>}
               </div>
-              <div>
-                <label htmlFor="heureRetour" className="form-label">Heure de Retour</label>
-                <input
-                  type="time"
-                  id="heureRetour"
-                  name="heureRetour"
-                  className="form-control"
-                  value={formData.heureRetour}
-                  onChange={handleChange}
-                  required
-                />
+
+              <div className="form-group full-width">
+                <label htmlFor="file">
+                  <FiUpload className="form-icon" />
+                  Fichier Joint (optionnel)
+                </label>
+                <div className="file-input-container">
+                  <input type="file" id="file" name="file" onChange={handleFileChange} />
+                  <div className="file-input-text">{file ? file.name : "Choisir un fichier"}</div>
+                </div>
               </div>
-            </div>
 
-            <div className="full-width">
-              <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
-              <textarea
-                id="texteDemande"
-                name="texteDemande"
-                className="form-control"
-                value={formData.texteDemande}
-                onChange={handleChange}
-                required
-              ></textarea>
-            </div>
-
-            <div className="full-width">
-              <label htmlFor="file" className="form-label">Fichier Joint : (optionnel)</label>
-              <input
-                type="file"
-                id="file"
-                name="file"
-                className="form-control"
-                onChange={handleFileChange}
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
-          </form>
+              <div className="form-actions">
+                <button type="button" className="cancel-button" onClick={() => window.history.back()}>
+                  Annuler
+                </button>
+                <button type="submit" className="submit-button" disabled={isSubmitting}>
+                  {isSubmitting ? "Soumission en cours..." : "Soumettre la demande"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
-
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
-  );
-};
+  )
+}
 
-export default AutorisationForm;
+export default AutorisationForm
+

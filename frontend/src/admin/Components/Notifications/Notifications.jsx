@@ -37,9 +37,10 @@ const Notifications = () => {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Trier par date (du plus récent au plus ancien)
 
   return (
-    <div className="accueil-containernt">
+    <div className="app-container">
+    <Sidebar />
+    <div className="notifications-chef-container">
       <Navbar />
-      <Sidebar />
       <div className="contenttf">
         <div className="notification-section">
           <div className="notification-header">
@@ -53,18 +54,16 @@ const Notifications = () => {
             <div className="notification-list">
               {sortedNotifications.map((notification) => {
                 const notificationDate = new Date(notification.timestamp);
-
-                // Vérifier si la date est valide
                 if (isNaN(notificationDate.getTime())) {
                   console.error("Invalid date value:", notification.timestamp);
-                  return null; // Ignorer cette notification si la date est invalide
+                  return null;
                 }
 
                 return (
                   <div
                     key={notification.id}
                     className={`notification ${notification.viewed ? "read" : "unread"}`}
-                    onClick={() => !notification.viewed && markAsRead(notification.id)} // Marquer comme lue uniquement si elle n'est pas déjà lue
+                    onClick={() => !notification.viewed && markAsRead(notification.id)}
                   >
                     <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
                     <p>{notification.message}</p>
@@ -80,7 +79,7 @@ const Notifications = () => {
           )}
         </div>
       </div>
-    </div>
+    </div>    </div>
   );
 };
 
