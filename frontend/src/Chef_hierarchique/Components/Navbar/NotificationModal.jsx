@@ -19,23 +19,23 @@ const NotificationModal = ({ notifications, unviewedCount, markAsRead, userServi
   console.log("Notifications filtrées (NotificationModal):", sortedNotifications);
 
   return (
-    <div className="notification-popover">
-      <div className="notification-header">
+    <div className="notificationmodal-popover">
+      <div className="notificationmodal-header">
         <h2>Notifications</h2>
-        {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+        {unviewedCount > 0 && <span className="notificationmodal-badge">{unviewedCount}</span>}
       </div>
 
       {sortedNotifications.length > 0 ? (
-        <div className="notification-list">
+        <div className="notificationmodal-list">
           {sortedNotifications.map((notification) => (
             <div
               key={notification.id}
-              className="notification unread"
+              className="notificationmodal unread"
               onClick={() => markAsRead(notification.id)}
             >
               <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
               <p>{notification.message}</p>
-              <span className="notification-timestamp">
+              <span className="notificationmodal-timestamp">
                 {format(new Date(notification.timestamp), "yyyy-MM-dd HH:mm")}
               </span>
             </div>

@@ -88,6 +88,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/traiter/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document/personnel/{matPersId}").permitAll()
 
 
                         ///demande pre avance
@@ -97,6 +98,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/traiter/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/personnel/{matPersId}").permitAll()
+
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation").permitAll()

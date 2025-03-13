@@ -43,9 +43,9 @@ const DemandesCHEF = () => {
         throw new Error("Authentification requise");
       }
   
-      // Fetch all types of demandes
-      const types = ["formation", "conge", "document", "preAvance", "autorisation"];
+      const types = ["formation", "conge", "document", "pre-avance", "autorisation"];
       let allDemandes = [];
+      let errors = [];
   
       for (const type of types) {
         try {
@@ -53,8 +53,8 @@ const DemandesCHEF = () => {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${authToken}`
-            }
+              "Authorization": `Bearer ${authToken}`,
+            },
           });
   
           if (!response.ok) {
@@ -62,20 +62,22 @@ const DemandesCHEF = () => {
           }
   
           const data = await response.json();
-          // Add type to each demande for filtering
-          const typedData = data.map(item => ({
+          const typedData = data.map((item) => ({
             ...item,
-            demandeType: type
+            demandeType: type,
           }));
           allDemandes = [...allDemandes, ...typedData];
         } catch (err) {
           console.error(`Erreur lors de la récupération des demandes de ${type}:`, err);
+          errors.push(err.message);
         }
       }
   
-      // Sort by date (newest first)
-      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande));
+      if (errors.length > 0) {
+        setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`);
+      }
   
+      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande));
       setDemandes(allDemandes);
       setFilteredDemandes(allDemandes);
     } catch (err) {
@@ -84,7 +86,6 @@ const DemandesCHEF = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     applyFilters()
   }, [searchQuery, selectedType, selectedStatus, startDate, endDate, demandes])
@@ -225,19 +226,19 @@ const DemandesCHEF = () => {
   const getTypeText = (type) => {
     switch (type) {
       case "formation":
-        return "Formation"
+        return "Formation";
       case "conge":
-        return "Congé"
+        return "Congé";
       case "document":
-        return "Document"
+        return "Document";
       case "preAvance":
-        return "Pré-Avance"
+        return "Pré-Avance";
       case "autorisation":
-        return "Autorisation"
+        return "Autorisation";
       default:
-        return type
+        return type;
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -423,8 +424,8 @@ const DemandesCHEF = () => {
                         </div>
                       </td>
                       <td>
-                        <span className={`status-badge ${getStatusInfo(demande.reponseChef).className}`}>
-                          {getStatusInfo(demande.reponseChef).text}
+                        <span className={`type-badge ${demande.demandeType}`}>
+                          {getTypeText(demande.demandeType)}
                         </span>
                       </td>
                       <td>

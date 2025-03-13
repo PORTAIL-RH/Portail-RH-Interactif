@@ -37,13 +37,14 @@ const Notifications = () => {
   console.log("Role:", role, "Service ID:", userServiceId);
 
   if (!userServiceId) {
-    return <p>Loading...</p>; // Handle case where userServiceId is not yet available
+    return <p>Loading...</p>;
   }
 
   return (
-    <div className="accueil-containernt">
-      <Navbar userServiceId={userServiceId} />
-      <Sidebar />
+    <div className="app-container">
+    <Sidebar />
+    <div className="notifications-chef-container">
+      <Navbar   userServiceId={userServiceId}/>
       <div className="contenttf">
         <div className="notification-section">
           <div className="notification-header">
@@ -82,7 +83,8 @@ const Notifications = () => {
           )}
         </div>
       </div>
-    </div>
+    </div>    </div>
+
   );
 };
 
