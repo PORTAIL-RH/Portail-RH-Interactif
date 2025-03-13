@@ -22,3 +22,4 @@ const Sidebar = ({ showManageDemandes, setShowManageDemandes }) => {
 };
 
 export default Sidebar;
+

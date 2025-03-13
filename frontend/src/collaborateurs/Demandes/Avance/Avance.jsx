@@ -1,233 +1,302 @@
-import React, { useState, useEffect } from 'react';
-import './Avance.css';
+
+import { useState, useEffect } from "react"
+import { FiDollarSign, FiFileText, FiList, FiUpload } from "react-icons/fi"
 import Navbar from '../../Components/Navbar/Navbar';
 import Sidebar from '../../Components/Sidebar/Sidebar';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer, toast } from "react-toastify"
+import "react-toastify/dist/ReactToastify.css"
+import "../common-form.css"
 
 const PreAvanceForm = () => {
   const [formData, setFormData] = useState({
-    type: '',
+    type: "",
     montant: 0,
-    codeSoc: '',
-    texteDemande: '',
-    matPersId: '', 
+    codeSoc: "",
+    texteDemande: "",
+    matPersId: "",
     file: null,
-  });
-  const [file, setFile] = useState(null);
-  const [error, setError] = useState('');
-  const [typesPreAvance, setTypesPreAvance] = useState({});
+  })
+
+  const [file, setFile] = useState(null)
+  const [errors, setErrors] = useState({})
+  const [typesPreAvance, setTypesPreAvance] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    const fetchTypesPreAvance = async () => {
-      try {
-        const authToken = localStorage.getItem('authToken');
-        if (!authToken) {
-          toast.error('Token d\'authentification manquant');
-          return;
-        }
+    fetchTypesPreAvance()
 
-        const response = await fetch('http://localhost:8080/api/demande-pre-avance/types', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des types de pré-avances');
-        }
-
-        const data = await response.json();
-        setTypesPreAvance(data);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des types de pré-avances :', error);
-        toast.error('Erreur lors de la récupération des types de pré-avances');
-      }
-    };
-
-    fetchTypesPreAvance();
-  }, []);
-
-  const validateMontant = (type, montant) => {
-    if (typesPreAvance[type] && montant > typesPreAvance[type]) {
-      return `Le montant ne doit pas dépasser ${typesPreAvance[type]} euros pour ce type de demande.`;
-    }
-    return null;
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-
-    if (name === 'montant') {
-      const errorMessage = validateMontant(formData.type, value);
-      setError(errorMessage);
-    }
-  };
-
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-  };
-
-  useEffect(() => {
-    const userId = localStorage.getItem('userId');
-    const userCodeSoc = localStorage.getItem('userCodeSoc');
+    const userId = localStorage.getItem("userId")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
 
     if (userId && userCodeSoc) {
       setFormData((prevData) => ({
         ...prevData,
         codeSoc: userCodeSoc,
-        matPersId: userId, 
-      }));
+        matPersId: userId,
+      }))
     }
-  }, []);
+  }, [])
+
+  const fetchTypesPreAvance = async () => {
+    try {
+      setLoading(true)
+      const authToken = localStorage.getItem("authToken")
+      if (!authToken) {
+        toast.error("Token d'authentification manquant")
+        return
+      }
+
+      const response = await fetch("http://localhost:8080/api/demande-pre-avance/types", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la récupération des types de pré-avances")
+      }
+
+      const data = await response.json()
+      setTypesPreAvance(data)
+    } catch (error) {
+      console.error("Erreur lors de la récupération des types de pré-avances :", error)
+      toast.error("Erreur lors de la récupération des types de pré-avances")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const validateMontant = (type, montant) => {
+    if (typesPreAvance[type] && montant > typesPreAvance[type]) {
+      return `Le montant ne doit pas dépasser ${typesPreAvance[type]} euros pour ce type de demande.`
+    }
+    return null
+  }
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData({
+      ...formData,
+      [name]: value,
+    })
+
+    // Clear error for this field if it exists
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
+      })
+    }
+
+    if (name === "montant" && formData.type) {
+      const errorMessage = validateMontant(formData.type, value)
+      if (errorMessage) {
+        setErrors((prev) => ({
+          ...prev,
+          montant: errorMessage,
+        }))
+      }
+    }
+  }
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0])
+  }
+
+  const validateForm = () => {
+    const newErrors = {}
+
+    if (!formData.type) newErrors.type = "Le type de demande est requis"
+    if (!formData.montant) newErrors.montant = "Le montant est requis"
+    if (formData.montant <= 0) newErrors.montant = "Le montant doit être supérieur à 0"
+
+    const montantError = validateMontant(formData.type, formData.montant)
+    if (montantError) newErrors.montant = montantError
+
+    if (!formData.texteDemande) newErrors.texteDemande = "Le texte de la demande est requis"
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    const errorMessage = validateMontant(formData.type, formData.montant);
-    if (errorMessage) {
-      setError(errorMessage);
-      toast.error(errorMessage);
-      return;
+    if (!validateForm()) {
+      toast.error("Veuillez corriger les erreurs dans le formulaire")
+      return
     }
 
-    const authToken = localStorage.getItem('authToken');
-    const userId = localStorage.getItem('userId');
+    setIsSubmitting(true)
+
+    const authToken = localStorage.getItem("authToken")
+    const userId = localStorage.getItem("userId")
 
     if (!authToken || !userId) {
-      setError('Missing token or user ID');
-      toast.error('Missing token or user ID');
-      return;
+      toast.error("Token ou ID utilisateur manquant")
+      setIsSubmitting(false)
+      return
     }
 
-    const formDataToSend = new FormData();
-    formDataToSend.append('type', formData.type);
-    formDataToSend.append('montant', formData.montant.toString());
-    formDataToSend.append('texteDemande', formData.texteDemande);
-    formDataToSend.append('codeSoc', formData.codeSoc);
-    formDataToSend.append('matPersId', userId);
+    const formDataToSend = new FormData()
+    formDataToSend.append("type", formData.type)
+    formDataToSend.append("montant", formData.montant.toString())
+    formDataToSend.append("texteDemande", formData.texteDemande)
+    formDataToSend.append("codeSoc", formData.codeSoc)
+    formDataToSend.append("matPersId", userId)
 
     if (file) {
-      formDataToSend.append('file', file);
-    }
-
-    // Log FormData contents for debugging
-    for (let [key, value] of formDataToSend.entries()) {
-      console.log(key, value);
+      formDataToSend.append("file", file)
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-pre-avance/create', {
-        method: 'POST',
+      const response = await fetch("http://localhost:8080/api/demande-pre-avance/create", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: formDataToSend,
-      });
-
-      const contentType = response.headers.get('content-type');
+      })
 
       if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const errorResult = await response.json();
-          toast.error('Erreur lors de la soumission du formulaire : ' + (errorResult.message || 'Erreur inconnue'));
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
+          const errorResult = await response.json()
+          throw new Error(errorResult.message || "Erreur inconnue")
         } else {
-          const errorText = await response.text();
-          toast.error('Erreur lors de la soumission du formulaire : ' + errorText);
+          const errorText = await response.text()
+          throw new Error(errorText || "Erreur inconnue")
         }
-        return;
       }
 
-      if (contentType && contentType.includes('application/json')) {
-        const result = await response.json();
-        toast.success('Demande de pré-avance soumise avec succès !');
-        setError('');
-      } else {
-        const resultText = await response.text();
-        toast.success('Demande de pré-avance soumise avec succès !');
-        setError('');
-      }
+      toast.success("Demande de pré-avance soumise avec succès !")
+
+      // Reset form
+      setFormData({
+        type: "",
+        montant: 0,
+        codeSoc: formData.codeSoc,
+        texteDemande: "",
+        matPersId: userId,
+        file: null,
+      })
+      setFile(null)
     } catch (error) {
-      console.error('Erreur lors de la soumission du formulaire :', error);
-      toast.error('Erreur lors de la soumission du formulaire : ' + error.message);
+      console.error("Erreur lors de la soumission du formulaire:", error)
+      toast.error(`Erreur lors de la soumission du formulaire: ${error.message}`)
+    } finally {
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div className="d-flex">
-      <Sidebar />
-      <div className="main-content flex-grow-1">
-        <Navbar />
-        <div className="container mt-4">
-          <form onSubmit={handleSubmit} className="autorisation-form container p-4 shadow rounded">
-            <h2 className="text-center mb-4">Formulaire de Pré-Avance</h2>
+    <div className="dashboard-container">
+      <Navbar />
+      <div className="main-content">
+        <Sidebar />
+        <div className="content-area">
+          <div className="page-header">
+            <h1>Demande de Pré-Avance</h1>
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p>
+          </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
+          <div className="form-card">
+            {loading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Chargement des données...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label htmlFor="type">
+                      <FiList className="form-icon" />
+                      Type de Demande
+                    </label>
+                    <select
+                      id="type"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleChange}
+                      className={errors.type ? "error" : ""}
+                    >
+                      <option value="">Sélectionnez un type</option>
+                      {Object.keys(typesPreAvance).map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.type && <span className="error-text">{errors.type}</span>}
+                  </div>
 
-            <div className="full-width">
-              <label className="form-label">Type de Demande :</label>
-              <select
-                name="type"
-                value={formData.type}
-                onChange={handleChange}
-                required
-              >
-                <option value="">Sélectionnez un type</option>
-                {Object.keys(typesPreAvance).map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
+                  <div className="form-group">
+                    <label htmlFor="montant">
+                      <FiDollarSign className="form-icon" />
+                      Montant {formData.type ? `(Max: ${typesPreAvance[formData.type]} €)` : ""}
+                    </label>
+                    <input
+                      type="number"
+                      id="montant"
+                      name="montant"
+                      value={formData.montant}
+                      onChange={handleChange}
+                      min="1"
+                      className={errors.montant ? "error" : ""}
+                    />
+                    {errors.montant && <span className="error-text">{errors.montant}</span>}
+                  </div>
+                </div>
 
-            <div className="full-width">
-              <label className="form-label">
-                Montant (Max: {formData.type ? `${typesPreAvance[formData.type]} €` : 'Sélectionnez un type'}) :
-              </label>
-              <input
-                type="number"
-                name="montant"
-                value={formData.montant}
-                onChange={handleChange}
-                required
-              />
-            </div>
+                <div className="form-group full-width">
+                  <label htmlFor="texteDemande">
+                    <FiFileText className="form-icon" />
+                    Description de la demande
+                  </label>
+                  <textarea
+                    id="texteDemande"
+                    name="texteDemande"
+                    value={formData.texteDemande}
+                    onChange={handleChange}
+                    rows="4"
+                    className={errors.texteDemande ? "error" : ""}
+                    placeholder="Décrivez votre demande de pré-avance..."
+                  ></textarea>
+                  {errors.texteDemande && <span className="error-text">{errors.texteDemande}</span>}
+                </div>
 
-            <div className="full-width">
-              <label htmlFor="texteDemande" className="form-label">Texte de la Demande</label>
-              <textarea
-                id="texteDemande"
-                name="texteDemande"
-                className="form-control"
-                value={formData.texteDemande}
-                onChange={handleChange}
-              ></textarea>
-            </div>
+                <div className="form-group full-width">
+                  <label htmlFor="file">
+                    <FiUpload className="form-icon" />
+                    Pièce jointe (optionnel)
+                  </label>
+                  <div className="file-input-container">
+                    <input type="file" id="file" name="file" onChange={handleFileChange} />
+                    <div className="file-input-text">{file ? file.name : "Choisir un fichier"}</div>
+                  </div>
+                </div>
 
-            <div className="full-width">
-              <label htmlFor="file" className="form-label">Fichier Joint : (optionnel)</label>
-              <input
-                type="file"
-                id="file"
-                name="file"
-                className="form-control"
-                onChange={handleFileChange}
-              />
-            </div>
-
-            <button type="submit" className="btn btn-primary mt-4">Envoyer</button>
-          </form>
+                <div className="form-actions">
+                  <button type="button" className="cancel-button" onClick={() => window.history.back()}>
+                    Annuler
+                  </button>
+                  <button type="submit" className="submit-button" disabled={isSubmitting}>
+                    {isSubmitting ? "Soumission en cours..." : "Soumettre la demande"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       </div>
-      <ToastContainer />
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
-  );
-};
+  )
+}
 
-export default PreAvanceForm;
+export default PreAvanceForm
+

@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import useNotifications from "./useNotifications"
 import NotificationModal from "./NotificationModal"
@@ -19,7 +17,7 @@ const Navbar = () => {
   const [notifications, setNotifications] = useState([]) // State for notifications
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
-  const role = "Chef Hiérarchique" // Ensure this is stable
+  const role = "Admin" // Ensure this is stable
   const userId = localStorage.getItem("userId") // Retrieve userId from localStorage
   const {
     notifications: hookNotifications,

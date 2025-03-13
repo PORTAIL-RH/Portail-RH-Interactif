@@ -36,9 +36,9 @@ public class NotificationService {
         return savedNotification;
     }
 
-    // Get all notifications
-    public List<Notification> getAllNotifications() {
-        return notificationRepository.findAll();
+    // Get all notification by role
+    public List<Notification> getAllNotificationsByRole(String role) {
+        return notificationRepository.findByRole(role); // Assuming you have a repository method to filter by role
     }
 
     // Get unviewed notifications

@@ -1,244 +1,283 @@
-import React, { useState, useEffect } from "react";
-import "./Profile.css";
+import { useState, useEffect } from "react"
+import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiBriefcase, FiEdit } from "react-icons/fi"
 import Navbar from '../Components/Navbar/Navbar';
+import Sidebar from '../Components/Sidebar/Sidebar';
+import "./Profile.css"
 
 const Profile = () => {
   const [userData, setUserData] = useState({
-    nom: '',
-    prenom: '',
-    email: '',
-    matricule: '',
-    serviceName: '',
-    role: '',
-  });
+    nom: "",
+    prenom: "",
+    email: "",
+    matricule: "",
+    serviceName: "",
+    role: "",
+    dateNaissance: "",
+    telephone: "",
+    adresse: "",
+    dateEmbauche: "",
+  })
 
-  const [showManageDemandes, setShowManageDemandes] = useState(false);
-  const [demandes, setDemandes] = useState([]);
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'O', 'N', 'I'
-  const [filterType, setFilterType] = useState('all'); // 'all', 'Conge', 'Formation', 'Autorisation'
+  const [activeTab, setActiveTab] = useState("profile")
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [demandes, setDemandes] = useState([])
 
-  const userId = localStorage.getItem('userId');
+  // Retrieve the userId from localStorage
+  const userId = localStorage.getItem("userId")
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch(`http://localhost:8080/api/Personnel/byId/${userId}`);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const data = await response.json();
-
-        setUserData({
-          nom: data.nom || '',
-          prenom: data.prenom || '',
-          email: data.email || '',
-          matricule: data.matricule || '',
-          serviceName: data.serviceName || 'America',
-          role: data.role || 'Seattle',
-        });
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
     if (userId) {
-      fetchUserData();
+      fetchUserData(userId)
+      fetchUserDemandes(userId)
     }
-  }, [userId]);
+  }, [userId])
 
-  useEffect(() => {
-    const fetchAllDemandes = async () => {
-      if (showManageDemandes && userData.matricule) {
-        try {
-          const [congesResponse, formationsResponse, autorisationsResponse] = await Promise.all([
-            fetch(`http://localhost:8080/api/demande-conge/personnel/${userId}`),
-            fetch(`http://localhost:8080/api/demande-formation/personnel/${userId}`),
-            fetch(`http://localhost:8080/api/demande-autorisation/personnel/${userId}`),
-          ]);
+  const fetchUserData = async (userId) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`http://localhost:8080/api/Personnel/byId/${userId}`)
 
-          if (!congesResponse.ok || !formationsResponse.ok || !autorisationsResponse.ok) {
-            throw new Error('Failed to fetch demandes');
-          }
-
-          const congesData = await congesResponse.json();
-          const formationsData = await formationsResponse.json();
-          const autorisationsData = await autorisationsResponse.json();
-
-          const combinedDemandes = [
-            ...congesData.map((demande) => ({ ...demande, type: 'Conge' })),
-            ...formationsData.map((demande) => ({ ...demande, type: 'Formation' })),
-            ...autorisationsData.map((demande) => ({ ...demande, type: 'Autorisation' })),
-          ];
-
-          setDemandes(combinedDemandes);
-        } catch (error) {
-          console.error('Error fetching demandes:', error);
-        }
+      if (!response.ok) {
+        throw new Error("Network response was not ok")
       }
-    };
 
-    fetchAllDemandes();
-  }, [showManageDemandes, userData.matricule, userId]);
+      const data = await response.json()
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'O':
-        return 'Approved';
-      case 'N':
-        return 'Rejected';
-      case 'I':
-        return 'Pending';
-      default:
-        return status;
+      // Update the state with the fetched user data
+      setUserData({
+        nom: data.nom || "",
+        prenom: data.prenom || "",
+        email: data.email || "",
+        matricule: data.matricule || "",
+        serviceName: data.serviceName || "Non spécifié",
+        role: data.role || "Non spécifié",
+        dateNaissance: data.dateNaissance || "Non spécifiée",
+        telephone: data.telephone || "Non spécifié",
+        adresse: data.adresse || "Non spécifiée",
+        dateEmbauche: data.dateEmbauche || "Non spécifiée",
+      })
+    } catch (error) {
+      console.error("Error fetching user data:", error)
+      setError("Erreur lors du chargement des données utilisateur")
+    } finally {
+      setLoading(false)
     }
-  };
+  }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const fetchUserDemandes = async (userId) => {
+    try {
+      // This would be replaced with actual API calls
+      // Simulating data for now
+      setDemandes([
+        { id: 1, type: "Formation", status: "Approuvée", date: "2023-11-15" },
+        { id: 2, type: "Congé", status: "En attente", date: "2023-11-10" },
+        { id: 3, type: "Document", status: "Rejetée", date: "2023-11-05" },
+        { id: 4, type: "Autorisation", status: "Approuvée", date: "2023-10-28" },
+      ])
+    } catch (error) {
+      console.error("Error fetching user demandes:", error)
+    }
+  }
 
-  const handleUpdateStatus = (id, type) => {
-    // Implement the logic to update the status of the demande
-    console.log(`Updating status for demande ${id} of type ${type}`);
-  };
+  const getStatusClass = (status) => {
+    switch (status.toLowerCase()) {
+      case "approuvée":
+        return "status-approved"
+      case "en attente":
+        return "status-pending"
+      case "rejetée":
+        return "status-rejected"
+      default:
+        return ""
+    }
+  }
 
-  // Filter demandes based on selected status and type
-  const filteredDemandes = demandes.filter((demande) => {
-    const matchesStatus = filterStatus === 'all' || demande.reponseChef === filterStatus;
-    const matchesType = filterType === 'all' || demande.type === filterType;
-    return matchesStatus && matchesType;
-  });
+  if (loading) {
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Chargement...</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="profile-container">
+    <div className="dashboard-container">
       <Navbar />
+      <div className="main-content">
+        <Sidebar />
+        <div className="content-area">
+          <div className="page-header">
+            <h1>Profil Utilisateur</h1>
+            <p className="subtitle">Consultez et gérez vos informations personnelles</p>
+          </div>
 
-      <div className="sidebar-container">
-        <aside className="sidebar">
-          <h2>My Settings</h2>
-          <ul>
-            <li className={!showManageDemandes ? "active" : ""} onClick={() => setShowManageDemandes(false)}>
-              Profile
-            </li>
-            <li className={showManageDemandes ? "active" : ""} onClick={() => setShowManageDemandes(true)}>
-              Manage Demandes
-            </li>
-          </ul>
-        </aside>
-      </div>
+          <div className="profile-tabs">
+            <button
+              className={`tab-button ${activeTab === "profile" ? "active" : ""}`}
+              onClick={() => setActiveTab("profile")}
+            >
+              Informations Personnelles
+            </button>
+            <button
+              className={`tab-button ${activeTab === "demandes" ? "active" : ""}`}
+              onClick={() => setActiveTab("demandes")}
+            >
+              Mes Demandes
+            </button>
+          </div>
 
-      <main className="profile-content">
-        {showManageDemandes ? (
-          <>
-            <h2>Manage Demandes</h2>
+          {activeTab === "profile" && (
+            <div className="profile-content">
+              <div className="profile-card">
+                <div className="profile-header">
+                  <div className="profile-avatar">
+                    {userData.nom.charAt(0)}
+                    {userData.prenom.charAt(0)}
+                  </div>
+                  <div className="profile-title">
+                    <h2>
+                      {userData.nom} {userData.prenom}
+                    </h2>
+                    <p>
+                      {userData.role} - {userData.serviceName}
+                    </p>
+                  </div>
+                  <button className="edit-profile-button">
+                    <FiEdit />
+                    <span>Modifier</span>
+                  </button>
+                </div>
 
-            {/* Filter Bar */}
-            <div className="filter-bar">
-              <label>
-                Filter by Status:
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                  <option value="all">All</option>
-                  <option value="O">Approved</option>
-                  <option value="N">Rejected</option>
-                  <option value="I">Pending</option>
-                </select>
-              </label>
-
-              <label>
-                Filter by Type:
-                <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-                  <option value="all">All</option>
-                  <option value="Conge">Conge</option>
-                  <option value="Formation">Formation</option>
-                  <option value="Autorisation">Autorisation</option>
-                </select>
-              </label>
-            </div>
-
-            {/* Table */}
-            <div className="table-container">
-              <table className="user-table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Date Demande</th>
-                    <th>Details</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDemandes.map((demande) => (
-                    <tr key={demande.id}>
-                      <td>{demande.type}</td>
-                      <td>{formatDate(demande.dateDemande)}</td>
-                      <td>{demande.texteDemande}</td>
-                      <td>
-                        <span className={`status ${demande.reponseChef.toLowerCase()}`}>
-                          {getStatusText(demande.reponseChef)}
+                <div className="profile-details">
+                  <div className="detail-group">
+                    <h3>Informations Personnelles</h3>
+                    <div className="detail-item">
+                      <FiUser className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Nom Complet</span>
+                        <span className="detail-value">
+                          {userData.nom} {userData.prenom}
                         </span>
-                      </td>
-                      <td>
-                        {demande.reponseChef === 'I' ? (
-                          <button
-                            className="update-button"
-                            onClick={() => handleUpdateStatus(demande.id, demande.type)}
-                          >
-                            Update
-                          </button>
-                        ) : (
-                          <button className="update-button" disabled>
-                            Update
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiMail className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Email</span>
+                        <span className="detail-value">{userData.email}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiPhone className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Téléphone</span>
+                        <span className="detail-value">{userData.telephone}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiCalendar className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Date de Naissance</span>
+                        <span className="detail-value">{userData.dateNaissance}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiMapPin className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Adresse</span>
+                        <span className="detail-value">{userData.adresse}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="detail-group">
+                    <h3>Informations Professionnelles</h3>
+                    <div className="detail-item">
+                      <FiBriefcase className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Matricule</span>
+                        <span className="detail-value">{userData.matricule}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiBriefcase className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Service</span>
+                        <span className="detail-value">{userData.serviceName}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiBriefcase className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Rôle</span>
+                        <span className="detail-value">{userData.role}</span>
+                      </div>
+                    </div>
+                    <div className="detail-item">
+                      <FiCalendar className="detail-icon" />
+                      <div className="detail-content">
+                        <span className="detail-label">Date d'Embauche</span>
+                        <span className="detail-value">{userData.dateEmbauche}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+          )}
 
-            <button className="add-user-button">+ Add new Demande</button>
-          </>
-        ) : (
-          <>
-            <h2>Profile</h2>
-
-            <div className="personal-info">
-              <label>First Name</label>
-              <input type="text" value={userData.nom} readOnly />
-
-              <label>Last Name</label>
-              <input type="text" value={userData.prenom} readOnly />
-
-              <label>Email Address</label>
-              <input type="email" value={userData.email} readOnly />
+          {activeTab === "demandes" && (
+            <div className="demandes-content">
+              <div className="demandes-card">
+                <div className="demandes-header">
+                  <h2>Historique des Demandes</h2>
+                </div>
+                <div className="demandes-table-container">
+                  <table className="demandes-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Date</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {demandes.length > 0 ? (
+                        demandes.map((demande) => (
+                          <tr key={demande.id}>
+                            <td>{demande.id}</td>
+                            <td>{demande.type}</td>
+                            <td>{demande.date}</td>
+                            <td>
+                              <span className={`status-badge ${getStatusClass(demande.status)}`}>{demande.status}</span>
+                            </td>
+                            <td>
+                              <button className="action-button view-button">Voir</button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="empty-table">
+                            Aucune demande trouvée
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-
-            <div className="other-info">
-              <label>Matricule</label>
-              <input type="text" value={userData.matricule} readOnly />
-
-              <label>Service</label>
-              <input type="text" value={userData.serviceName} readOnly />
-
-              <label>Role</label>
-              <input type="text" value={userData.role} readOnly />
-            </div>
-
-            <div className="password-section">
-              <label>Password</label>
-              <button className="change-password">Change Password</button>
-            </div>
-          </>
-        )}
-      </main>
+          )}
+        </div>
+      </div>
     </div>
-  );
-};
+  )
+}
 
-export default Profile;
+export default Profile
+

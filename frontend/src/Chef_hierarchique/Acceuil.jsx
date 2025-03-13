@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import Sidebar from "./Components/Sidebar/Sidebar";
-import Navbar from "./Components/Navbar/Navbar";
+import Sidebar from "./Components/Sidebar/Sidebar.jsx";
+import Navbar from "./Components/Navbar/Navbar.jsx";
 import { FiUsers, FiUserCheck, FiUserX, FiBell, FiMail, FiSun, FiMoon } from "react-icons/fi";
 import { FaFemale, FaMale } from "react-icons/fa";
 import "./Acceuil.css";
@@ -18,6 +18,7 @@ const Accueil = () => {
   const [demandesPreAvance, setDemandesPreAvance] = useState([]);
   const [demandesAutorisation, setDemandesAutorisation] = useState([]);
   const [theme, setTheme] = useState("light");
+  const userServiceId = localStorage.getItem("userServiceId"); 
 
   const [genderDistribution, setGenderDistribution] = useState({
     male: 65,
@@ -104,16 +105,26 @@ const Accueil = () => {
       .catch((error) => console.error("Error fetching personnel data:", error));
 
     // Fetch notifications
-    fetch("http://localhost:8080/api/notifications/unreadnbr")
-      .then((response) => response.json())
+    fetch("http://localhost:8080/api/notifications/unreadnbr?role=Chef Hiérarchique")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
       .then((data) => setUnviewedCount(data))
       .catch((error) => console.error("Error fetching unread notifications:", error));
 
-    fetch("http://localhost:8080/api/notifications/nbr")
-      .then((response) => response.json())
+      fetch("http://localhost:8080/api/notifications/nbr?role=Chef Hiérarchique")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
       .then((data) => setTotalNotifications(data))
       .catch((error) => console.error("Error fetching total notifications:", error));
-
+   
     // Fetch demandes
     fetchAndFilterDemandes("http://localhost:8080/api/demande-conge", setDemandesConge, "demandesConge");
     fetchAndFilterDemandes("http://localhost:8080/api/demande-formation", setDemandesFormation, "demandesFormation");
@@ -160,7 +171,7 @@ const Accueil = () => {
     <div className={`app-container ${theme}`}>
       <Sidebar />
       <div className="dashboard-container">
-        <Navbar />
+        <Navbar userServiceId={userServiceId} />
         <div className="dashboard-content">
           <div className="dashboard-header">
             <div className="header-top">

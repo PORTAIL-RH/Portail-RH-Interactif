@@ -58,8 +58,8 @@ public class NotificationController {
 
     // Récupérer le nombre total de notifications
     @GetMapping("/nbr")
-    public ResponseEntity<Integer> getTotalNotificationsnb() {
-        List<Notification> notifications = notificationService.getAllNotifications();
+    public ResponseEntity<Integer> getTotalNotificationsnb(@RequestParam String role) {
+        List<Notification> notifications = notificationService.getAllNotificationsByRole(role); // Ensure this method exists in your service
         return ResponseEntity.ok(notifications.size());
     }
 
