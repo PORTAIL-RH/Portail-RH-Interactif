@@ -13,10 +13,21 @@ const Addpers = lazy(() => import('./admin/Components/AjoutPersonnel/AjoutPerson
 // RH
 const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
 const PersonnelsRH = lazy(() => import('./RH/Components/Personnels/Personnels.jsx'));
-const DemandesRH = lazy(() => import('./RH/Components/Demandes/Demandes.jsx')); 
 const CalendarRH = lazy(() => import('./RH/Components/Calendar/Calendar.jsx'));
 const Notificationsrh = lazy(() => import('./RH/Components/Notifications/Notifications.jsx'));
 const NotificationModalrh = lazy(() => import('./RH/Components/Navbar/NotificationModal.jsx'));
+const FormationRH = lazy(() => import('./RH/Components/Demandes/Formation.jsx'));
+const CongeRH = lazy(() => import('./RH/Components/Demandes/Conge.jsx'));
+const DocumentRH = lazy(() => import('./RH/Components/Demandes/Document.jsx'));
+const AutorisationRH = lazy(() => import('./RH/Components/Demandes/Autorisation.jsx'));
+const PreAvanceRH = lazy(() => import('./RH/Components/Demandes/PreAvance.jsx'));
+const ProfileRH = lazy(() => import('./RH/Components/Profile/Profile.jsx'));
+const AjoutDemandeFormationRH = lazy(() => import('./RH/Components/AjoutDemande/Formation.jsx'));
+const AjoutDemandeCongeRH = lazy(() => import('./RH/Components/AjoutDemande/Conge.jsx'));
+const AjoutDemandePreAvanceRH = lazy(() => import('./RH/Components/AjoutDemande/PreAvance.jsx'));
+const AjoutDemandeDocumentRH = lazy(() => import('./RH/Components/AjoutDemande/Document.jsx'));
+const AjoutDemandeAutorisationRH = lazy(() => import('./RH/Components/AjoutDemande/Autorisation.jsx'));
+const DemandesRH = lazy(() => import('./RH/Components/DemandesRH/DemandesRH.jsx'));
 
 // CHEF
 const AccueilCHEF = lazy(() => import('./Chef_hierarchique/Acceuil.jsx'));
@@ -99,7 +110,19 @@ function App() {
   <Route path="/AccueilRH" element={<AccueilRH />} />
           <Route path="/PersonnelsRH" element={<PersonnelsRH />} />
           <Route path="/DemandesRH" element={<DemandesRH />} />
+          <Route path="/FormationRH" element={<FormationRH />} />
+          <Route path="/CongeRH" element={<CongeRH />} />
+          <Route path="/DocumentRH" element={<DocumentRH />} />
+          <Route path="/AutorisationRH" element={<AutorisationRH />} />
+          <Route path="/PreAvanceRH" element={<PreAvanceRH />} />
+          <Route path="/ProfileRH" element={<ProfileRH />} />
+          <Route path="/AjoutDemandeAutorisationRH" element={<AjoutDemandeAutorisationRH />} />
+          <Route path="/AjoutDemandeFormationRH" element={<AjoutDemandeFormationRH />} />
+          <Route path="/AjoutDemandePreAvanceRH" element={<AjoutDemandePreAvanceRH />} />
+          <Route path="/AjoutDemandeDocumentRH" element={<AjoutDemandeDocumentRH />} />
+          <Route path="/AjoutDemandeCongeRH" element={<AjoutDemandeCongeRH />} />
           <Route path="/CalendarRH" element={<CalendarRH />} />
+          <Route path="/DemandesRH" element={<DemandesRH />} />
           <Route path="/Notificationsrh" element={<Notificationsrh />} />
           <Route path="/NotificationModalrh" element={<NotificationModalrh />} />
 
