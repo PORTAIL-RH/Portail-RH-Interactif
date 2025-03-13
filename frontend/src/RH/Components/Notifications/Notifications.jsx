@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { format } from "date-fns";
 import useNotifications from "../Navbar/useNotifications";
 import bellIcon from "../../../assets/bell.png";
@@ -8,12 +8,24 @@ import Navbar from "../Navbar/Navbar";
 
 const Notifications = () => {
   const role = "RH"; // Rôle de l'utilisateur actuel
-  const { notifications = [], unviewedCount, setUnviewedCount, fetchNotifications, error } = useNotifications(role);
+  const {
+    notifications = [],
+    unviewedCount,
+    setUnviewedCount,
+    fetchNotifications,
+    error,
+  } = useNotifications(role);
 
+  // Mark a notification as read
   const markAsRead = async (id) => {
     try {
       const token = localStorage.getItem("authToken");
-      await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
+      if (!token) {
+        console.error("No authentication token found.");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -21,63 +33,76 @@ const Notifications = () => {
         },
       });
 
-      // Mettre à jour le compteur de notifications non lues
+      if (!response.ok) {
+        throw new Error("Failed to mark notification as read.");
+      }
+
+      // Update the unviewed count
       setUnviewedCount((prev) => Math.max(prev - 1, 0));
 
-      // Recharger les notifications
+      // Refresh notifications
       await fetchNotifications();
     } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error);
+      console.error("Error marking notification as read:", error);
     }
   };
 
-  // ✅ Filtrer et trier les notifications pour l'admin
+  // Filter and sort notifications for the admin
   const sortedNotifications = [...notifications]
-    .filter((notification) => notification.role === role) // Filtrer par rôle
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Trier par date (du plus récent au plus ancien)
+    .filter((notification) => notification.role === role) // Filter by role
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort by date (newest first)
+
+  // Fetch notifications on component mount
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   return (
-    <div className="accueil-containernt">
-      <Navbar />
+    <div className="app-container">
       <Sidebar />
-      <div className="contenttf">
-        <div className="notification-section">
-          <div className="notification-header">
-            <h2>Notifications</h2>
-            {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
-          </div>
-
-          {error && <p className="error-message">{error}</p>}
-
-          {sortedNotifications.length > 0 ? (
-            <div className="notification-list">
-              {sortedNotifications.map((notification) => {
-                const notificationDate = new Date(notification.timestamp);
-
-                // Vérifier si la date est valide
-                if (isNaN(notificationDate.getTime())) {
-                  console.error("Invalid date value:", notification.timestamp);
-                  return null; // Ignorer cette notification si la date est invalide
-                }
-
-                return (
-                  <div
-                    key={notification.id}
-                    className={`notification ${notification.viewed ? "read" : "unread"}`}
-                    onClick={() => !notification.viewed && markAsRead(notification.id)} // Marquer comme lue uniquement si elle n'est pas déjà lue
-                  >
-                    <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
-                    <p>{notification.message}</p>
-                    <span className="notification-timestamp">
-                      {format(notificationDate, "yyyy-MM-dd HH:mm")}
-                    </span>
-                  </div>
-                );
-              })}
+      <div className="dashboard-container">
+        <Navbar />
+        <div className="contenttf">
+          <div className="notification-section">
+            <div className="notification-header">
+              <h2>Notifications</h2>
+              {unviewedCount > 0 && (
+                <span className="notification-badge">{unviewedCount}</span>
+              )}
             </div>
-          ) : (
-            <p>Aucune notification.</p>
-          )}
+
+            {error && <p className="error-message">{error}</p>}
+
+            {sortedNotifications.length > 0 ? (
+              <div className="notification-list">
+                {sortedNotifications.map((notification) => {
+                  const notificationDate = new Date(notification.timestamp);
+
+                  // Skip invalid dates
+                  if (isNaN(notificationDate.getTime())) {
+                    console.error("Invalid date value:", notification.timestamp);
+                    return null;
+                  }
+
+                  return (
+                    <div
+                      key={notification.id}
+                      className={`notification ${notification.viewed ? "read" : "unread"}`}
+                      onClick={() => !notification.viewed && markAsRead(notification.id)} // Mark as read if unread
+                    >
+                      <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
+                      <p>{notification.message}</p>
+                      <span className="notification-timestamp">
+                        {format(notificationDate, "yyyy-MM-dd HH:mm")}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p>Aucune notification.</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
