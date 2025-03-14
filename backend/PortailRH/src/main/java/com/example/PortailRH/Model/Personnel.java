@@ -1,7 +1,6 @@
 package com.example.PortailRH.Model;
 
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -10,6 +9,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.util.List;
 
 @Document(collection = "Personnel")
 @Data
@@ -53,6 +54,7 @@ public class Personnel {
     private String CIN;
 
     @NotBlank(message = "Le sexe est obligatoire")
+    @Pattern(regexp = "male|female", message = "Le sexe doit être 'male' ou 'female'")
     private String sexe;
 
     @NotBlank(message = "La situation est obligatoire")
@@ -132,7 +134,28 @@ public class Personnel {
     public Personnel getChefHierarchique() {
         return chefHierarchique;
     }
+    public static String calculateGenderPercentage(List<Personnel> personnelList) {
+        if (personnelList == null || personnelList.isEmpty()) {
+            return "No personnel data available.";
+        }
 
+        int total = personnelList.size();
+        int femaleCount = 0;
+        int maleCount = 0;
+
+        for (Personnel personnel : personnelList) {
+            if ("female".equalsIgnoreCase(personnel.getSexe())) {
+                femaleCount++;
+            } else if ("male".equalsIgnoreCase(personnel.getSexe())) {
+                maleCount++;
+            }
+        }
+
+        double femalePercentage = (femaleCount * 100.0) / total;
+        double malePercentage = (maleCount * 100.0) / total;
+
+        return String.format("Females: %.2f%%, Males: %.2f%%", femalePercentage, malePercentage);
+    }
     public void setChefHierarchique(Personnel chefHierarchique) {
         this.chefHierarchique = chefHierarchique;
     }

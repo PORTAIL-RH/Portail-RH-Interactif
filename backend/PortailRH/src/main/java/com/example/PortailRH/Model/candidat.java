@@ -5,7 +5,6 @@ import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 @Document(collection = "candidats")
@@ -19,9 +18,11 @@ public class candidat {
     private int age;
     private String email;
     private String numTel;
-
     private String cvFilePath;
 
+    private List<String> skills = new ArrayList<>();
+    private double score;
+    private boolean accepted;
 
     @DBRef
     private List<Candidature> candidatures = new ArrayList<>();
@@ -83,17 +84,39 @@ public class candidat {
         this.cvFilePath = cvFilePath;
     }
 
-
-
-    // Add a method to add a candidature
-    public void addCandidature(Candidature candidature) {
-        this.candidatures.add(candidature);
+    public List<String> getSkills() {
+        return skills;
     }
+
+    public void setSkills(List<String> skills) {
+        this.skills = skills;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public boolean isAccepted() {
+        return accepted;
+    }
+
+    public void setAccepted(boolean accepted) {
+        this.accepted = accepted;
+    }
+
     public List<Candidature> getCandidatures() {
         return candidatures;
     }
 
     public void setCandidatures(List<Candidature> candidatures) {
         this.candidatures = candidatures;
+    }
+
+    public void addCandidature(Candidature candidature) {
+        this.candidatures.add(candidature);
     }
 }

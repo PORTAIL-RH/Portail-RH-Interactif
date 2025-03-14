@@ -42,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "api/Personnel/addWithMatriculeAndEmail").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/Personnel/updateAllFields/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/byId/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/gender-distribution").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/activation-status").permitAll()
 
 
                         //Services Endpoints

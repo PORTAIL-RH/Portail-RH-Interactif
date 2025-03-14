@@ -8,7 +8,6 @@ import "./Acceuil.css";
 const Accueil = () => {
   const [unviewedCount, setUnviewedCount] = useState(0);
   const [totalNotifications, setTotalNotifications] = useState(0);
-  const [personalNumber, setPersonalNumber] = useState("");
   const [activatedPersonnel, setActivatedPersonnel] = useState(0);
   const [nonActivatedPersonnel, setNonActivatedPersonnel] = useState(0);
   const [totalPersonnel, setTotalPersonnel] = useState(0);
@@ -20,9 +19,11 @@ const Accueil = () => {
   const [theme, setTheme] = useState("light");
 
   const [genderDistribution, setGenderDistribution] = useState({
-    male: 65,
-    female: 35,
+    male: 0,
+    female: 0,
   });
+
+  const [isLoading, setIsLoading] = useState(true);
 
   // Initialize theme
   useEffect(() => {
@@ -47,17 +48,17 @@ const Accueil = () => {
   // Fetch and filter demandes
   const fetchAndFilterDemandes = async (endpoint, setState, localStorageKey, forceRefresh = false) => {
     const cachedData = localStorage.getItem(localStorageKey);
-  
+
     if (forceRefresh || !cachedData) {
       try {
         const response = await fetch(endpoint);
         const data = await response.json();
         console.log("Fetched data:", data); // Debugging
-  
+
         // Remove filtering conditions to include all demandes
         const filteredData = data; // No filtering, include all demandes
         console.log("Filtered data:", filteredData); // Debugging
-  
+
         setState(filteredData);
         localStorage.setItem(localStorageKey, JSON.stringify(filteredData));
         console.log("Updated localStorage for key:", localStorageKey); // Debugging
@@ -72,30 +73,55 @@ const Accueil = () => {
 
   // Fetch initial data and listen for SSE updates
   useEffect(() => {
-    // Fetch personnel data
+    setIsLoading(true);
+
+    // Fetch activation status
+    fetch("http://localhost:8080/api/Personnel/activation-status")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Fetched activation status:", data); // Debugging
+        setActivatedPersonnel(data.activated);
+        setNonActivatedPersonnel(data.nonActivated);
+      })
+      .catch((error) => {
+        console.error("Error fetching activation status:", error);
+      });
+
+    // Fetch gender distribution
+    fetch("http://localhost:8080/api/Personnel/gender-distribution")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Fetched gender distribution:", data); // Debugging
+        setGenderDistribution({
+          male: data.male,
+          female: data.female,
+        });
+      })
+      .catch((error) => {
+        console.error("Error fetching gender distribution:", error);
+      });
+
+    // Fetch total personnel
     fetch("http://localhost:8080/api/Personnel/all")
       .then((response) => response.json())
       .then((data) => {
+        console.log("Fetched personnel data:", data); // Debugging
         setTotalPersonnel(data.length);
-        const activated = data.filter((person) => person.status === "activated").length;
-        const nonActivated = data.filter((person) => person.status === "non-activated").length;
-        setActivatedPersonnel(activated);
-        setNonActivatedPersonnel(nonActivated);
-  
-        const males = data.filter((person) => person.gender === "male").length;
-        const females = data.filter((person) => person.gender === "female").length;
-  
-        if (data.length > 0) {
-          const malePercentage = Math.round((males / data.length) * 100);
-          const femalePercentage = 100 - malePercentage;
-          setGenderDistribution({
-            male: malePercentage,
-            female: femalePercentage,
-          });
-        }
       })
-      .catch((error) => console.error("Error fetching personnel data:", error));
-  
+      .catch((error) => {
+        console.error("Error fetching personnel data:", error);
+      });
+
     // Fetch notifications
     fetch("http://localhost:8080/api/notifications/unreadnbr?role=RH")
       .then((response) => {
@@ -107,8 +133,7 @@ const Accueil = () => {
       .then((data) => setUnviewedCount(data))
       .catch((error) => console.error("Error fetching unread notifications:", error));
 
-
-      fetch("http://localhost:8080/api/notifications/nbr?role=RH")
+    fetch("http://localhost:8080/api/notifications/nbr?role=RH")
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -117,25 +142,23 @@ const Accueil = () => {
       })
       .then((data) => setTotalNotifications(data))
       .catch((error) => console.error("Error fetching total notifications:", error));
-   
 
-  
     // Fetch demandes
     fetchAndFilterDemandes("http://localhost:8080/api/demande-conge", setDemandesConge, "demandesConge");
     fetchAndFilterDemandes("http://localhost:8080/api/demande-formation", setDemandesFormation, "demandesFormation");
     fetchAndFilterDemandes("http://localhost:8080/api/demande-document", setDemandesDocument, "demandesDocument");
     fetchAndFilterDemandes("http://localhost:8080/api/demande-pre-avance", setDemandesPreAvance, "demandesPreAvance");
     fetchAndFilterDemandes("http://localhost:8080/api/demande-autorisation", setDemandesAutorisation, "demandesAutorisation");
-  
+
     // Listen for SSE updates
     const eventSource = new EventSource("http://localhost:8080/sse/updates");
-  
+
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
       const { type, data } = update;
-  
+
       console.log("Received update:", type, data); // Debugging
-  
+
       // Refresh data based on the update type
       switch (type) {
         case "created":
@@ -151,12 +174,12 @@ const Accueil = () => {
           console.warn("Unknown update type:", type);
       }
     };
-  
+
     eventSource.onerror = (error) => {
       console.error("EventSource failed:", error);
       eventSource.close();
     };
-  
+
     return () => {
       eventSource.close();
     };
@@ -239,8 +262,11 @@ const Accueil = () => {
                         <span>Hommes</span>
                       </div>
                       <div className="gender-bar-wrapper">
-                        <div className="gender-bar male-bar" style={{ width: `${genderDistribution.male}%` }}></div>
-                        <span className="gender-percentage">{genderDistribution.male}%</span>
+                        <div
+                          className="gender-bar male-bar"
+                          style={{ width: `${genderDistribution.male}%` }}
+                        ></div>
+                        <span className="gender-percentage">{genderDistribution.male.toFixed(2)}%</span>
                       </div>
                     </div>
 
@@ -250,8 +276,11 @@ const Accueil = () => {
                         <span>Femmes</span>
                       </div>
                       <div className="gender-bar-wrapper">
-                        <div className="gender-bar female-bar" style={{ width: `${genderDistribution.female}%` }}></div>
-                        <span className="gender-percentage">{genderDistribution.female}%</span>
+                        <div
+                          className="gender-bar female-bar"
+                          style={{ width: `${genderDistribution.female}%` }}
+                        ></div>
+                        <span className="gender-percentage">{genderDistribution.female.toFixed(2)}%</span>
                       </div>
                     </div>
                   </div>
@@ -261,9 +290,9 @@ const Accueil = () => {
                       className="pie-chart"
                       style={{
                         background: `conic-gradient(
-                        #4f46e5 0% ${genderDistribution.male}%, 
-                        #ec4899 ${genderDistribution.male}% 100%
-                      )`,
+                          #4f46e5 0% ${genderDistribution.male}%, 
+                          #ec4899 ${genderDistribution.male}% 100%
+                        )`,
                       }}
                     ></div>
                     <div className="pie-chart-legend">

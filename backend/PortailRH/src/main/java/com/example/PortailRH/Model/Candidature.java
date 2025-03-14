@@ -1,7 +1,8 @@
 package com.example.PortailRH.Model;
 
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-import jakarta.persistence.Id;
+
 import java.util.Date;
 import java.util.List;
 
@@ -27,6 +28,7 @@ public class Candidature {
     public void setId(String id) {
         this.id = id;
     }
+
 
     public Date getDateAjoutPostulation() {
         return dateAjoutPostulation;
@@ -92,7 +94,7 @@ public class Candidature {
         this.skills = skills;
     }
 
-    // Méthode pour calculer le statut dynamiquement
+    // Method to calculate status dynamically
     public String getStatus() {
         Date aujourdHui = new Date();
         if (dateFermeturePostulation != null && aujourdHui.after(dateFermeturePostulation)) {
@@ -101,5 +103,4 @@ public class Candidature {
             return "disponible";
         }
     }
-
 }
