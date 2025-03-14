@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -83,8 +84,50 @@ public class PersonnelController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Erreur lors de l'enregistrement : " + ex.getMessage());
         }
     }
+    @GetMapping("/gender-distribution")
+    public Map<String, Double> getGenderDistribution() {
+        List<Personnel> personnelList = personnelRepository.findAll();
+        int total = personnelList.size();
+        int maleCount = 0;
+        int femaleCount = 0;
 
+        for (Personnel personnel : personnelList) {
+            if ("male".equalsIgnoreCase(personnel.getSexe())) {
+                maleCount++;
+            } else if ("female".equalsIgnoreCase(personnel.getSexe())) {
+                femaleCount++;
+            }
+        }
 
+        double malePercentage = (maleCount * 100.0) / total;
+        double femalePercentage = (femaleCount * 100.0) / total;
+
+        Map<String, Double> genderDistribution = new HashMap<>();
+        genderDistribution.put("male", malePercentage);
+        genderDistribution.put("female", femalePercentage);
+
+        return genderDistribution;
+    }
+    @GetMapping("/activation-status")
+    public Map<String, Integer> getActivationStatus() {
+        List<Personnel> personnelList = personnelRepository.findAll();
+        int activatedCount = 0;
+        int nonActivatedCount = 0;
+
+        for (Personnel personnel : personnelList) {
+            if (personnel.isActive()) {
+                activatedCount++;
+            } else {
+                nonActivatedCount++;
+            }
+        }
+
+        Map<String, Integer> activationStatus = new HashMap<>();
+        activationStatus.put("activated", activatedCount);
+        activationStatus.put("nonActivated", nonActivatedCount);
+
+        return activationStatus;
+    }
     // Retrieve all personnel
     @GetMapping("/all")
     public ResponseEntity<?> getAllCollaborateurs() {

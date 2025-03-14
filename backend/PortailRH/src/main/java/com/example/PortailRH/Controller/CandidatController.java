@@ -3,6 +3,7 @@ package com.example.PortailRH.Controller;
 import com.example.PortailRH.Model.candidat;
 import com.example.PortailRH.Model.Candidature;
 import com.example.PortailRH.Repository.CandidatRepository;
+import com.example.PortailRH.Service.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/candidats")
@@ -21,6 +23,9 @@ public class CandidatController {
 
     @Autowired
     private CandidatRepository candidatRepository;
+
+    @Autowired
+    private AIService aiService;  // Inject the AI service
 
     private static final String UPLOAD_DIR = "assets/CVS";
 
@@ -48,6 +53,15 @@ public class CandidatController {
             @RequestParam String candidatureId,
             @RequestParam("cv") MultipartFile cv) throws IOException {
 
+        System.out.println("Received request with:");
+        System.out.println("nom: " + nom);
+        System.out.println("prenom: " + prenom);
+        System.out.println("age: " + age);
+        System.out.println("email: " + email);
+        System.out.println("numTel: " + numTel);
+        System.out.println("candidatureId: " + candidatureId);
+        System.out.println("cv: " + cv.getOriginalFilename());
+
         // Save the CV file
         String cvFilePath = saveFile(cv);
 
@@ -65,8 +79,18 @@ public class CandidatController {
         candidature.setId(candidatureId);
         candidat.addCandidature(candidature);
 
-        // Save the candidat object
+        // Save the candidat object to generate an ID
         candidat savedCandidat = candidatRepository.save(candidat);
+
+        // Call the AI service to extract skills and get the score
+        Map<String, Object> aiResult = aiService.processCV(cvFilePath, savedCandidat.getId(), candidatureId);
+
+        // Update the candidate with skills and score
+        savedCandidat.setSkills((List<String>) aiResult.get("skills")); // Set skills
+        savedCandidat.setScore((Double) aiResult.get("score"));         // Set score
+
+        // Save the updated candidate
+        candidatRepository.save(savedCandidat);
 
         return ResponseEntity.ok(savedCandidat);
     }
@@ -86,7 +110,7 @@ public class CandidatController {
         return uploadDir + "/" + fileName;
     }
 
-    // Update a candidate
+    // Update a candidate (existing method)
     @PutMapping("/{id}")
     public ResponseEntity<candidat> updateCandidat(@PathVariable String id, @RequestBody candidat updatedCandidat) {
         return candidatRepository.findById(id)
@@ -97,6 +121,8 @@ public class CandidatController {
                     candidat.setEmail(updatedCandidat.getEmail());
                     candidat.setNumTel(updatedCandidat.getNumTel());
                     candidat.setCvFilePath(updatedCandidat.getCvFilePath());
+                    candidat.setSkills(updatedCandidat.getSkills());  // Update skills
+                    candidat.setScore(updatedCandidat.getScore());    // Update score
                     candidat savedCandidat = candidatRepository.save(candidat);
                     return ResponseEntity.ok(savedCandidat);
                 })
@@ -113,7 +139,8 @@ public class CandidatController {
             return ResponseEntity.notFound().build();
         }
     }
-    // Delete a candidate
+
+    // Delete a candidate (existing method)
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteCandidat(@PathVariable String id) {
         if (candidatRepository.existsById(id)) {
@@ -123,4 +150,8 @@ public class CandidatController {
             return ResponseEntity.notFound().build();
         }
     }
+
+
+
+
 }

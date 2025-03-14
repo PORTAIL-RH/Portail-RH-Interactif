@@ -16,4 +16,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleGenericException(Exception e) {
         return ResponseEntity.badRequest().body("Une erreur s'est produite: " + e.getMessage());
     }
+
+
 }
