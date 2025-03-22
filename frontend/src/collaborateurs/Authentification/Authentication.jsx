@@ -73,113 +73,100 @@ const Authentication = () => {
 
   const handleLogin = async () => {
     try {
-      const requestBody = {
-        matricule: formData.matricule.trim(),
-        motDePasse: formData.password.trim(),
-      };
+        const requestBody = {
+            matricule: formData.matricule.trim(),
+            motDePasse: formData.password.trim(),
+        };
 
-      const response = await fetch('http://localhost:8080/api/Personnel/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody),
-      });
+        const response = await fetch('http://localhost:8080/api/Personnel/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+        });
 
-      if (response.ok) {
-        const responseData = await response.json();
-        const { token, id } = responseData;
+        if (response.ok) {
+            const responseData = await response.json();
+            const { token, id } = responseData;
 
-        if (token && id) {
-          localStorage.setItem('authToken', token);
-          localStorage.setItem('userId', id);
+            if (token && id) {
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('userId', id);
 
-          // Fetch user details by ID to get the role and service
-          const userResponse = await fetch(`http://localhost:8080/api/Personnel/byId/${id}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            const { role, service } = userData;
-
-            console.log('User Role:', role);
-            console.log('User Service:', service);
-
-            if (role) {
-              localStorage.setItem('userRole', role);
-              localStorage.setItem('usermatricule', formData.matricule);
-              localStorage.setItem('userCodeSoc', userData.code_soc);
-
-              // Check if the service is defined and resolve it if it's a DBRef
-              if (service && service.$ref === 'Services') {
-                const serviceResponse = await fetch(`http://localhost:8080/api/Services/${service.$id}`, {
-                  method: 'GET',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                  },
+                // Fetch user details by ID to get the role, serviceId, and serviceName
+                const userResponse = await fetch(`http://localhost:8080/api/Personnel/byId/${id}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                 });
 
-                if (serviceResponse.ok) {
-                  const serviceData = await serviceResponse.json();
-                  console.log('Service Data:', serviceData);
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    const { role, serviceId, serviceName } = userData;
 
-                  if (serviceData.serviceId) {
-                    localStorage.setItem('userServiceId', serviceData.serviceId);
-                  }
+                    console.log('User Role:', role);
+                    console.log('User Service ID:', serviceId);
+                    console.log('User Service Name:', serviceName);
 
-                  if (serviceData.serviceName) {
-                    localStorage.setItem('userServiceName', serviceData.serviceName);
-                  }
+                    if (role) {
+                        localStorage.setItem('userRole', role);
+                        localStorage.setItem('usermatricule', formData.matricule);
+                        localStorage.setItem('userCodeSoc', userData.code_soc);
+
+                        // Store serviceId and serviceName if they exist
+                        if (serviceId) {
+                            localStorage.setItem('userServiceId', serviceId);
+                            console.log('Stored userServiceId:', serviceId);
+                        } else {
+                            console.error('serviceId not found in user data');
+                        }
+
+                        if (serviceName) {
+                            localStorage.setItem('userServiceName', serviceName);
+                            console.log('Stored userServiceName:', serviceName);
+                        } else {
+                            console.error('serviceName not found in user data');
+                        }
+
+                        alert('Login successful!');
+
+                        // Role-based redirection
+                        switch (role) {
+                            case 'collaborateur':
+                                navigate('/AccueilCollaborateurs');
+                                break;
+                            case 'RH':
+                                navigate('/AccueilRH');
+                                break;
+                            case 'Chef Hiérarchique':
+                                navigate('/AccueilCHEF');
+                                break;
+                            case 'Admin':
+                                navigate('/Accueil');
+                                break;
+                            default:
+                                navigate('/');
+                        }
+                    } else {
+                        alert('Role not found in user data.');
+                    }
+                } else {
+                    const errorText = await userResponse.text();
+                    alert(`Error fetching user details: ${errorText}`);
                 }
-              } else if (service && service.serviceId) {
-                localStorage.setItem('userServiceId', service.serviceId);
-                if (service.serviceName) {
-                  localStorage.setItem('userServiceName', service.serviceName);
-                }
-              }
-
-              alert('Login successful!');
-
-              // Role-based redirection
-              switch (role) {
-                case 'collaborateur':
-                  navigate('/AccueilCollaborateurs');
-                  break;
-                case 'RH':
-                  navigate('/AccueilRH');
-                  break;
-                case 'Chef Hiérarchique':
-                  navigate('/AccueilCHEF');
-                  break;
-                case 'Admin':
-                  navigate('/Accueil');
-                  break;
-                default:
-                  navigate('/');
-              }
             } else {
-              alert('Role not found in user data.');
+                alert('Invalid response data.');
             }
-          } else {
-            const errorText = await userResponse.text();
-            alert(`Error fetching user details: ${errorText}`);
-          }
         } else {
-          alert('Invalid response data.');
+            const errorText = await response.text();
+            alert(`Error: ${errorText}`);
         }
-      } else {
-        const errorText = await response.text();
-        alert(`Error: ${errorText}`);
-      }
     } catch (error) {
-      console.error('Login error:', error);
-      alert('An error occurred while logging in.');
+        console.error('Login error:', error);
+        alert('An error occurred while logging in.');
     }
-  };
+};
 
   return (
     <div className="auth-container">

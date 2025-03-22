@@ -1,9 +1,12 @@
 package com.example.PortailRH.Model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.util.List;
 
 @Data
@@ -16,9 +19,11 @@ public class Service {
     private String serviceName;
 
     @DBRef
+    @JsonBackReference // Marks this as the "child" side of the relationship
     private List<Personnel> personnels; // Reference to Personnel documents
 
     @DBRef
+    @JsonManagedReference // Marks this as the "owner" of the relationship
     private Personnel chefHierarchique; // Reference to the hierarchical chief
 
     public Personnel getChefHierarchique() {

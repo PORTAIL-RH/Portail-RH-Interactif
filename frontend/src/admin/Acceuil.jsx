@@ -54,25 +54,34 @@ const Accueil = () => {
       .then((response) => response.json())
       .then((data) => {
         setTotalPersonnel(data.length);
-        const activated = data.filter((person) => person.status === "activated").length;
-        const nonActivated = data.filter((person) => person.status === "non-activated").length;
+        const activated = data.filter((person) => person.active).length;
+        const nonActivated = data.filter((person) => !person.active).length;
         setActivatedPersonnel(activated);
         setNonActivatedPersonnel(nonActivated);
 
-        const males = data.filter((person) => person.gender === "male").length;
-        const females = data.filter((person) => person.gender === "female").length;
-
-        if (data.length > 0) {
-          const malePercentage = Math.round((males / data.length) * 100);
-          const femalePercentage = 100 - malePercentage;
-          setGenderDistribution({
-            male: malePercentage,
-            female: femalePercentage,
-          });
-        }
+        
       })
       .catch((error) => console.error("Error fetching personnel data:", error));
 
+       // Fetch gender distribution
+      fetch("http://localhost:8080/api/Personnel/gender-distribution")
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Fetched gender distribution:", data); // Debugging
+        setGenderDistribution({
+          male: data.male,
+          female: data.female,
+        });
+      })
+      .catch((error) => {
+        console.error("Error fetching gender distribution:", error);
+      });
+      
       // Fetch notifications
       fetch("http://localhost:8080/api/notifications/unreadnbr?role=Admin")
       .then((response) => {
@@ -107,7 +116,7 @@ const Accueil = () => {
 
       // Refresh data based on the update type
       switch (type) {
-        case "created":
+        case "created":      
         case "updated":
         case "deleted":
           
