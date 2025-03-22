@@ -1,10 +1,12 @@
 package com.example.PortailRH.Model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
@@ -70,9 +72,11 @@ public class Personnel {
     private String role;
 
     @DBRef
+    @JsonIgnore
     private Service service;
 
     @DBRef
+    @JsonIgnore
     private Personnel chefHierarchique;
 
     public Personnel() {
@@ -99,6 +103,9 @@ public class Personnel {
     }
     public String getServiceName() {
         return service != null ? service.getServiceName() : "N/A";
+    }
+    public String getServiceId() {
+        return service != null ? service.getServiceId() : null;
     }
     /**
      * Deactivates the collaborator.

@@ -2,6 +2,7 @@ package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.LoginResponse;
 import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.PersonnelDTO;
 import com.example.PortailRH.Model.Service;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/Personnel")
@@ -132,16 +134,40 @@ public class PersonnelController {
     @GetMapping("/all")
     public ResponseEntity<?> getAllCollaborateurs() {
         try {
-            return ResponseEntity.ok(personnelRepository.findAll());
+            List<Personnel> personnelList = personnelRepository.findAll();
+            List<PersonnelDTO> personnelDTOs = personnelList.stream()
+                    .map(personnel -> new PersonnelDTO(
+                            personnel.getId(),
+                            personnel.getMatricule(),
+                            personnel.getNom(),
+                            personnel.getPrenom(),
+                            personnel.getEmail(),
+                            personnel.getRole(),
+                            personnel.getMotDePasse(),
+                            personnel.getCode_soc(),
+                            personnel.getDate_naiss(),
+                            personnel.getTelephone(),
+                            personnel.getCIN() ,
+                            personnel.getSexe() ,
+                            personnel.getSituation() ,
+                            personnel.getNbr_enfants() ,
+                            personnel.getDate_embauche() ,
+                            personnel.isActive(),
+                            personnel.getService() != null ? personnel.getService().getServiceId() : null, // Include serviceId
+                            personnel.getService() != null ? personnel.getService().getServiceName() : "N/A" // Include serviceName
+                    ))
+                    .collect(Collectors.toList());
+            return ResponseEntity.ok(personnelDTOs);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la récupération des collaborateurs.");
+                    .body(Map.of("message", "Erreur lors de la récupération des personnel."));
         }
     }
 
     // Login a personnel
-    @PostMapping("/login")
+    @PostMapping(value = "/login", consumes = "application/json;charset=UTF-8" )
     public ResponseEntity<?> loginCollaborateur(@RequestBody Personnel personnel) {
+        System.out.println("Received login request for matricule: " + personnel.getMatricule());
         try {
             Personnel existingPersonnel = personnelRepository.findByMatricule(personnel.getMatricule())
                     .orElse(null);
@@ -273,9 +299,7 @@ public class PersonnelController {
             if (updates.containsKey("motDePasse")) {
                 personnel.setMotDePasse(bCryptPasswordEncoder.encode(updates.get("motDePasse").toString()));
             }
-            if (updates.containsKey("confirmationMotDePasse")) {
-                personnel.setConfirmationMotDePasse(updates.get("confirmationMotDePasse").toString());
-            }
+
             if (updates.containsKey("date_naiss")) personnel.setDate_naiss(updates.get("date_naiss").toString());
             if (updates.containsKey("telephone")) personnel.setTelephone(updates.get("telephone").toString());
             if (updates.containsKey("CIN")) personnel.setCIN(updates.get("CIN").toString());
@@ -287,14 +311,21 @@ public class PersonnelController {
             if (updates.containsKey("date_embauche")) personnel.setDate_embauche(updates.get("date_embauche").toString());
             if (updates.containsKey("active")) personnel.setActive(Boolean.parseBoolean(updates.get("active").toString()));
             if (updates.containsKey("role")) personnel.setRole(updates.get("role").toString());
+            if (updates.containsKey("serviceId")) {
+                // Fetch the service by ID and set it
+                String serviceId = updates.get("serviceId").toString();
+                Service service = serviceRepository.findById(serviceId)
+                        .orElseThrow(() -> new RuntimeException("Service non trouvé avec l'ID : " + serviceId));
+                personnel.setService(service);
+            }
 
             // Sauvegarder les modifications
             personnelRepository.save(personnel);
 
-            return ResponseEntity.ok("Données du personnel mises à jour avec succès.");
+            return ResponseEntity.ok(Map.of("message", "Données du personnel mises à jour avec succès."));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erreur lors de la mise à jour : " + ex.getMessage());
+                    .body(Map.of("message", "Erreur lors de la mise à jour : " + ex.getMessage()));
         }
     }
 
