@@ -75,7 +75,6 @@ body {
 
 /* Main content area */
 .main-contentpp {
-  margin-left: var(--sidebar-width);
   padding: 2rem;
   padding-top: calc(var(--navbar-height) + 1rem);
   min-height: 100vh;
@@ -553,11 +552,12 @@ body {
 .modal-container {
   background-color: var(--card-bg);
   border-radius: var(--radius-lg);
-  width: 100%;
+  width: 50%; 
+  max-height: 80vh;
   max-width: 500px;
   box-shadow: var(--shadow-lg);
-  overflow: hidden;
   animation: slideUp 0.3s ease-out;
+  overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -877,4 +877,130 @@ body {
   .stat-card .stat-value {
     font-size: 1.75rem;
   }
+}
+
+
+
+/* Add this to your existing CSS file */
+
+/* Toast Notification Styles */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  min-width: 300px;
+  max-width: 450px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  z-index: 1000;
+  animation: slideIn 0.3s ease-out forwards;
+  overflow: hidden;
+}
+
+.toast-notification::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+}
+
+.toast-notification.success::before {
+  background-color: #10b981;
+}
+
+.toast-notification.error::before {
+  background-color: #ef4444;
+}
+
+.toast-notification.info::before {
+  background-color: #3b82f6;
+}
+
+.toast-icon {
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-notification.success .toast-icon svg {
+  color: #10b981;
+}
+
+.toast-notification.error .toast-icon svg {
+  color: #ef4444;
+}
+
+.toast-notification.info .toast-icon svg {
+  color: #3b82f6;
+}
+
+.toast-content {
+  flex: 1;
+}
+
+.toast-content p {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 500;
+}
+
+.toast-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  margin-left: 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.toast-close:hover {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.dashboard-container {
+  flex: 1;
+  margin-left: 250px; /* Match sidebar width */
+  transition: margin-left 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar.collapsed ~ .dashboard-container {
+  margin-left: 70px; /* Match collapsed sidebar width */
 }

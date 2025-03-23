@@ -80,7 +80,7 @@ const Sidebar = () => {
         </li>
 
         <li className="sidebar-item">
-          <Link to="/Candidatures" className="sidebar-link">
+          <Link to="/Candidaturesadmin" className="sidebar-link">
             <FiUser className="sidebar-icon" />
             <span className="sidebar-text">Candidats</span>
           </Link>

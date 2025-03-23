@@ -41,7 +41,10 @@ public class AIService {
             String escapedCvFilePath = cvFilePath.replace("\\", "\\\\").replace("\"", "\\\"");
 
             // Construct the command to execute the Python script
-            ProcessBuilder processBuilder = new ProcessBuilder("python", pythonScriptPath, escapedCvFilePath, candidateId, candidatureId);
+            ProcessBuilder processBuilder = new ProcessBuilder(
+                    "C:\\Users\\ACER\\Desktop\\portail-rh\\backend\\PortailRH\\venv\\Scripts\\python.exe",
+                    pythonScriptPath, escapedCvFilePath, candidateId, candidatureId
+            );
 
             // Execute the Python script
             Process process = processBuilder.start();

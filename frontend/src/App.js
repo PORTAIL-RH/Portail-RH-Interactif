@@ -19,6 +19,8 @@ const AjoutDemandePreAvanceADMIN = lazy(() => import('./admin/Components/AjoutDe
 const AjoutDemandeDocumentADMIN = lazy(() => import('./admin/Components/AjoutDemande/Document.jsx'));
 const AjoutDemandeAutorisationADMIN = lazy(() => import('./admin/Components/AjoutDemande/Autorisation.jsx'));
 const DemandesADMIN = lazy(() => import('./admin/Components/DemandesADMIN/DemandesADMIN.jsx'));
+const Candidaturesadmin = lazy(() => import('./admin/Components/Candidats/Candidatures.jsx'));
+
 
 // RH
 const AccueilRH = lazy(() => import('./RH/Acceuil.jsx'));
@@ -105,6 +107,7 @@ function App() {
           <Route path="/AjoutDemandeDocumentADMIN" element={<AjoutDemandeDocumentADMIN />} />
           <Route path="/AjoutDemandeCongeADMIN" element={<AjoutDemandeCongeADMIN />} />
           <Route path="/DemandesADMIN" element={<DemandesADMIN />} />
+          <Route path="/Candidaturesadmin" element={<Candidaturesadmin />} />
 
 
 
