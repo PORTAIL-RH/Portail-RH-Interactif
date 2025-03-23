@@ -1,5 +1,4 @@
 package com.example.PortailRH.Service;
-
 import com.example.PortailRH.Model.candidat;
 import com.example.PortailRH.Repository.CandidatRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,7 +8,6 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.*;
 import java.util.Map;
 
@@ -17,7 +15,6 @@ import java.util.Map;
 public class AIService {
 
     private static final Logger logger = LoggerFactory.getLogger(AIService.class);
-
     private final CandidatRepository candidatRepository;
     private final EmailService emailService;
 
@@ -63,7 +60,7 @@ public class AIService {
             }
 
             // Read the error output from the Python script
-            StringBuilder errorOutput = new StringBuilder();
+            StringBuilder errorOutput = new StringBuilder(); //Crée une nouvelle instance de StringBuilder vide
             try (InputStream errorStream = process.getErrorStream();
                  BufferedReader errorReader = new BufferedReader(new InputStreamReader(errorStream))) {
                 String errorLine;
