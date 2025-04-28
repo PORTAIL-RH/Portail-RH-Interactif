@@ -28,11 +28,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         System.out.println("Request URI: " + requestURI);
 
         // Skip authentication for specific endpoints
-        if (requestURI.startsWith("/api/Personnel/register") ||
+        if (requestURI.startsWith("/ws") ||
+                requestURI.startsWith("/api/Personnel/register") ||
                 requestURI.startsWith("/api/Personnel/login") ||
                 requestURI.startsWith("/api/admin/register") ||
                 requestURI.startsWith("/api/demande-formation/create") ||
                 requestURI.startsWith("/api/demande-formation") ||
+                requestURI.startsWith("/api/demande-formation/{id}") ||
                 requestURI.startsWith("/api/services/create") ||
                 requestURI.startsWith("/api/services/all") ||
                 requestURI.startsWith("/api/Personnel/gender-distribution") ||
@@ -50,6 +52,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-autorisation/personnel/{matPersId}") ||
                 requestURI.startsWith("/api/demande-conge/personnel/{matPersId}") ||
                 requestURI.startsWith("/api/demande-formation/personnel/{matPersId}") ||
+                requestURI.startsWith("/api/demande-pre-avance/personnel/{matPersId}") ||
+                requestURI.startsWith("/api/demande-document/personnel/{matPersId}") ||
+
                 requestURI.startsWith("/api/demande-conge/create") ||
                 requestURI.startsWith("/api/demande-conge/approved") ||
 
@@ -66,9 +71,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-pre-avance/valiser/{id}") ||
                 requestURI.startsWith("/api/demande-pre-avance/refuser/{id}") ||
                 requestURI.startsWith("/api/demande-pre-avance/traiter/{id}") ||
+                requestURI.startsWith("/api/notifications/mark-all-read") ||
+
+
+
                 requestURI.startsWith("/api/demande-autorisation/refuser/{id}") ||
                 requestURI.startsWith("/api/demande-autorisation/traiter/{id}") ||
                 requestURI.startsWith("/api/demande-autorisation/valider/{id}") ||
+                requestURI.startsWith("/api/demande-autorisation/{id}") ||
                 requestURI.startsWith("/api/services/by-chef/{chefId}") ||
                 requestURI.startsWith("/api/demande-document/create") ||
                 requestURI.startsWith("/api/demande-document") ||
@@ -92,6 +102,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api//updateAllFields/{id}")||
                 requestURI.contains("/api/personnel/updateAllFields/")||
                 requestURI.startsWith("/api/personnel/updateAllFields")||
+                requestURI.startsWith("/api/notifications/collaborateur/{idPersonnel}")||
+                requestURI.startsWith("/api/notifications/mark-all-read")||
                 requestURI.startsWith("/api/notifications")) {
             System.out.println("Skipping JWT filter for: " + requestURI); // Log skipped URIs
             filterChain.doFilter(request, response);

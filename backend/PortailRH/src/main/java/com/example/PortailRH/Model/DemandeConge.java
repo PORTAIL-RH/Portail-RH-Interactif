@@ -1,10 +1,13 @@
 package com.example.PortailRH.Model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -13,40 +16,82 @@ import java.util.concurrent.TimeUnit;
 @Data
 @Document(collection = "Demandes_Conge")
 public class DemandeConge {
-
     @Id
     private String id_libre_demande;
-    private Date dateDemande = new Date();
+
     private String typeDemande;
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX", timezone = "UTC")
+    private Date dateDemande = new Date();
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date dateDebut;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date dateFin;
+
     private String snjTempDep;
     private String snjTempRetour;
     private int nbrJours;
-
-
-
     private String texteDemande;
-
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
-    @DBRef(lazy = true) // Relation avec les fichiers joints
-    private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
+    @DBRef(lazy = true)
+    private Collection<Fichier_joint> Files = new ArrayList<>();
 
+    // Helper method to parse dates from different formats
+    private Date parseDate(Object dateInput) {
+        if (dateInput == null) {
+            return null;
+        }
 
+        if (dateInput instanceof Date) {
+            return (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            String dateString = (String) dateInput;
 
-    public void setDateDebut(Date dateDebut) {
-        this.dateDebut = dateDebut;
+            // List of supported formats (try them in order)
+            String[] formats = {
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSX",  // ISO with timezone
+                    "yyyy-MM-dd'T'HH:mm:ss.SSS",   // ISO without timezone
+                    "yyyy-MM-dd'T'HH:mm:ss",       // ISO without milliseconds
+                    "yyyy-MM-dd",                  // Simple date format
+                    "dd/MM/yyyy"                   // French format
+            };
+
+            for (String format : formats) {
+                try {
+                    SimpleDateFormat sdf = new SimpleDateFormat(format);
+                    sdf.setLenient(false);
+                    return sdf.parse(dateString);
+                } catch (ParseException e) {
+                    // Try next format
+                }
+            }
+
+            throw new IllegalArgumentException("Unsupported date format: " + dateString);
+        } else {
+            throw new IllegalArgumentException("Date input must be either Date or String");
+        }
+    }
+
+    // Updated setters for dates
+    public void setDateDemande(Object dateInput) {
+        this.dateDemande = parseDate(dateInput);
+    }
+
+    public void setDateDebut(Object dateInput) {
+        this.dateDebut = parseDate(dateInput);
         calculateDateReprisePrevAndNbrJours();
     }
 
-    public void setDateFin(Date dateFin) {
-        this.dateFin = dateFin;
+    public void setDateFin(Object dateInput) {
+        this.dateFin = parseDate(dateInput);
         calculateDateReprisePrevAndNbrJours();
     }
 
@@ -55,10 +100,11 @@ public class DemandeConge {
         if (this.dateDebut != null && this.dateFin != null) {
             // Calculate the difference in days
             long diffInMillies = Math.abs(dateFin.getTime() - dateDebut.getTime());
-            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS) + 1; // +1 to include both start and end dates
         }
     }
 
+    // Rest of the getters and setters remain the same
     public String getId() {
         return id_libre_demande;
     }
@@ -95,7 +141,10 @@ public class DemandeConge {
         this.matPers = matPers;
     }
 
-    // CodeSoc will be derived dynamically from Personnel object
+    public String getCollaborateurId() {
+        return (matPers != null) ? matPers.getId() : null;
+    }
+
     public String getCodeSoc() {
         return matPers != null ? matPers.getCode_soc() : null;
     }
@@ -156,8 +205,6 @@ public class DemandeConge {
         this.snjTempRetour = snjTempRetour;
     }
 
-
-
     public int getNbrJours() {
         return nbrJours;
     }
@@ -168,9 +215,5 @@ public class DemandeConge {
 
     public Date getDateDemande() {
         return dateDemande;
-    }
-
-    public void setDateDemande(Date dateDemande) {
-        this.dateDemande = dateDemande;
     }
 }

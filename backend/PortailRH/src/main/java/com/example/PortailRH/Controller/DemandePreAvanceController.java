@@ -143,12 +143,18 @@ public class DemandePreAvanceController {
     // Update a DemandePreAvance by ID
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandePreAvance demandePreAvance) {
-        if (!demandePreAvanceRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        demandePreAvance.setId(id); // Ensure the ID is set for the update
-        demandePreAvanceRepository.save(demandePreAvance);
-        return ResponseEntity.ok("Demande mise à jour avec succès");
+        return demandePreAvanceRepository.findById(id)
+                .map(existingDemande -> {
+                    // Only update the fields that should change
+                    existingDemande.setType(demandePreAvance.getType());
+                    existingDemande.setDateDemande(demandePreAvance.getDateDemande());
+                    existingDemande.setMontant(demandePreAvance.getMontant());
+                    existingDemande.setTexteDemande(demandePreAvance.getTexteDemande());
+
+                    demandePreAvanceRepository.save(existingDemande);
+                    return ResponseEntity.ok("Demande mise à jour avec succès");
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     // Delete a DemandePreAvance by ID
@@ -174,9 +180,20 @@ public class DemandePreAvanceController {
         return demandePreAvanceRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
             demandePreAvanceRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de pré-avance a été validée.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande validée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
+
 
     // Refuse a DemandePreAvance by ID
     @PutMapping("/refuser/{id}")
@@ -184,6 +201,16 @@ public class DemandePreAvanceController {
         return demandePreAvanceRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
             demandePreAvanceRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de pré-avance a été refuser.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande refusée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }

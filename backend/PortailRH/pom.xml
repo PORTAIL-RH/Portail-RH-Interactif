@@ -25,6 +25,13 @@
 	</repositories>
 
 	<dependencies>
+
+		<!-- Spring Boot Actuator Analyser les Temps de Réponse -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- MongoDB -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

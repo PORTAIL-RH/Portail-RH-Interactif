@@ -1,10 +1,13 @@
 package com.example.PortailRH.Model;
 
 import com.example.PortailRH.Exception.MontantDepasseException;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Document(collection = "Demandes_Pre_Avance")
@@ -13,9 +16,11 @@ public class DemandePreAvance {
     @Id
     private String id;
 
-    private String typeDemande="PreAvnace";
+    private String typeDemande = "PreAvnace";
 
     private String type;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX", timezone = "UTC")
     private Date dateDemande;
     private double montant;
     private String texteDemande;
@@ -53,7 +58,7 @@ public class DemandePreAvance {
     }
 
     // Méthode pour définir le type de demande
-    public void setType(String type) {  // Renommer setTypeDemande en setType
+    public void setType(String type) {
         if (TYPES_PRE_AVANCE.containsKey(type)) {
             this.type = type;
             System.out.println("Type de demande défini : " + type);
@@ -64,7 +69,7 @@ public class DemandePreAvance {
 
     // Méthode pour définir le montant avec vérification
     public void setMontant(double montant) {
-        if (TYPES_PRE_AVANCE.containsKey(this.type)) {  // Utiliser this.type au lieu de this.typeDemande
+        if (TYPES_PRE_AVANCE.containsKey(this.type)) {
             double montantMax = TYPES_PRE_AVANCE.get(this.type);
             if (montant <= montantMax) {
                 this.montant = montant;
@@ -78,7 +83,7 @@ public class DemandePreAvance {
     }
 
     public void validateMontant() {
-        if (TYPES_PRE_AVANCE.containsKey(this.type)) {  // Utiliser this.type au lieu de this.typeDemande
+        if (TYPES_PRE_AVANCE.containsKey(this.type)) {
             double montantMax = TYPES_PRE_AVANCE.get(this.type);
             if (this.montant > montantMax) {
                 throw new MontantDepasseException("Vous ne devez pas dépasser " + montantMax + " euros pour ce type de demande.");
@@ -89,7 +94,6 @@ public class DemandePreAvance {
     }
 
     // Getters et Setters (autres méthodes)
-
 
     public String getTypeDemande() {
         return typeDemande;
@@ -115,16 +119,47 @@ public class DemandePreAvance {
         this.id = id;
     }
 
-    public String getType() {  // Renommer getTypeDemande en getType
+    public String getType() {
         return type;
     }
+
+
 
     public Date getDateDemande() {
         return dateDemande;
     }
 
-    public void setDateDemande(Date dateDemande) {
-        this.dateDemande = dateDemande;
+    // Modified setDateDemande to handle both Date objects and String input
+    public void setDateDemande(Object dateInput) {
+        if (dateInput == null) {
+            this.dateDemande = null;
+            return;
+        }
+
+        if (dateInput instanceof Date) {
+            this.dateDemande = (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            String dateString = (String) dateInput;
+            try {
+                // First try the expected format
+                this.dateDemande = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX").parse(dateString);
+            } catch (ParseException e1) {
+                try {
+                    // Then try the simple date format
+                    this.dateDemande = new SimpleDateFormat("yyyy-MM-dd").parse(dateString);
+                } catch (ParseException e2) {
+                    try {
+                        // Then try the French format
+                        this.dateDemande = new SimpleDateFormat("dd/MM/yyyy").parse(dateString);
+                    } catch (ParseException e3) {
+                        throw new IllegalArgumentException("Format de date non supporté: " + dateString +
+                                ". Les formats acceptés sont: yyyy-MM-dd'T'HH:mm:ss.SSSX, yyyy-MM-dd ou dd/MM/yyyy");
+                    }
+                }
+            }
+        } else {
+            throw new IllegalArgumentException("Le type de date doit être soit Date soit String");
+        }
     }
 
     public double getMontant() {
@@ -137,6 +172,10 @@ public class DemandePreAvance {
 
     public void setMatPers(Personnel matPers) {
         this.matPers = matPers;
+    }
+
+    public String getCollaborateurId() {
+        return (matPers != null) ? matPers.getId() : null;
     }
 
     public Reponse getReponseChef() {

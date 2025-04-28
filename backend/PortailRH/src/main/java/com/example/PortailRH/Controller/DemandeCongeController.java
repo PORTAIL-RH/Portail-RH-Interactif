@@ -174,6 +174,7 @@ public class DemandeCongeController {
             ));
         }
     }
+
     // 4. Update a demand
     @PutMapping("/{id}")
     public ResponseEntity<?> updateDemande(
@@ -181,17 +182,40 @@ public class DemandeCongeController {
             @RequestBody DemandeConge demandeUpdated
     ) {
         return demandeCongeRepository.findById(id).map(existingDemande -> {
-            existingDemande.setDateDebut(demandeUpdated.getDateDebut());
-            existingDemande.setDateFin(demandeUpdated.getDateFin());
-            existingDemande.setTypeDemande(demandeUpdated.getTypeDemande());
-            existingDemande.setTexteDemande(demandeUpdated.getTexteDemande());
-            existingDemande.setReponseChef(demandeUpdated.getReponseChef());
-            existingDemande.setReponseRH(demandeUpdated.getReponseRH());
+            // Update fields with null checks
+            if (demandeUpdated.getDateDebut() != null) {
+                existingDemande.setDateDebut(demandeUpdated.getDateDebut());
+            }
+            if (demandeUpdated.getDateFin() != null) {
+                existingDemande.setDateFin(demandeUpdated.getDateFin());
+            }
+            if (demandeUpdated.getTypeDemande() != null) {
+                existingDemande.setTypeDemande(demandeUpdated.getTypeDemande());
+            }
+            if (demandeUpdated.getTexteDemande() != null) {
+                existingDemande.setTexteDemande(demandeUpdated.getTexteDemande());
+            }
+            if (demandeUpdated.getReponseChef() != null) {
+                existingDemande.setReponseChef(demandeUpdated.getReponseChef());
+            }
+            if (demandeUpdated.getReponseRH() != null) {
+                existingDemande.setReponseRH(demandeUpdated.getReponseRH());
+            }
 
             // Save and return the updated demande
-            demandeCongeRepository.save(existingDemande);
-            return ResponseEntity.ok("Demande mise à jour avec succès");
+            DemandeConge updated = demandeCongeRepository.save(existingDemande);
+            return ResponseEntity.ok(updated);
         }).orElse(ResponseEntity.notFound().build());
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDemande(@PathVariable String id) {
+        if (!demandeCongeRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        demandeCongeRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeConge>> getDemandesByPersonnelId(@PathVariable String matPersId) {
@@ -209,15 +233,36 @@ public class DemandeCongeController {
         return demandeCongeRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
             demandeCongeRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de Congé a été validée.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande validée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
+
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<String> refuserDemande(@PathVariable String id) {
         return demandeCongeRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
             demandeCongeRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de congé a été validée.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande refusée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }

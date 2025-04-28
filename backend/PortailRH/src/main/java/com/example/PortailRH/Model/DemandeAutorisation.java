@@ -4,6 +4,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -13,9 +15,6 @@ public class DemandeAutorisation {
 
     @Id
     private String id;
-
-
-
     private Date dateDemande;
     private String typeDemande;
 
@@ -24,7 +23,6 @@ public class DemandeAutorisation {
     private String codeSoc;
     private Date dateDebut;
     private String texteDemande;
-
     private Reponse reponseChef;
     private Reponse reponseRH;
 
@@ -33,8 +31,6 @@ public class DemandeAutorisation {
 
     private int heureSortie;
     private int heureRetour;
-    private int horaireSortie;  // Fixed: Added missing field
-    private int horaireRetour;  // Fixed: Removed duplicate, corrected naming
     private int minuteSortie;
     private int minuteRetour;
     private String codAutorisation;
@@ -47,8 +43,73 @@ public class DemandeAutorisation {
         this.files = new ArrayList<>();
     }
 
-    // Getters and Setters
+    // Helper method to parse dates from different formats
+    private Date parseDate(Object dateInput) {
+        if (dateInput == null) {
+            return null;
+        }
 
+        if (dateInput instanceof Date) {
+            return (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            String dateString = ((String) dateInput).trim();
+
+            // List of possible date formats to try
+            String[] possibleFormats = {
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSX",  // ISO format with timezone
+                    "yyyy-MM-dd'T'HH:mm:ss.SSS",   // ISO format without timezone
+                    "yyyy-MM-dd'T'HH:mm:ss",       // ISO format without milliseconds
+                    "yyyy-MM-dd HH:mm:ss",         // Standard datetime format
+                    "yyyy-MM-dd",                   // Simple date format
+                    "dd/MM/yyyy HH:mm:ss",          // French datetime format
+                    "dd/MM/yyyy",                  // French date format
+                    "MM/dd/yyyy HH:mm:ss",         // US datetime format
+                    "MM/dd/yyyy",                   // US date format
+                    "HH:mm:ss",                     // Time only
+                    "HH:mm"                         // Time without seconds
+            };
+
+            for (String format : possibleFormats) {
+                try {
+                    return new SimpleDateFormat(format).parse(dateString);
+                } catch (ParseException e) {
+                    // Try next format
+                }
+            }
+
+            throw new IllegalArgumentException("Unsupported date format: " + dateString +
+                    ". Supported formats include: yyyy-MM-dd, dd/MM/yyyy, yyyy-MM-dd'T'HH:mm:ss, etc.");
+        } else {
+            throw new IllegalArgumentException("Date input must be either Date or String");
+        }
+    }
+
+    // For time fields (heureSortie, minuteSortie, etc.)
+    public void setTimeFromString(String timeString, boolean isSortie) {
+        if (timeString != null && !timeString.isEmpty()) {
+            String[] parts = timeString.split(":");
+            if (parts.length >= 2) {
+                if (isSortie) {
+                    this.heureSortie = Integer.parseInt(parts[0]);
+                    this.minuteSortie = Integer.parseInt(parts[1]);
+                } else {
+                    this.heureRetour = Integer.parseInt(parts[0]);
+                    this.minuteRetour = Integer.parseInt(parts[1]);
+                }
+            }
+        }
+    }
+
+    // Updated date setters
+    public void setDateDemande(Object dateInput) {
+        this.dateDemande = parseDate(dateInput);
+    }
+
+    public void setDateDebut(Object dateInput) {
+        this.dateDebut = parseDate(dateInput);
+    }
+
+    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -61,18 +122,8 @@ public class DemandeAutorisation {
         return dateDebut;
     }
 
-    public void setDateDebut(Date dateDebut) {
-        this.dateDebut = dateDebut;
-    }
-
-
-
     public Date getDateDemande() {
         return dateDemande;
-    }
-
-    public void setDateDemande(Date dateDemande) {
-        this.dateDemande = dateDemande;
     }
 
     public String getTypeDemande() {
@@ -89,6 +140,10 @@ public class DemandeAutorisation {
 
     public void setMatPers(Personnel matPers) {
         this.matPers = matPers;
+    }
+
+    public String getCollaborateurId() {
+        return (matPers != null) ? matPers.getId() : null;
     }
 
     public String getCodeSoc() {
@@ -161,22 +216,6 @@ public class DemandeAutorisation {
 
     public void setMinuteRetour(int minuteRetour) {
         this.minuteRetour = minuteRetour;
-    }
-
-    public int getHoraireSortie() {
-        return horaireSortie;
-    }
-
-    public void setHoraireSortie(int horaireSortie) {
-        this.horaireSortie = horaireSortie;
-    }
-
-    public int getHoraireRetour() {
-        return horaireRetour;
-    }
-
-    public void setHoraireRetour(int horaireRetour) {
-        this.horaireRetour = horaireRetour;
     }
 
     public String getCodAutorisation() {

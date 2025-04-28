@@ -20,10 +20,13 @@ public class WebConfig implements WebMvcConfigurer {
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
                 "http://localhost:3001",
-
                 "http://localhost:8081",
-                "http://192.168.1.52", //islem
-                "http://172.20.10.2", //islem-fifi
+
+                "http://192.168.1.50:8081", //islem C20D20
+                "http://172.20.10.2:8081", //islem-fifi
+
+                "http://192.168.43.70:8081",
+
 
                 "http://172.20.10.7:8081",
                 "http://192.168.1.32:8081",  // Expo development server

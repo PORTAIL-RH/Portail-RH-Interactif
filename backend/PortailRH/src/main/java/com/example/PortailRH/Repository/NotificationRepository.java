@@ -11,6 +11,8 @@ public interface NotificationRepository extends MongoRepository<Notification, St
     List<Notification> findAll();
     List<Notification> findByViewedFalse();
     List<Notification> findByRoleAndViewedFalse(String role);
+
+    //Fetches unread notifications for the given role and service ID
     List<Notification> findByRoleAndServiceIdAndViewedFalse(String role, String serviceId); // Nouvelle méthode
 
     List<Notification> findByRole(String role);

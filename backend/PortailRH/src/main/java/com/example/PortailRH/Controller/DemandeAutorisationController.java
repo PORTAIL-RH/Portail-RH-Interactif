@@ -18,10 +18,7 @@ import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/demande-autorisation")
@@ -75,10 +72,10 @@ public class DemandeAutorisationController {
             demande.setDateDebut(startDate);
             demande.setTypeDemande("autorisation");
             demande.setTexteDemande(texteDemande);
-            demande.setHoraireSortie(heureSortie.getHour());
             demande.setMinuteSortie(heureSortie.getMinute());
-            demande.setHoraireRetour(heureRetour.getHour());
             demande.setMinuteRetour(heureRetour.getMinute());
+            demande.setHeureSortie(heureSortie.getHour());
+            demande.setHeureRetour(heureRetour.getHour());
             demande.setCodAutorisation(codAutorisation);
             demande.setCodeSoc(codeSoc);
 
@@ -154,15 +151,98 @@ public class DemandeAutorisationController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
+    //update
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandeAutorisation demandeAutorisation) {
-        if (!demandeAutorisationRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody Map<String, Object> demandeData) {
+        return demandeAutorisationRepository.findById(id)
+                .map(existingDemande -> {
+                    // Preserve the DBRef fields
+                    Personnel existingMatPers = existingDemande.getMatPers();
+                    Collection<Fichier_joint> existingFiles = existingDemande.getFiles();
 
-        demandeAutorisation.setId(id);
-        demandeAutorisationRepository.save(demandeAutorisation);
-        return ResponseEntity.ok("Demande mise à jour avec succès");
+                    // Update fields from the incoming data
+                    if (demandeData.containsKey("dateDemande")) {
+                        existingDemande.setDateDemande(demandeData.get("dateDemande"));
+                    }
+                    if (demandeData.containsKey("typeDemande")) {
+                        existingDemande.setTypeDemande((String) demandeData.get("typeDemande"));
+                    }
+                    if (demandeData.containsKey("matPers")) {
+                        // You might need custom logic here to convert matPers data to Personnel object
+                        // This depends on how your frontend sends the personnel data
+                        Object matPersData = demandeData.get("matPers");
+                        if (matPersData != null) {
+                            // Example conversion - adjust based on your actual needs
+                            Personnel personnel = new Personnel();
+                            if (matPersData instanceof Map) {
+                                Map<String, Object> matPersMap = (Map<String, Object>) matPersData;
+                                personnel.setId((String) matPersMap.get("id"));
+                                // Set other personnel fields as needed
+                            }
+                            existingDemande.setMatPers(personnel);
+                        }
+                    } else {
+                        existingDemande.setMatPers(existingMatPers);
+                    }
+                    if (demandeData.containsKey("codeSoc")) {
+                        existingDemande.setCodeSoc((String) demandeData.get("codeSoc"));
+                    }
+                    if (demandeData.containsKey("dateDebut")) {
+                        existingDemande.setDateDebut(demandeData.get("dateDebut"));
+                    }
+                    if (demandeData.containsKey("texteDemande")) {
+                        existingDemande.setTexteDemande((String) demandeData.get("texteDemande"));
+                    }
+                    if (demandeData.containsKey("reponseChef")) {
+                        existingDemande.setReponseChef(Reponse.valueOf((String) demandeData.get("reponseChef")));
+                    }
+                    if (demandeData.containsKey("reponseRH")) {
+                        existingDemande.setReponseRH(Reponse.valueOf((String) demandeData.get("reponseRH")));
+                    }
+                    if (demandeData.containsKey("files")) {
+                        // Handle files update - this might need custom logic based on your needs
+                        Object filesData = demandeData.get("files");
+                        if (filesData != null) {
+                            // Convert files data to Collection<Fichier_joint>
+                            // This depends on how your frontend sends the files data
+                        }
+                    } else {
+                        existingDemande.setFiles(existingFiles);
+                    }
+                    if (demandeData.containsKey("heureSortie")) {
+                        Object heureSortie = demandeData.get("heureSortie");
+                        if (heureSortie instanceof String) {
+                            existingDemande.setTimeFromString((String) heureSortie, true);
+                        } else if (heureSortie instanceof Number) {
+                            existingDemande.setHeureSortie(((Number) heureSortie).intValue());
+                        }
+                    }
+                    if (demandeData.containsKey("heureRetour")) {
+                        Object heureRetour = demandeData.get("heureRetour");
+                        if (heureRetour instanceof Number) {
+                            existingDemande.setHeureRetour(((Number) heureRetour).intValue());
+                        }
+                    }
+                    if (demandeData.containsKey("minuteSortie")) {
+                        Object minuteSortie = demandeData.get("minuteSortie");
+                        if (minuteSortie instanceof Number) {
+                            existingDemande.setMinuteSortie(((Number) minuteSortie).intValue());
+                        }
+                    }
+                    if (demandeData.containsKey("minuteRetour")) {
+                        Object minuteRetour = demandeData.get("minuteRetour");
+                        if (minuteRetour instanceof Number) {
+                            existingDemande.setMinuteRetour(((Number) minuteRetour).intValue());
+                        }
+                    }
+                    if (demandeData.containsKey("codAutorisation")) {
+                        existingDemande.setCodAutorisation((String) demandeData.get("codAutorisation"));
+                    }
+
+                    demandeAutorisationRepository.save(existingDemande);
+                    return ResponseEntity.ok("Demande mise à jour avec succès");
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
@@ -186,6 +266,16 @@ public class DemandeAutorisationController {
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
             demandeAutorisationRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de autorisation a été validée.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande validée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
@@ -195,6 +285,16 @@ public class DemandeAutorisationController {
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
             demandeAutorisationRepository.save(demande);
+
+            // Supposons que la demande a un champ collaborateurId
+            String collaborateurId = demande.getCollaborateurId();
+            String message = "Votre demande de autorisation a été refuser.";
+            String role = "collaborateur"; // ou un rôle spécifique si nécessaire
+            String serviceId = collaborateurId; // Utiliser collaborateurId comme serviceId pour cibler l'utilisateur
+
+            // Créer et envoyer la notification
+            notificationService.createNotification(message, role, serviceId);
+
             return ResponseEntity.ok("Demande refusée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }
