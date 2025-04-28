@@ -1,11 +1,13 @@
 package com.example.PortailRH.Model;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.example.PortailRH.Config.PersonnelReferenceSerializer;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.List;
 
@@ -14,27 +16,28 @@ import java.util.List;
 public class Service {
 
     @Id
-    private String serviceId; // Changed to camelCase for consistency
+    private String id;
 
     private String serviceName;
 
     @DBRef
-    @JsonBackReference // Marks this as the "child" side of the relationship
+    @JsonIgnore
     private List<Personnel> personnels; // Reference to Personnel documents
 
     @DBRef
-    @JsonManagedReference // Marks this as the "owner" of the relationship
+    @JsonSerialize(using = PersonnelReferenceSerializer.class) // Custom serializer
     private Personnel chefHierarchique; // Reference to the hierarchical chief
 
     public Personnel getChefHierarchique() {
         return this.chefHierarchique;
     }
-    public String getServiceId() {
-        return serviceId;
+
+    public String getId() {
+        return id;
     }
 
-    public void setServiceId(String serviceId) {
-        this.serviceId = serviceId;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getServiceName() {

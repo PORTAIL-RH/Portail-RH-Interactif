@@ -3,10 +3,11 @@ import { useState, useEffect } from "react"
 import { FiDollarSign, FiFileText, FiUpload, FiSend, FiInfo } from "react-icons/fi"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import "./PreAvance.css"
+import "./ajoutDemande.css"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
+import { API_URL } from "../../../config"; 
 
 const PreAvanceForm = () => {
   const [formData, setFormData] = useState({
@@ -24,7 +25,38 @@ const PreAvanceForm = () => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [typesPreAvance, setTypesPreAvance] = useState({})
+  const [theme, setTheme] = useState("light")
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    const handleSidebarToggle = (e) => {
+      setSidebarCollapsed(e.detail);
+    };
 
+    window.addEventListener('sidebarToggled', handleSidebarToggle);
+    
+    return () => {
+      window.removeEventListener('sidebarToggled', handleSidebarToggle);
+    };
+  }, []);
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    localStorage.setItem("theme", theme)
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
   useEffect(() => {
     const fetchTypesPreAvance = async () => {
       try {
@@ -34,7 +66,7 @@ const PreAvanceForm = () => {
           return
         }
 
-        const response = await fetch('http://localhost:8080/api/demande-pre-avance/types', {
+        const response = await fetch(`${API_URL}/api/demande-pre-avance/types`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -180,7 +212,7 @@ const PreAvanceForm = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-pre-avance/create', {
+      const response = await fetch(`${API_URL}/demande-pre-avance/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -248,10 +280,10 @@ const PreAvanceForm = () => {
 
 
   return (
-    <div className="app-container">
-      <Sidebar />
-      <div className="demande-container">
-        <Navbar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
+      <div className={`demande-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="preavance-form-container">
                           {/* Navigation Bar */}
       <div className="request-nav-bar">
@@ -289,7 +321,9 @@ const PreAvanceForm = () => {
           <div className="form-card">
             <div className="form-header">
               <h2>Demande de Pré-Avance</h2>
-              <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p>
+              <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p><br/>
+              <bold><p className="subtitle">NB: Si tu veux avoir un montant élevé tu doit contacter votre direction de département directement</p></bold>
+
             </div>
 
             <form onSubmit={handleSubmit} className="preavance-form">

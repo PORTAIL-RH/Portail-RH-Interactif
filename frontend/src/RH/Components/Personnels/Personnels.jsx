@@ -1,156 +1,271 @@
-import React, { useState, useEffect } from "react";
-import Sidebar from "../Sidebar/Sidebar";
-import Navbar from "../Navbar/Navbar";
-import "./Personnels.css";
+"use client"
+import { useState, useEffect } from "react"
+import Sidebar from "../Sidebar/Sidebar"
+import Navbar from "../Navbar/Navbar"
+import "./Personnels.css"
+import PersonnelDetailsModal from "./PersonnelDetailsModal"
+import { API_URL } from "../../../config"
+import { toast, ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const Personnel = () => {
-  const [personnel, setPersonnel] = useState([]); // All personnel data
-  const [roles, setRoles] = useState([]);
-  const [staffError, setStaffError] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
-  const [editingPersonnel, setEditingPersonnel] = useState(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedPersonnel, setSelectedPersonnel] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Load initial personnel data from localStorage if available
+  const [personnel, setPersonnel] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('personnelData')
+      return cached ? JSON.parse(cached) : []
+    }
+    return []
+  })
+  
+  const [roles, setRoles] = useState([])
+  const [staffError, setStaffError] = useState("")
+  const [selectedRole, setSelectedRole] = useState("")
+  const [editingPersonnel, setEditingPersonnel] = useState(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [selectedPersonnel, setSelectedPersonnel] = useState(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [theme, setTheme] = useState("light")
+  const [isLoading, setIsLoading] = useState(false)
 
   // Filter states
-  const [nameFilter, setNameFilter] = useState("");
-  const [matriculeFilter, setMatriculeFilter] = useState("");
+  const [nameFilter, setNameFilter] = useState("")
+  const [matriculeFilter, setMatriculeFilter] = useState("")
 
-  // Retrieve userService from localStorage and parse it
-  const userService = JSON.parse(localStorage.getItem("userService") || "{}");
-  const connectedUserServiceName = userService?.serviceName || ""; // Extract serviceName from userService
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
 
-  // Fetch roles
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light"
+      setTheme(currentTheme)
+      applyTheme(currentTheme)
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light")
+      applyTheme(e.detail || "light")
+    })
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("themeChanged", handleStorageChange)
+    }
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    document.body.className = theme
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
+  // Fetch roles with loading state and toast
   useEffect(() => {
     const fetchRoles = async () => {
+      setIsLoading(true)
+      toast.info("Loading roles...", { autoClose: false, toastId: 'roles-loading' })
       try {
-        const response = await fetch("http://localhost:8080/api/roles");
+        const response = await fetch(`${API_URL}/api/roles`)
         if (response.ok) {
-          const data = await response.json();
-          setRoles(data || []);
+          const data = await response.json()
+          setRoles(data || [])
+          toast.dismiss('roles-loading')
+          toast.success("Roles loaded successfully")
         } else {
-          console.error(`Failed to fetch roles. Status: ${response.status}`);
+          toast.dismiss('roles-loading')
+          toast.error(`Failed to fetch roles. Status: ${response.status}`)
+          console.error(`Failed to fetch roles. Status: ${response.status}`)
         }
       } catch (error) {
-        console.error("Error fetching roles:", error);
+        toast.dismiss('roles-loading')
+        toast.error("Error loading roles")
+        console.error("Error fetching roles:", error)
+      } finally {
+        setIsLoading(false)
       }
-    };
-    fetchRoles();
-  }, []);
+    }
+    fetchRoles()
+  }, [])
 
-  // Fetch all personnel
-  useEffect(() => {
-    const fetchPersonnel = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/api/Personnel/all");
-        if (response.ok) {
-          const data = await response.json();
-          setPersonnel(data || []); // Store all personnel data
-          setStaffError(null);
-        } else {
-          setStaffError(`Failed to fetch personnel. Status: ${response.status}`);
-        }
-      } catch (error) {
-        setStaffError("Error fetching personnel. Please try again later.");
+  // Fetch all personnel - first from localStorage, then from API if needed
+  const fetchPersonnel = async () => {
+    setIsLoading(true)
+    
+    // Check if we have cached data
+    const cachedPersonnel = localStorage.getItem('personnel')
+    if (cachedPersonnel) {
+      setPersonnel(JSON.parse(cachedPersonnel))
+      setIsLoading(false)
+    }
+    
+    try {
+      const response = await fetch(`${API_URL}/api/Personnel/active`)
+      if (response.ok) {
+        const data = await response.json()
+        setPersonnel(data || [])
+        localStorage.setItem('personnelData', JSON.stringify(data)) // Cache the data
+        setStaffError(null)
+      } else {
+        setStaffError(`Failed to fetch personnel. Status: ${response.status}`)
       }
-    };
-    fetchPersonnel();
-  }, []);
+    } catch (error) {
+      setStaffError("Error fetching personnel. Please try again later.")
+      console.error("Error fetching personnel:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Initial data fetch and setup polling
+  useEffect(() => {
+    // First try to load from localStorage
+    const cachedPersonnel = localStorage.getItem('personnelData')
+    if (!cachedPersonnel) {
+      toast.info("Loading personnel data...", { autoClose: false, toastId: 'personnel-loading' })
+    }
+    
+    fetchPersonnel().then(() => {
+      toast.dismiss('personnel-loading')
+    })
+
+    // Set up polling every 10 seconds
+    const intervalId = setInterval(fetchPersonnel, 10000)
+
+    return () => clearInterval(intervalId)
+  }, [])
 
   // Handle role change
   const handleRoleChange = (e) => {
-    setSelectedRole(e.target.value);
-  };
+    setSelectedRole(e.target.value)
+  }
 
   // Handle name filter change
   const handleNameFilterChange = (e) => {
-    setNameFilter(e.target.value);
-  };
+    setNameFilter(e.target.value)
+  }
 
   // Handle matricule filter change
   const handleMatriculeFilterChange = (e) => {
-    setMatriculeFilter(e.target.value);
-  };
+    setMatriculeFilter(e.target.value)
+  }
 
   // Clear all filters
   const clearFilters = () => {
-    setNameFilter("");
-    setMatriculeFilter("");
-  };
+    setNameFilter("")
+    setMatriculeFilter("")
+  }
 
   // Handle the form submit for updating personnel
   const handleUpdateSubmit = async (e) => {
-    e.preventDefault();
-    const updatedPersonnel = { ...editingPersonnel, role: selectedRole };
+    e.preventDefault()
+    const updatedPersonnel = { ...editingPersonnel, role: selectedRole }
+    
+    setIsLoading(true)
+    toast.info("Updating personnel...", { autoClose: false, toastId: 'update-loading' })
+    
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/personnel/updateAllFields/${updatedPersonnel.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedPersonnel),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/personnel/updateAllFields/${updatedPersonnel.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedPersonnel),
+      })
 
       if (response.ok) {
-        const updatedData = await response.json();
-        console.log("Updated Personnel:", updatedData);
-
+        const updatedData = await response.json()
         setPersonnel((prevPersonnel) =>
-          prevPersonnel.map((person) =>
-            person.id === updatedPersonnel.id ? updatedData : person
-          )
-        );
-        setIsEditDialogOpen(false);
-        setEditingPersonnel(null);
+          prevPersonnel.map((person) => (person.id === updatedPersonnel.id ? updatedData : person)))
+        
+        // Update localStorage cache
+        const updatedCache = personnel.map(person => 
+          person.id === updatedPersonnel.id ? updatedData : person
+        )
+        localStorage.setItem('personnelData', JSON.stringify(updatedCache))
+        
+        toast.dismiss('update-loading')
+        toast.success("Personnel updated successfully")
+        setIsEditDialogOpen(false)
+        setEditingPersonnel(null)
       } else {
-        alert("Failed to update personnel.");
+        toast.dismiss('update-loading')
+        toast.error("Failed to update personnel")
       }
     } catch (error) {
-      console.error("Error updating personnel:", error);
-      alert("Error updating personnel. Please try again.");
+      toast.dismiss('update-loading')
+      toast.error("Error updating personnel")
+      console.error("Error updating personnel:", error)
+    } finally {
+      setIsLoading(false)
     }
-  };
+  }
 
   // Handle edit button click
   const handleEditClick = (person) => {
-    setEditingPersonnel(person);
-    setSelectedRole(person.role || "");
-    setIsEditDialogOpen(true);
-  };
+    setEditingPersonnel(person)
+    setSelectedRole(person.role || "")
+    setIsEditDialogOpen(true)
+  }
 
   // Handle cancel editing
   const handleCancelEdit = () => {
-    setEditingPersonnel(null);
-    setIsEditDialogOpen(false);
-  };
+    setEditingPersonnel(null)
+    setIsEditDialogOpen(false)
+  }
 
   // Handle row click to open modal
   const handleRowClick = (person) => {
-    setSelectedPersonnel(person);
-    setIsModalOpen(true);
-  };
+    setSelectedPersonnel(person)
+    setIsModalOpen(true)
+  }
 
   // Filter personnel based on name and matricule
   const filteredPersonnel = personnel.filter((person) => {
-    const matchesName = person.nom
-      ? person.nom.toLowerCase().includes(nameFilter.toLowerCase())
-      : true;
+    const matchesName = person.nom ? person.nom.toLowerCase().includes(nameFilter.toLowerCase()) : true
     const matchesMatricule = person.matricule
       ? person.matricule.toLowerCase().includes(matriculeFilter.toLowerCase())
-      : true;
-    return matchesName && matchesMatricule;
-  });
+      : true
+    return matchesName && matchesMatricule
+  })
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
       <div className="personnel-container">
-        <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="personnel-content">
+          {/* Loading overlay */}
+          {isLoading && (
+            <div className="loading-overlay">
+              <div className="loading-spinner"></div>
+            </div>
+          )}
+          
+          {/* Toast container */}
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme={theme}
+          />
+
           <header className="page-header">
             <h1>Personnel Management</h1>
           </header>
@@ -260,9 +375,7 @@ const Personnel = () => {
                   </button>
                 </div>
 
-                <div className="results-count">
-                  {filteredPersonnel.length} personnel found
-                </div>
+                <div className="results-count">{filteredPersonnel.length} personnel found</div>
               </div>
 
               <div className="card-content">
@@ -332,11 +445,7 @@ const Personnel = () => {
                 <div className="modal-container">
                   <div className="modal-header">
                     <h3>Edit Personnel</h3>
-                    <button
-                      className="close-button"
-                      onClick={handleCancelEdit}
-                      aria-label="Close"
-                    >
+                    <button className="close-button" onClick={handleCancelEdit} aria-label="Close">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="20"
@@ -397,12 +506,23 @@ const Personnel = () => {
                           }
                         />
                       </div>
-                      <div className="form-actions">
-                        <button
-                          type="button"
-                          className="cancel-button"
-                          onClick={handleCancelEdit}
+                      <div className="form-group">
+                        <label htmlFor="role">Role</label>
+                        <select
+                          id="role"
+                          value={selectedRole}
+                          onChange={handleRoleChange}
                         >
+                          <option value="">Select Role</option>
+                          {roles.map((role) => (
+                            <option key={role.libelle} value={role.libelle}>
+                              {role.libelle}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-actions">
+                        <button type="button" className="cancel-button" onClick={handleCancelEdit}>
                           Cancel
                         </button>
                         <button type="submit" className="save-button">
@@ -421,13 +541,14 @@ const Personnel = () => {
                 key={selectedPersonnel.id}
                 personnel={selectedPersonnel}
                 onClose={() => setIsModalOpen(false)}
+                theme={theme}
               />
             )}
           </main>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Personnel;
+export default Personnel

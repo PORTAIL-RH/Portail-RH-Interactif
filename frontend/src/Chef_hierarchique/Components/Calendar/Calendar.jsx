@@ -1,285 +1,447 @@
-import { useState, useEffect } from "react"
-import Sidebar from "../Sidebar/Sidebar"
-import Navbar from "../Navbar/Navbar"
-import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi"
-import "./Calendar.css"
 
-const Calendar = () => {
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 1, 1)) // February 2025
-  const [selectedDate, setSelectedDate] = useState(null)
+import { useState, useEffect } from "react";
+import {
+  FiCalendar,
+  FiChevronLeft,
+  FiChevronRight,
+  FiUser,
+  FiClock,
+  FiCheck,
+  FiX,
+  FiLoader,
+  FiFilter,
+} from "react-icons/fi";
+import "./Calendar.css";
+import Navbar from "../Navbar/Navbar";
+import Sidebar from "../Sidebar/Sidebar";
+import { API_URL } from "../../../config";
+import "../../Colors.css";
+
+const CalendrierConge = () => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [leaveData, setLeaveData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [theme, setTheme] = useState("light");
+
   const [filters, setFilters] = useState({
-    specificDate: "",
-    startDate: "",
-    endDate: ""
-  })
-  const [approvedLeaves, setApprovedLeaves] = useState([]) // Store fetched approved leaves
-  const [filteredLeaves, setFilteredLeaves] = useState([]) // Store filtered approved leaves
-  const [userService, setUserService] = useState("") // Store logged-in user's service name
+    dateRange: "current",
+  });
+  const [viewMode, setViewMode] = useState("month");
 
-  const months = [
-    "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
-  ]
-
-  const daysOfWeek = ["DIM", "LUN", "MAR", "MER", "JEU", "VEN", "SAM"]
-
-  // Fetch approved leaves from the backend
+  // Theme management
   useEffect(() => {
-    const fetchApprovedLeaves = async () => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      applyTheme(currentTheme);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light");
+      applyTheme(e.detail || "light");
+    });
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
+    document.body.className = theme;
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
+
+  const getUserId = () => {
+    try {
+      const userData = localStorage.getItem("userId");
+      if (!userData) return null;
+      
       try {
-        const response = await fetch("http://localhost:8080/api/demande-conge/approved")
-        if (!response.ok) {
-          throw new Error("Failed to fetch approved leaves")
-        }
-        const data = await response.json()
-        setApprovedLeaves(data)
-      } catch (error) {
-        console.error("Error fetching approved leaves:", error)
+        const parsed = JSON.parse(userData);
+        return parsed?.userId || parsed?.id || null;
+      } catch {
+        return userData;
       }
+    } catch (e) {
+      console.error("Error reading userId from localStorage:", e);
+      return null;
     }
+  };
 
-    fetchApprovedLeaves()
-  }, [])
+  const userId = getUserId();
 
-  // Get logged-in user's service name from local storage
+  // Fetch approved leave data
   useEffect(() => {
-    const loggedInUser = JSON.parse(localStorage.getItem("user"))
-    if (loggedInUser && loggedInUser.serviceName) {
-      setUserService(loggedInUser.serviceName)
+    const fetchLeaveData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = localStorage.getItem("authToken");
+        
+        const response = await fetch(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch leave data: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Handle both array and object with demandes property
+        const rawLeaves = Array.isArray(data) ? data : (data.demandes || []);
+        
+        const transformedData = rawLeaves.map(leave => ({
+          id: leave.id || leave._id,
+          employeeName: `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
+          startDate: leave.dateDebut,
+          endDate: leave.dateFin,
+          type: "ANNUAL",
+          status: "ACCEPTED",
+          duration: calculateDuration(leave.dateDebut, leave.dateFin),
+          department: leave.matPers?.serviceName || "Unknown",
+          approvedBy: "Manager",
+          description: leave.texteDemande || "Congé annuel"
+        }));
+
+        setLeaveData(transformedData);
+      } catch (error) {
+        console.error("Error fetching leave data:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (userId) {
+      fetchLeaveData();
     }
-  }, [])
+  }, [userId]);
 
-  // Apply filters and filter by role and service
-  useEffect(() => {
-    applyFilters()
-  }, [filters, approvedLeaves, userService])
+  const calculateDuration = (startDate, endDate) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
 
-  const handlePrevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))
-  }
+  // Calendar helper functions
+  const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
-  const handleNextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))
-  }
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  const goToToday = () => setCurrentDate(new Date());
 
-  const handleDateClick = (day) => {
-    const clickedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day)
-    setSelectedDate(clickedDate)
-
-    // Find leave details for the clicked date
-    const leaveDetails = filteredLeaves.find(leave => {
-      const startDate = new Date(leave.dateDebut)
-      const endDate = new Date(leave.dateFin)
-      return clickedDate >= startDate && clickedDate <= endDate
-    })
-
-    // Display leave details in the sidebar
-    if (leaveDetails) {
-      const detailsSection = document.querySelector(".details-placeholder")
-      detailsSection.innerHTML = `
-        <h4>Détails du Congé</h4>
-        <p><strong>Employé:</strong> ${leaveDetails.employee.nom} ${leaveDetails.employee.prenom}</p>
-        <p><strong>Date de Début:</strong> ${new Date(leaveDetails.dateDebut).toLocaleDateString()}</p>
-        <p><strong>Date de Fin:</strong> ${new Date(leaveDetails.dateFin).toLocaleDateString()}</p>
-        <p><strong>Matricule:</strong> ${leaveDetails.employee.matricule}</p>
-        <p><strong>Service:</strong> ${leaveDetails.employee.serviceName}</p>
-      `
-    }
-  }
-
-  const resetFilters = () => {
-    setFilters({
-      specificDate: "",
-      startDate: "",
-      endDate: ""
-    })
-  }
+  // Filter functions
+  const toggleFilters = () => setShowFilters(prev => !prev);
 
   const handleFilterChange = (e) => {
-    const { name, value } = e.target
-    setFilters(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
 
-  // Apply filters to approved leaves
-  const applyFilters = () => {
-    let filtered = approvedLeaves
+  const applyFilters = (leaves) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Filter by role and service
-    if (userService) {
-      filtered = filtered.filter(leave => {
-        return (
-          leave.employee.role === "Collaborateur" &&
-          leave.employee.serviceName === userService
-        )
-      })
-    }
+    return leaves.filter(leave => {
+      const start = new Date(leave.startDate);
+      const end = new Date(leave.endDate);
+      
+      switch(filters.dateRange) {
+        case "current":
+          const currentMonth = currentDate.getMonth();
+          const currentYear = currentDate.getFullYear();
+          return (start.getMonth() === currentMonth && start.getFullYear() === currentYear) || 
+                 (end.getMonth() === currentMonth && end.getFullYear() === currentYear) ||
+                 (start < new Date(currentYear, currentMonth, 1) && end > new Date(currentYear, currentMonth + 1, 0));
+        case "past":
+          return end < today;
+        case "future":
+          return start > today;
+        default:
+          return true;
+      }
+    });
+  };
 
-    // Apply date filters
-    if (filters.specificDate) {
-      const specificDate = new Date(filters.specificDate)
-      filtered = filtered.filter(leave => {
-        const startDate = new Date(leave.dateDebut)
-        const endDate = new Date(leave.dateFin)
-        return specificDate >= startDate && specificDate <= endDate
-      })
-    }
+  const renderCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const daysInMonth = getDaysInMonth(year, month);
+    const firstDay = getFirstDayOfMonth(year, month);
 
-    if (filters.startDate && filters.endDate) {
-      const startDate = new Date(filters.startDate)
-      const endDate = new Date(filters.endDate)
-      filtered = filtered.filter(leave => {
-        const leaveStartDate = new Date(leave.dateDebut)
-        const leaveEndDate = new Date(leave.dateFin)
-        return (
-          (leaveStartDate >= startDate && leaveStartDate <= endDate) ||
-          (leaveEndDate >= startDate && leaveEndDate <= endDate)
-        )
-      })
-    }
+    const monthNames = [
+      "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+      "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"
+    ];
+    const dayNames = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
-    setFilteredLeaves(filtered)
-  }
-
-  const generateCalendarDays = () => {
-    const year = currentDate.getFullYear()
-    const month = currentDate.getMonth()
-    const firstDay = new Date(year, month, 1).getDay()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const days = []
+    const days = [];
 
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>)
+      days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
 
-    // Add cells for each day of the month
+    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day)
-      const isApproved = filteredLeaves.some(leave => {
-        const startDate = new Date(leave.dateDebut)
-        const endDate = new Date(leave.dateFin)
-        return date >= startDate && date <= endDate
-      })
+      const date = new Date(year, month, day);
+      const dateString = date.toISOString().split('T')[0];
+
+      // Find leaves for this day
+      const leavesOnDay = leaveData.filter(leave => {
+        const leaveStart = new Date(leave.startDate).toISOString().split('T')[0];
+        const leaveEnd = new Date(leave.endDate).toISOString().split('T')[0];
+        return dateString >= leaveStart && dateString <= leaveEnd;
+      });
+
+      const hasLeaves = leavesOnDay.length > 0;
+      const isToday = new Date().toDateString() === date.toDateString();
 
       days.push(
-        <div
-          key={day}
-          className={`calendar-day ${isApproved ? "approved" : ""}`}
-          onClick={() => handleDateClick(day)}
+        <div 
+          key={day} 
+          className={`calendar-day ${isToday ? "today" : ""} ${hasLeaves ? "has-leave" : ""}`}
         >
-          {day}
+          <div className="day-number">{day}</div>
+          {hasLeaves && (
+            <>
+              <div className="day-indicators">
+                <div className="day-indicator accepted" title={`${leavesOnDay.length} congé(s)`}></div>
+              </div>
+              <div className="day-tooltip">
+                <div className="tooltip-header">
+                  {day} {monthNames[month]} {year}
+                  <span className="tooltip-count"> ({leavesOnDay.length} congé{leavesOnDay.length > 1 ? 's' : ''})</span>
+                </div>
+                {leavesOnDay.map((leave, idx) => (
+                  <div key={idx} className="tooltip-item">
+                    <FiUser className="icon" />
+                    <div>
+                      <div>{leave.employeeName}</div>
+                      <div className="tooltip-dates">
+                        {new Date(leave.startDate).toLocaleDateString("fr-FR")} - {' '}
+                        {new Date(leave.endDate).toLocaleDateString("fr-FR")}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
-      )
+      );
     }
 
-    return days
-  }
-
-  return (
-    <div className="app-container">
-      <Sidebar />
+    return (
       <div className="calendar-container">
-        <Navbar />
-        <div className="calendar-content">
-          <div className="filters-section">
-            <h2>Filtres</h2>
-            <div className="filters-grid">
-              <div className="filter-group">
-                <label>Date spécifique</label>
-                <input
-                  type="date"
-                  name="specificDate"
-                  value={filters.specificDate}
-                  onChange={handleFilterChange}
-                  placeholder="jj/mm/aaaa"
-                />
-              </div>
-              <div className="filter-group">
-                <label>De</label>
-                <input
-                  type="date"
-                  name="startDate"
-                  value={filters.startDate}
-                  onChange={handleFilterChange}
-                  placeholder="jj/mm/aaaa"
-                />
-              </div>
-              <div className="filter-group">
-                <label>À</label>
-                <input
-                  type="date"
-                  name="endDate"
-                  value={filters.endDate}
-                  onChange={handleFilterChange}
-                  placeholder="jj/mm/aaaa"
-                />
-              </div>
-            </div>
-            <button className="reset-button" onClick={resetFilters}>
-              <FiX /> Réinitialiser
+        <div className="calendar-header">
+          <h2>{monthNames[month]} {year}</h2>
+          <div className="calendar-nav">
+            <button onClick={prevMonth} className="nav-button">
+              <FiChevronLeft />
+            </button>
+            <button onClick={goToToday} className="today-button">
+              Aujourd'hui
+            </button>
+            <button onClick={nextMonth} className="nav-button">
+              <FiChevronRight />
             </button>
           </div>
+        </div>
 
-          <div className="calendar-layout">
-            <div className="calendar-main">
-              <div className="calendar-header">
-                <h2>Calendrier</h2>
-                <div className="month-navigation">
-                  <button onClick={handlePrevMonth} className="nav-button">
-                    <FiChevronLeft />
-                  </button>
-                  <span className="current-month">
-                    {months[currentDate.getMonth()]} {currentDate.getFullYear()}
-                  </span>
-                  <button onClick={handleNextMonth} className="nav-button">
-                    <FiChevronRight />
-                  </button>
-                </div>
+        <div className="calendar-days-header">
+          {dayNames.map(day => (
+            <div key={day} className="day-name">{day}</div>
+          ))}
+        </div>
+
+        <div className="calendar-grid">{days}</div>
+      </div>
+    );
+  };
+
+  const renderLeavesList = () => {
+    const filteredLeaves = applyFilters(leaveData);
+
+    if (filteredLeaves.length === 0) {
+      return (
+        <div className="no-leaves">
+          <p>Aucun congé trouvé pour les critères sélectionnés.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="leaves-list">
+        {filteredLeaves.map((leave, index) => (
+          <div key={leave.id || index} className="leave-card leave-accepted">
+            <div className="leave-card-header">
+              <div className="leave-employee">
+                <FiUser className="icon" />
+                <span>{leave.employeeName}</span>
               </div>
-
-              <div className="calendar-grid">
-                {daysOfWeek.map(day => (
-                  <div key={day} className="calendar-day-name">{day}</div>
-                ))}
-                {generateCalendarDays()}
-              </div>
-
-              <div className="calendar-legend">
-                <div className="legend-item">
-                  <div className="legend-color approved"></div>
-                  <span>Congés Approuvés</span>
-                </div>
+              <div className="leave-status accepted">
+                <FiCheck className="icon" />
+                <span>Accepté</span>
               </div>
             </div>
 
-            <div className="calendar-sidebar">
-              {/* Total des Congés Approuvés Section */}
-              <div className="sidebar-section">
-                <h3>Total des Congés Approuvés</h3>
-                <div className="leave-summary">
-                  <div className="summary-item">
-                    <span className="summary-label">Total</span>
-                    <span className="summary-value">{filteredLeaves.length}</span>
-                  </div>
-                </div>
+            <div className="leave-card-body">
+              <div className="leave-dates">
+                <FiCalendar className="icon" />
+                <span>
+                  {new Date(leave.startDate).toLocaleDateString("fr-FR")} - {' '}
+                  {new Date(leave.endDate).toLocaleDateString("fr-FR")}
+                </span>
               </div>
+              <div className="leave-duration">
+                <FiClock className="icon" />
+                <span>{leave.duration} jour{leave.duration > 1 ? 's' : ''}</span>
+              </div>
+              <div className="leave-description">
+                <p>{leave.description}</p>
+              </div>
+            </div>
 
-              {/* Détails du Congé Section */}
-              <div className="sidebar-section">
-                <h3>Détails du Congé</h3>
-                <p className="details-placeholder">
-                  Sélectionnez une date avec un congé approuvé pour voir les détails.
-                </p>
+            <div className="leave-card-footer">
+              <div className="leave-department">
+                <span>Service: {leave.department}</span>
               </div>
             </div>
           </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderFilters = () => (
+    <div className={`filters-panel ${showFilters ? "show" : ""}`}>
+      <div className="filter-group">
+        <label htmlFor="dateRange">Période</label>
+        <select 
+          id="dateRange" 
+          name="dateRange" 
+          value={filters.dateRange} 
+          onChange={handleFilterChange}
+        >
+          <option value="all">Toutes les périodes</option>
+          <option value="current">Mois courant</option>
+          <option value="past">Passés</option>
+          <option value="future">À venir</option>
+        </select>
+      </div>
+
+      <div className="filter-group view-mode">
+        <label>Mode d'affichage</label>
+        <div className="view-mode-buttons">
+          <button
+            className={`view-mode-button ${viewMode === "month" ? "active" : ""}`}
+            onClick={() => setViewMode("month")}
+          >
+            <FiCalendar />
+            <span>Calendrier</span>
+          </button>
+          <button
+            className={`view-mode-button ${viewMode === "list" ? "active" : ""}`}
+            onClick={() => setViewMode("list")}
+          >
+            <FiFilter />
+            <span>Liste</span>
+          </button>
         </div>
       </div>
     </div>
-  )
-}
+  );
 
-export default Calendar
+  const renderLegend = () => (
+    <div className="legend">
+      <div className="legend-item">
+        <div className="legend-color accepted"></div>
+        <span>Congé Accepté</span>
+      </div>
+      <div className="legend-item today">
+        <div className="legend-today"></div>
+        <span>Aujourd'hui</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
+      <div className="calendar-content">
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <div className="calendrier-conge-content">
+          <div className="page-header">
+            <h1>Calendrier des Congés Acceptés</h1>
+            <div className="header-actions">
+              <button className="filter-toggle" onClick={toggleFilters}>
+                <FiFilter />
+                <span>Filtres</span>
+              </button>
+            </div>
+          </div>
+
+          {renderFilters()}
+
+          {loading ? (
+            <div className="loading-container">
+              <FiLoader className="loading-spinner" />
+              <p>Chargement des données...</p>
+            </div>
+          ) : error ? (
+            <div className="error-container">
+              <FiX className="error-icon" />
+              <p>Erreur: {error}</p>
+              <button onClick={() => window.location.reload()}>Réessayer</button>
+            </div>
+          ) : (
+            <div className="calendrier-content">
+              {viewMode === "month" ? (
+                <>
+                  <div className="calendar-section">
+                    {renderCalendar()}
+                    {renderLegend()}
+                  </div>
+                  <div className="leaves-section">
+                    <h2>Congés Acceptés</h2>
+                    {renderLeavesList()}
+                  </div>
+                </>
+              ) : (
+                <div className="list-view">
+                  <h2>Liste des Congés Acceptés</h2>
+                  {renderLeavesList()}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default CalendrierConge;

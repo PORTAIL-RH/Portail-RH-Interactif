@@ -5,27 +5,29 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
 @Data
 @Document(collection = "Demandes_Formation")
+
 public class DemandeFormation {
     @Id
     private String id_libre_demande;
     private String typeDemande;
-
     private Date dateDemande = new Date();
+
+
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
     private Date dateDebut;
     private String nbrJours;
+
     private String texteDemande;
+    private String observation;
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
@@ -41,50 +43,8 @@ public class DemandeFormation {
     @DBRef
     private theme theme;
 
-    private String annee_f;  //année de la formation
+    private String annee_f;
 
-    // Method to handle date parsing from different formats
-    private Date parseDate(Object dateInput) {
-        if (dateInput == null) {
-            return null;
-        }
-
-        if (dateInput instanceof Date) {
-            return (Date) dateInput;
-        } else if (dateInput instanceof String) {
-            String dateString = (String) dateInput;
-            try {
-                // Try ISO format first
-                return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX").parse(dateString);
-            } catch (ParseException e1) {
-                try {
-                    // Try simple date format
-                    return new SimpleDateFormat("yyyy-MM-dd").parse(dateString);
-                } catch (ParseException e2) {
-                    try {
-                        // Try French format
-                        return new SimpleDateFormat("dd/MM/yyyy").parse(dateString);
-                    } catch (ParseException e3) {
-                        throw new IllegalArgumentException("Unsupported date format: " + dateString +
-                                ". Supported formats are: yyyy-MM-dd'T'HH:mm:ss.SSSX, yyyy-MM-dd or dd/MM/yyyy");
-                    }
-                }
-            }
-        } else {
-            throw new IllegalArgumentException("Date input must be either Date or String");
-        }
-    }
-
-    // Updated setter methods for dates
-    public void setDateDemande(Object dateInput) {
-        this.dateDemande = parseDate(dateInput);
-    }
-
-    public void setDateDebut(Object dateInput) {
-        this.dateDebut = parseDate(dateInput);
-    }
-
-    // Rest of the getters and setters remain the same
     public String getId_libre_demande() {
         return id_libre_demande;
     }
@@ -93,12 +53,28 @@ public class DemandeFormation {
         this.id_libre_demande = id_libre_demande;
     }
 
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
+    }
+
     public Date getDateDebut() {
         return dateDebut;
     }
 
+    public void setDateDebut(Date dateDebut) {
+        this.dateDebut = dateDebut;
+    }
+
     public Date getDateDemande() {
         return dateDemande;
+    }
+
+    public void setDateDemande(Date dateDemande) {
+        this.dateDemande = dateDemande;
     }
 
     public String getNbrJours() {
@@ -123,10 +99,6 @@ public class DemandeFormation {
 
     public void setMatPers(Personnel matPers) {
         this.matPers = matPers;
-    }
-
-    public String getCollaborateurId() {
-        return (matPers != null) ? matPers.getId() : null;
     }
 
     public String getCodeSoc() {
@@ -168,6 +140,7 @@ public class DemandeFormation {
     public void setFiles(Collection<Fichier_joint> files) {
         this.Files = files;
     }
+
 
     public com.example.PortailRH.Model.titre getTitre() {
         return titre;

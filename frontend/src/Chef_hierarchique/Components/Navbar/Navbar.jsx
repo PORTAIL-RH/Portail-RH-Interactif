@@ -3,87 +3,164 @@ import useNotifications from "./useNotifications";
 import "./Navbar.css";
 import bellIcon from "../../../assets/bell1.png";
 import NotificationModal from "./NotificationModal";
-import { FiMoon, FiSun } from "react-icons/fi"; // Import the icons
+import { FiSun, FiMoon, FiLogOut, FiUser } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 
-const Navbar = ({ userServiceId }) => {
-  const [theme, setTheme] = useState("dark"); // Default to dark theme
-  const role = "Chef Hiérarchique"; // Define the role
+const Navbar = ({ toggleTheme: externalToggleTheme, theme: externalTheme }) => {
+  const [userData, setUserData] = useState({
+    firstName: "",
+    lastName: "",
+    role: "",
+    serviceId: ""
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Theme management
+  const [localTheme, setLocalTheme] = useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
+  const theme = externalTheme || localTheme;
+
+  // Get user data from localStorage
+  useEffect(() => {
+    try {
+      const storedUserData = localStorage.getItem("userData");
+      const storedServiceId = localStorage.getItem("userServiceId");
+      
+      if (storedUserData) {
+        const parsedData = JSON.parse(storedUserData);
+        setUserData({
+          firstName: parsedData.nom || "",
+          lastName: parsedData.prenom || "",
+          role: parsedData.role || "Chef Hiérarchique",
+          serviceId: storedServiceId || ""
+        });
+      }
+    } catch (error) {
+      setError("Failed to parse user data");
+      console.error("Error parsing userData from localStorage:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Notifications hook
   const {
     notifications,
     unviewedCount,
-    fetchNotifications,
     markAsRead,
-    error,
-  } = useNotifications(role, userServiceId); // Use the hook
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  } = useNotifications(userData.role, userData.serviceId);
 
-  // Memoize fetchNotifications to avoid infinite loops
-  const memoizedFetchNotifications = useCallback(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+  // Theme toggle handler
+  const handleToggleTheme = useCallback(() => {
+    if (externalToggleTheme) {
+      externalToggleTheme();
+    } else {
+      const newTheme = theme === "light" ? "dark" : "light";
+      setLocalTheme(newTheme);
+      document.documentElement.classList.toggle("dark", newTheme === "dark");
+      localStorage.setItem("theme", newTheme);
+      window.dispatchEvent(new Event("storage"));
+    }
+  }, [theme, externalToggleTheme]);
 
-  // Fetch notifications on component mount and when userServiceId changes
-  useEffect(() => {
-    memoizedFetchNotifications();
-  }, [userServiceId, memoizedFetchNotifications]);
+  // Notification handlers
+  const toggleNotifications = useCallback(() => {
+    setIsNotificationsOpen(prev => !prev);
+  }, []);
 
-  // Toggle the notification modal
-  const toggleNotifications = () => {
-    setIsNotificationsOpen((prev) => !prev);
-  };
+  const handleMarkAsRead = useCallback(async (id) => {
+    try {
+      await markAsRead(id);
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  }, [markAsRead]);
 
-  // Handle marking a notification as read
-  const handleMarkAsRead = async (id) => {
-    await markAsRead(id); // Mark the notification as read
-    memoizedFetchNotifications(); // Refresh the notifications list
-  };
+  // Logout handler
+  const handleLogout = useCallback(() => {
+    [
+      "authToken", "userId", "userRole", "usermatricule", 
+      "userCodeSoc", "userServiceId", "userServiceName", "userData"
+    ].forEach(key => localStorage.removeItem(key));
+    navigate("/");
+  }, [navigate]);
 
-  // Theme toggle logic
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
+  if (loading) {
+    return <div className="navbar loading">Chargement des données...</div>;
+  }
+
+  if (error) {
+    return <div className="navbar error">Erreur: {error}</div>;
+  }
 
   return (
-    <nav className="navbar">
-      <div className="navbar-text">Welcome, Chef Hiérarchique</div>
+    <nav className={`navbar ${theme}`} aria-label="Main navigation">
+      <div className="navbar-welcome">
+        <div className="user-info">
+          <div className="user-avatar" aria-hidden="true">
+            <FiUser />
+          </div>
+          <span className="welcome-text">
+            {userData.role}. Bienvenue, {userData.firstName} {userData.lastName}
+          </span>
+        </div>
+      </div>
+
       <div className="navbar-actions">
         <button
           className="theme-toggle"
-          onClick={toggleTheme}
+          onClick={handleToggleTheme}
           aria-label={theme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
         >
           {theme === "light" ? <FiMoon /> : <FiSun />}
         </button>
+
         <div className="notification-container">
-          {/* Display the unread notification count */}
-          {unviewedCount > 0 && (
-            <span className="notification-badge">{unviewedCount}</span>
-          )}
-          {/* Bell icon to toggle notifications */}
-          <img
-            src={bellIcon}
-            alt="Bell Icon"
-            className="icon-notif"
+          <button 
+            className="notification-button" 
             onClick={toggleNotifications}
-            aria-label="Notifications"
-          />
+            aria-label={`Notifications (${unviewedCount} non lues)`}
+            aria-expanded={isNotificationsOpen}
+          >
+            <img
+              src={bellIcon}
+              alt="Notifications"
+              className={`notification-icon-img ${theme === "light" ? "notification-icon-light" : ""}`}
+              onError={(e) => {
+                e.target.src = "/placeholder.svg?height=24&width=24";
+              }}
+            />
+            {unviewedCount > 0 && (
+              <span className="notification-badge">
+                {unviewedCount > 9 ? "9+" : unviewedCount}
+              </span>
+            )}
+          </button>
+          
+          {isNotificationsOpen && (
+            <NotificationModal
+              notifications={notifications}
+              unviewedCount={unviewedCount}
+              markAsRead={handleMarkAsRead}
+              onClose={() => setIsNotificationsOpen(false)}
+              theme={theme}
+            />
+          )}
         </div>
+
+        <button 
+          className="logout-button"
+          onClick={handleLogout}
+          aria-label="Déconnexion"
+        >
+          <FiLogOut className="logout-icon" />
+          <span className="logout-text">Déconnexion</span>
+        </button>
       </div>
-      {/* Notification modal */}
-      {isNotificationsOpen && (
-        <NotificationModal
-          notifications={notifications}
-          unviewedCount={unviewedCount}
-          markAsRead={handleMarkAsRead}
-          userServiceId={userServiceId} // Pass userServiceId to NotificationModal
-          onClose={() => setIsNotificationsOpen(false)}
-        />
-      )}
-      {/* Display error messages if any */}
-      {error && <div className="error-message">{error}</div>}
     </nav>
   );
 };

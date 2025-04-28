@@ -1,6 +1,5 @@
 package com.example.PortailRH.Model;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,14 +10,16 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.util.List;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Document(collection = "Personnel")
 @Data
 @AllArgsConstructor
 public class Personnel {
-
     @Id
     private String id;
 
@@ -71,9 +72,15 @@ public class Personnel {
     private boolean active = false;
     private String role;
 
+    private int failedLoginAttempts = 0;
+    private boolean accountLocked = false;
+    private Date lockTime;
+    private String lockReason;
+
     @DBRef
     @JsonIgnore
     private Service service;
+
 
     @DBRef
     @JsonIgnore
@@ -81,35 +88,116 @@ public class Personnel {
 
     public Personnel() {
     }
-    // Custom constructor for creating a Personnel object with only the matricule
+
     public Personnel(String matricule) {
         this.matricule = matricule;
     }
-
 
     public void activateCollaborateur(String role, Service service) {
         this.active = true;
         this.role = role;
         this.service = service;
 
-        // Check if service is null before calling getChefHierarchique()
         if (service != null) {
             this.chefHierarchique = service.getChefHierarchique();
         } else {
-            // Handle the case where service is null
-            this.chefHierarchique = null; // or throw an exception
+            this.chefHierarchique = null;
             System.err.println("Service is null for role: " + role);
         }
     }
+
+    public void incrementFailedAttempts() {
+        this.failedLoginAttempts++;
+        if (this.failedLoginAttempts >= 3) {
+            this.accountLocked = true;
+            this.lockTime = new Date();
+        }
+    }
+
+    public void resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.accountLocked = false;
+        this.lockTime = null;
+        this.lockReason = null;
+    }
+
+    public boolean isAccountLocked() {
+        if (this.accountLocked && this.lockTime != null) {
+            long lockDuration = System.currentTimeMillis() - this.lockTime.getTime();
+            // Auto-unlock after 30 minutes
+            return lockDuration < 1800000;
+        }
+        return this.accountLocked;
+    }
+
+
+
+
+    public boolean isAccountNonLocked() {
+        if (this.accountLocked && this.lockTime != null) {
+            // Auto-unlock after 30 minutes (1800000 milliseconds)
+            return (System.currentTimeMillis() - this.lockTime.getTime()) > 1800000;
+        }
+        return !this.accountLocked;
+    }
+
+    public Map<String, Object> getLockStatus() {
+        Map<String, Object> status = new HashMap<>();
+        status.put("locked", this.accountLocked);
+        status.put("lockTime", this.lockTime);
+        status.put("lockReason", this.lockReason);
+        status.put("failedAttempts", this.failedLoginAttempts);
+
+        if (this.accountLocked && this.lockTime != null) {
+            long remainingTime = 1800000 - (System.currentTimeMillis() - this.lockTime.getTime());
+            status.put("remainingLockTime", Math.max(0, remainingTime));
+        }
+
+        return status;
+    }
+
+    public int getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(int failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+
+
+    public void setAccountLocked(boolean accountLocked) {
+        this.accountLocked = accountLocked;
+    }
+
+    public Date getLockTime() {
+        return lockTime;
+    }
+    public void lockAccount(String reason) {
+        this.accountLocked = true;
+        this.lockTime = new Date();
+        this.lockReason = reason;
+    }
+    public void setLockTime(Date lockTime) {
+        this.lockTime = lockTime;
+    }
+
+    public String getLockReason() {
+        return lockReason;
+    }
+
+    public void setLockReason(String lockReason) {
+        this.lockReason = lockReason;
+    }
+
     public String getServiceName() {
         return service != null ? service.getServiceName() : "N/A";
     }
+
     public String getServiceId() {
-        return service != null ? service.getServiceId() : null;
+        return service != null ? service.getId() : null;
     }
-    /**
-     * Deactivates the collaborator.
-     */
+
     public void desactivateCollaborateur() {
         this.active = false;
         this.role = null;
@@ -117,54 +205,14 @@ public class Personnel {
         this.chefHierarchique = null;
     }
 
-
-    /**
-     * Validates if the password and confirmation match.
-     * @return true if passwords match, false otherwise.
-     */
     public boolean isPasswordConfirmed() {
         return this.motDePasse != null && this.motDePasse.equals(this.confirmationMotDePasse);
     }
 
+
+
     public String getId() {
         return id;
-    }
-
-    public Service getService() {
-        return service;
-    }
-
-    public void setService(Service service) {
-        this.service = service;
-    }
-
-    public Personnel getChefHierarchique() {
-        return chefHierarchique;
-    }
-    public static String calculateGenderPercentage(List<Personnel> personnelList) {
-        if (personnelList == null || personnelList.isEmpty()) {
-            return "No personnel data available.";
-        }
-
-        int total = personnelList.size();
-        int femaleCount = 0;
-        int maleCount = 0;
-
-        for (Personnel personnel : personnelList) {
-            if ("female".equalsIgnoreCase(personnel.getSexe())) {
-                femaleCount++;
-            } else if ("male".equalsIgnoreCase(personnel.getSexe())) {
-                maleCount++;
-            }
-        }
-
-        double femalePercentage = (femaleCount * 100.0) / total;
-        double malePercentage = (maleCount * 100.0) / total;
-
-        return String.format("Females: %.2f%%, Males: %.2f%%", femalePercentage, malePercentage);
-    }
-    public void setChefHierarchique(Personnel chefHierarchique) {
-        this.chefHierarchique = chefHierarchique;
     }
 
     public void setId(String id) {
@@ -217,22 +265,6 @@ public class Personnel {
 
     public void setCode_soc(String code_soc) {
         this.code_soc = code_soc;
-    }
-
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
-
-    public String getRole() {
-        return role;
-    }
-
-    public void setRole(String role) {
-        this.role = role;
     }
 
     public String getConfirmationMotDePasse() {
@@ -297,5 +329,37 @@ public class Personnel {
 
     public void setDate_embauche(String date_embauche) {
         this.date_embauche = date_embauche;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public Service getService() {
+        return service;
+    }
+
+    public void setService(Service service) {
+        this.service = service;
+    }
+
+    public Personnel getChefHierarchique() {
+        return chefHierarchique;
+    }
+
+    public void setChefHierarchique(Personnel chefHierarchique) {
+        this.chefHierarchique = chefHierarchique;
     }
 }

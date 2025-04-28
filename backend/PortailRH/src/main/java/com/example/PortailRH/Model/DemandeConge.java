@@ -1,112 +1,91 @@
 package com.example.PortailRH.Model;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 @Data
 @Document(collection = "Demandes_Conge")
+
 public class DemandeConge {
+    public static final int MAX_DAYS_PER_YEAR = 80;
+
     @Id
     private String id_libre_demande;
-
+    private Date dateDemande = new Date();
     private String typeDemande;
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSX", timezone = "UTC")
-    private Date dateDemande = new Date();
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date dateDebut;
-
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
     private Date dateFin;
-
     private String snjTempDep;
     private String snjTempRetour;
     private int nbrJours;
+
+
+    private int year;
     private String texteDemande;
+
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
+    private String observation;
+    @DBRef(lazy = true) // Relation avec les fichiers joints
+    private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
-    @DBRef(lazy = true)
-    private Collection<Fichier_joint> Files = new ArrayList<>();
+    public DemandeConge() {
+        // Initialiser l'année avec l'année courante
+        Calendar cal = Calendar.getInstance();
+        this.year = cal.get(Calendar.YEAR);
+    }
 
-    // Helper method to parse dates from different formats
-    private Date parseDate(Object dateInput) {
-        if (dateInput == null) {
-            return null;
-        }
-
-        if (dateInput instanceof Date) {
-            return (Date) dateInput;
-        } else if (dateInput instanceof String) {
-            String dateString = (String) dateInput;
-
-            // List of supported formats (try them in order)
-            String[] formats = {
-                    "yyyy-MM-dd'T'HH:mm:ss.SSSX",  // ISO with timezone
-                    "yyyy-MM-dd'T'HH:mm:ss.SSS",   // ISO without timezone
-                    "yyyy-MM-dd'T'HH:mm:ss",       // ISO without milliseconds
-                    "yyyy-MM-dd",                  // Simple date format
-                    "dd/MM/yyyy"                   // French format
-            };
-
-            for (String format : formats) {
-                try {
-                    SimpleDateFormat sdf = new SimpleDateFormat(format);
-                    sdf.setLenient(false);
-                    return sdf.parse(dateString);
-                } catch (ParseException e) {
-                    // Try next format
-                }
-            }
-
-            throw new IllegalArgumentException("Unsupported date format: " + dateString);
-        } else {
-            throw new IllegalArgumentException("Date input must be either Date or String");
+    public void setDateDebut(Date dateDebut) {
+        this.dateDebut = dateDebut;
+        calculateDateReprisePrevAndNbrJours();
+        // Mettre à jour l'année si la date de début change
+        if (dateDebut != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(dateDebut);
+            this.year = cal.get(Calendar.YEAR);
         }
     }
 
-    // Updated setters for dates
-    public void setDateDemande(Object dateInput) {
-        this.dateDemande = parseDate(dateInput);
-    }
-
-    public void setDateDebut(Object dateInput) {
-        this.dateDebut = parseDate(dateInput);
+    public void setDateFin(Date dateFin) {
+        this.dateFin = dateFin;
         calculateDateReprisePrevAndNbrJours();
     }
 
-    public void setDateFin(Object dateInput) {
-        this.dateFin = parseDate(dateInput);
-        calculateDateReprisePrevAndNbrJours();
-    }
-
-    // Private method to calculate dateReprisePrev and nbrJours
     private void calculateDateReprisePrevAndNbrJours() {
         if (this.dateDebut != null && this.dateFin != null) {
-            // Calculate the difference in days
             long diffInMillies = Math.abs(dateFin.getTime() - dateDebut.getTime());
-            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS) + 1; // +1 to include both start and end dates
+            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS) + 1; // +1 pour inclure le premier jour
         }
     }
 
-    // Rest of the getters and setters remain the same
+
+
+
+
     public String getId() {
         return id_libre_demande;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
     public void setId(String id) {
@@ -141,10 +120,7 @@ public class DemandeConge {
         this.matPers = matPers;
     }
 
-    public String getCollaborateurId() {
-        return (matPers != null) ? matPers.getId() : null;
-    }
-
+    // CodeSoc will be derived dynamically from Personnel object
     public String getCodeSoc() {
         return matPers != null ? matPers.getCode_soc() : null;
     }
@@ -205,6 +181,8 @@ public class DemandeConge {
         this.snjTempRetour = snjTempRetour;
     }
 
+
+
     public int getNbrJours() {
         return nbrJours;
     }
@@ -215,5 +193,9 @@ public class DemandeConge {
 
     public Date getDateDemande() {
         return dateDemande;
+    }
+
+    public void setDateDemande(Date dateDemande) {
+        this.dateDemande = dateDemande;
     }
 }

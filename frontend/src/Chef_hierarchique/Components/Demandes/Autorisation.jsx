@@ -1,135 +1,316 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText, FiEye, FiDownload } from "react-icons/fi";
 import "./Demandes.css";
 import DemandeDetailsModal from "./DemandeDetailsModal";
 
 const DemandesAutorisation = () => {
+  // Initialize state with localStorage data if available
+  const [demandesData, setDemandesData] = useState(() => {
+    try {
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.autorisation && Array.isArray(parsed.autorisation.data)) {
+          return {
+            autorisation: { 
+              data: parsed.autorisation.data || [], 
+              total: parsed.autorisation.total || 0, 
+              approved: parsed.autorisation.approved || 0, 
+              pending: parsed.autorisation.pending || 0 
+            },
+            timestamp: parsed.timestamp || 0
+          };
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing demandes from localStorage:", e);
+    }
+    // Default empty state if no valid data in localStorage
+    return {
+      autorisation: { 
+        data: [], 
+        total: 0, 
+        approved: 0, 
+        pending: 0 
+      },
+      timestamp: 0
+    };
+  });
+
   const [demandes, setDemandes] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filteredDemandes, setFilteredDemandes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false); // State for filter panel visibility
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
   const [selectedDemande, setSelectedDemande] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [theme, setTheme] = useState("light");
+  const [observation, setObservation] = useState("");
+  const [showObservationModal, setShowObservationModal] = useState(false);
+  const [actionType, setActionType] = useState(null);
+  const [currentDemandeId, setCurrentDemandeId] = useState(null);
+  const [previewFileId, setPreviewFileId] = useState(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState("");
+  const [dataSource, setDataSource] = useState(""); // Track where data came from
 
-  // Define toggleFilterExpand function
-  const toggleFilterExpand = () => {
-    setIsFilterExpanded((prev) => !prev); // Toggle filter panel visibility
+  // Format date helper
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  // Fetch demandes from the backend
-  const fetchDemandes = useCallback(async () => {
+  // Format time helper
+  const formatTime = (hours, minutes) => {
+    const h = hours?.toString().padStart(2, '0') || '00';
+    const m = minutes?.toString().padStart(2, '0') || '00';
+    return `${h}:${m}`;
+  };
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      applyTheme(currentTheme);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light");
+      applyTheme(e.detail || "light");
+    });
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
+    document.body.className = theme;
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
+
+  const getUserId = () => {
+    try {
+      const userData = localStorage.getItem("userId");
+      if (!userData) return null;
+      
+      try {
+        const parsed = JSON.parse(userData);
+        return parsed?.userId || parsed?.id || null;
+      } catch {
+        return userData;
+      }
+    } catch (e) {
+      console.error("Error reading userId from localStorage:", e);
+      return null;
+    }
+  };
+
+  const userId = getUserId();
+
+  const fetchFromAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
-  
-      // Check if demande-autorisation data is cached in localStorage
-      const cachedDemandesAutorisation = localStorage.getItem("demandesAutorisation");
-      if (cachedDemandesAutorisation) {
-        const cachedData = JSON.parse(cachedDemandesAutorisation);
-        setDemandes(cachedData);
-        setFilteredDemandes(cachedData);
-        setLoading(false);
-        return;
+
+      if (!userId) {
+        throw new Error("User ID not found in localStorage");
       }
-  
-      // Fetch demande-autorisation from the API
-      const response = await fetch("http://localhost:8080/api/demande-autorisation", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-  
+
+      console.log("Fetching autorisations from API...");
+      const response = await fetch(
+        `http://localhost:8080/api/demande-autorisation/collaborateurs-by-service/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Request failed: ${response.status} - ${errorText}`);
+        throw new Error(errorText || "Failed to fetch demandes");
       }
-  
+
       const data = await response.json();
-  
-      // Get the serviceId of the connected Chef Hiérarchique from local storage
-      const userServiceId = localStorage.getItem("userServiceId");
-  
-      // Filter demandes to include only those from personnel with role "collaborateur" and the same serviceId
-      const filteredData = data.filter((demande) => {
-        const isCollaborateur = demande.matPers?.role === "collaborateur";
-        const hasSameService = demande.matPers?.serviceId === userServiceId;
-        return isCollaborateur && hasSameService;
-      });
-  
-      // Cache the filtered data in localStorage
-      localStorage.setItem("demandesAutorisation", JSON.stringify(filteredData));
-  
-      setDemandes(filteredData);
-      setFilteredDemandes(filteredData);
-      setLoading(false);
+      
+      if (!data.demandes) {
+        throw new Error("Invalid response format: demandes array missing");
+      }
+
+      // Normalize files structure
+      const demandesFromResponse = (Array.isArray(data.demandes) ? data.demandes : []).map(demande => ({
+        ...demande,
+        files: demande.files?.map(file => ({
+          ...file,
+          fileId: file.fileId || file.id
+        })) || []
+      }));
+
+      // Process the data to match your structure
+      const processedAutorisation = {
+        data: demandesFromResponse,
+        total: demandesFromResponse.length,
+        approved: demandesFromResponse.filter(d => d.reponseChef === "O").length,
+        pending: demandesFromResponse.filter(d => d.reponseChef === "I").length
+      };
+
+      // Update localStorage cache - maintain all demande types
+      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
+      const updatedCache = {
+        ...currentCache,
+        autorisation: processedAutorisation,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem("demandes", JSON.stringify(updatedCache));
+
+      return processedAutorisation;
     } catch (error) {
-      setError(error.message);
+      console.error("API fetch error:", error);
+      throw error;
+    }
+  }, [userId]);
+
+  const fetchDemandes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // First try to get from localStorage
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const cacheAge = Date.now() - (parsed.timestamp || 0);
+          
+          // Use cached data if less than 1 hour old and has valid data
+          if (cacheAge < 3600000 && parsed.autorisation?.data && Array.isArray(parsed.autorisation.data)) {
+            console.log("Using cached autorisation data");
+            setDemandesData(parsed);
+            setDemandes(parsed.autorisation.data);
+            setFilteredDemandes(parsed.autorisation.data);
+            setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString());
+            setDataSource("cache");
+            setLoading(false);
+            
+            // Fetch fresh data in background but don't wait for it
+            fetchFromAPI().catch(e => console.error("Background refresh failed:", e));
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing demandes from localStorage:", e);
+        }
+      }
+
+      // If no valid cache, fetch from API
+      const processedData = await fetchFromAPI();
+      setDemandesData(prev => ({
+        ...prev,
+        autorisation: processedData,
+        timestamp: Date.now()
+      }));
+      setDemandes(processedData.data);
+      setFilteredDemandes(processedData.data);
+      setDataSource("api");
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError(error.message || "An unknown error occurred");
+      
+      // If we have cached data, use it even if API fails
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.autorisation?.data && Array.isArray(parsed.autorisation.data)) {
+            setDemandesData(parsed);
+            setDemandes(parsed.autorisation.data);
+            setFilteredDemandes(parsed.autorisation.data);
+            setDataSource("cache-fallback");
+          }
+        } catch (e) {
+          console.error("Error parsing fallback data:", e);
+        }
+      }
+    } finally {
       setLoading(false);
     }
-  }, []);
-  useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/sse/updates");
-  
-    eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data);
-      const { type, data } = update;
-  
-      console.log("Received update:", type, data); // Debugging
-  
-      // Refresh data based on the update type
-      switch (type) {
-        case "created":
-        case "updated":
-        case "deleted":
-          fetchDemandes(); // Refresh the demandes list
-          break;
-        default:
-          console.warn("Unknown update type:", type);
-      }
-    };
-  
-    eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error);
-      eventSource.close();
-    };
-  
-    return () => {
-      eventSource.close(); // Cleanup on component unmount
-    };
-  }, [fetchDemandes]);
-  // Fetch demandes on component mount
+  }, [fetchFromAPI]);
+
+  // Initial fetch
   useEffect(() => {
     fetchDemandes();
   }, [fetchDemandes]);
 
-  // Filter demandes based on search, status, and date range
+  // SSE connection for real-time updates
+  useEffect(() => {
+    const eventSource = new EventSource("http://localhost:8080/api/sse/updates");
+
+    eventSource.onmessage = (event) => {
+      const update = JSON.parse(event.data);
+      const { type } = update;
+
+      if (type === "created" || type === "updated" || type === "deleted") {
+        console.log("SSE update received, refreshing data...");
+        fetchDemandes();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [fetchDemandes]);
+
   useEffect(() => {
     let filtered = demandes;
 
-    // Filter by search query (search in name and texteDemande)
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (demande) =>
-          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)) ||
+          (demande.matPers?.nomComplet && demande.matPers.nomComplet.toLowerCase().includes(query)) ||
           (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query))
       );
     }
 
-    // Filter by status
     if (selectedStatus !== "all") {
       filtered = filtered.filter((demande) => demande.reponseChef === selectedStatus);
     }
 
-    // Filter by date range (using dateDemande)
     if (startDate && endDate) {
       filtered = filtered.filter((demande) => {
         const demandeDate = new Date(demande.dateDemande);
@@ -140,106 +321,180 @@ const DemandesAutorisation = () => {
     setFilteredDemandes(filtered);
   }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
 
-  // Function to handle confirmation (approval) of a demande
-  const handleConfirmer = async (demandeId) => {
+  const openActionModal = (demandeId, type) => {
+    setCurrentDemandeId(demandeId);
+    setActionType(type);
+    setObservation("");
+    setShowObservationModal(true);
+  };
+
+  const closeActionModal = () => {
+    setShowObservationModal(false);
+    setObservation("");
+    setActionType(null);
+    setCurrentDemandeId(null);
+  };
+
+  const toggleFilterExpand = () => {
+    setIsFilterExpanded((prev) => !prev);
+  };
+
+  const handleAction = async () => {
     try {
       const token = localStorage.getItem("authToken");
+      const url = actionType === "approve" 
+        ? `http://localhost:8080/api/demande-autorisation/valider/${currentDemandeId}`
+        : `http://localhost:8080/api/demande-autorisation/refuser/${currentDemandeId}`;
 
-      const endpoint = `http://localhost:8080/api/demande-autorisation/valider/${demandeId}`;
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          observation: observation
+        })
       });
 
-      if (response.ok) {
-        alert("Demande confirmée avec succès");
-
-        // Update the state without reloading the page
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "O" } // Update status to "O" (approved)
-              : demande
-          )
-        );
-
-        // Update the cached data in localStorage
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "O" } : demande
-        );
-        localStorage.setItem("demandesAutorisation", JSON.stringify(updatedDemandes));
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
-        alert(`Erreur: ${errorText}`);
+        throw new Error(errorText);
       }
+
+      // Update both state and localStorage
+      const updatedData = demandes.map(d => 
+        d.id === currentDemandeId ? { 
+          ...d, 
+          reponseChef: actionType === "approve" ? "O" : "N",
+          observation: observation 
+        } : d
+      );
+
+      const updatedAutorisation = {
+        data: updatedData,
+        total: updatedData.length,
+        approved: updatedData.filter(d => d.reponseChef === "O").length,
+        pending: updatedData.filter(d => d.reponseChef === "I").length
+      };
+
+      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
+      const updatedCache = {
+        ...currentCache,
+        autorisation: updatedAutorisation,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem("demandes", JSON.stringify(updatedCache));
+
+      setDemandesData(updatedCache);
+      setDemandes(updatedData);
+      setFilteredDemandes(updatedData);
+      closeActionModal();
+      
     } catch (error) {
-      alert("Une erreur s'est produite lors de la confirmation de la demande.");
+      alert(`Erreur: ${error.message}`);
     }
   };
 
-  // Function to handle rejection of a demande
-  const handleRefuser = async (demandeId) => {
-    try {
-      const token = localStorage.getItem("authToken");
-
-      const endpoint = `http://localhost:8080/api/demande-autorisation/refuser/${demandeId}`;
-
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        alert("Demande refusée avec succès");
-
-        // Update the state without reloading the page
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "N" } // Update status to "N" (rejected)
-              : demande
-          )
-        );
-
-        // Update the cached data in localStorage
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "N" } : demande
-        );
-        localStorage.setItem("demandesAutorisation", JSON.stringify(updatedDemandes));
-      } else {
-        const errorText = await response.text();
-        alert(`Erreur: ${errorText}`);
-      }
-    } catch (error) {
-      alert("Une erreur s'est produite lors du refus de la demande.");
-    }
-  };
-
-  // Function to open the modal with the selected demande
   const openModal = (demande) => {
     setSelectedDemande(demande);
     setIsModalOpen(true);
   };
 
-  // Function to close the modal
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedDemande(null);
   };
 
+  const fetchFileBlobUrl = async (fileId) => {
+    if (!fileId) {
+      throw new Error("File ID is missing");
+    }
+
+    const token = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`http://localhost:8080/api/files/download/${fileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Erreur HTTP: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      throw error;
+    }
+  };
+
+  const handlePreview = async (fileId) => {
+    if (!fileId) {
+      console.error("No file ID provided for preview");
+      alert("Aucun fichier sélectionné");
+      return;
+    }
+
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      console.error("Erreur d'aperçu:", err);
+      alert("Impossible d'afficher la pièce jointe: " + err.message);
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
+    if (!fileId) {
+      console.error("No file ID provided for download");
+      alert("Aucun fichier sélectionné");
+      return;
+    }
+
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "document.pdf";
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      console.error("Erreur de téléchargement:", err);
+      alert("Échec du téléchargement: " + err.message);
+    }
+  };
+
+  const clearFilters = () => {
+    setStartDate(null);
+    setEndDate(null);
+    setSearchQuery("");
+    setSelectedStatus("all");
+  };
+
+  const handleRefresh = () => {
+    fetchDemandes();
+  };
+
   if (loading) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
@@ -251,19 +506,22 @@ const DemandesAutorisation = () => {
 
   if (error) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
             </div>
             <h2>Erreur lors du chargement des données</h2>
             <p>{error}</p>
-            <button className="retry-button" onClick={fetchDemandes}>
+            <button className="retry-button" onClick={handleRefresh}>
               <FiRefreshCw /> Réessayer
             </button>
+            {dataSource.includes("cache") && (
+              <p className="cache-warning">Affichage des données en cache</p>
+            )}
           </div>
         </div>
       </div>
@@ -271,17 +529,31 @@ const DemandesAutorisation = () => {
   }
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
       <div className="demandes-container">
-        <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme}/>
         <div className="demandes-content">
           <div className="page-header">
-            <h1>Demandes de Autorisation</h1>
-            <p>Gérez les demandes de Autorisation de vos collaborateurs</p>
+            <div className="header-row">
+              <h1>Demandes d'Autorisation</h1>
+              <button className="refresh-button" onClick={handleRefresh}>
+                <FiRefreshCw /> Rafraîchir
+              </button>
+            </div>
+            <p>Gérez les demandes d'autorisation de vos collaborateurs</p>
+            <small className="polling-indicator">
+              Dernière mise à jour: {lastUpdated || "Jamais"}
+              {dataSource && (
+                <span className="data-source">
+                  {dataSource === "api" ? " (Données live)" : 
+                   dataSource === "cache" ? " (Données en cache)" : 
+                   " (Données de secours)"}
+                </span>
+              )}
+            </small>
           </div>
 
-          {/* Modern Search and Filter Bar */}
           <div className="filter-tabs-container">
             <div className="filter-tabs">
               <button
@@ -310,7 +582,6 @@ const DemandesAutorisation = () => {
               </button>
             </div>
 
-            {/* Filter Toggle Button */}
             <div className="filter-toggle" onClick={toggleFilterExpand}>
               <FiFilter />
               <span>Filtres</span>
@@ -320,7 +591,6 @@ const DemandesAutorisation = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
           <div className="search-bar-container">
             <div className="search-bar">
               <FiSearch className="search-icon" />
@@ -333,12 +603,11 @@ const DemandesAutorisation = () => {
             </div>
           </div>
 
-          {/* Stats Cards */}
           <div className="stats-cards">
             <div className="stat-card total">
               <div className="stat-content">
                 <h3>Total Demandes</h3>
-                <p className="stat-value">{demandes.length}</p>
+                <p className="stat-value">{demandesData.autorisation.total}</p>
               </div>
               <div className="stat-icon">
                 <FiFileText />
@@ -348,7 +617,7 @@ const DemandesAutorisation = () => {
             <div className="stat-card pending">
               <div className="stat-content">
                 <h3>En Attente</h3>
-                <p className="stat-value">{demandes.filter((d) => d.reponseChef === "I").length}</p>
+                <p className="stat-value">{demandesData.autorisation.pending}</p>
               </div>
               <div className="stat-icon">
                 <FiClock />
@@ -358,7 +627,7 @@ const DemandesAutorisation = () => {
             <div className="stat-card approved">
               <div className="stat-content">
                 <h3>Approuvées</h3>
-                <p className="stat-value">{demandes.filter((d) => d.reponseChef === "O").length}</p>
+                <p className="stat-value">{demandesData.autorisation.approved}</p>
               </div>
               <div className="stat-icon">
                 <FiCheck />
@@ -366,7 +635,6 @@ const DemandesAutorisation = () => {
             </div>
           </div>
 
-          {/* Expandable Filter Panel */}
           <div className={`filter-panel ${isFilterExpanded ? "expanded" : ""}`}>
             <div className="filter-options">
               <div className="filter-group">
@@ -396,23 +664,18 @@ const DemandesAutorisation = () => {
             </div>
 
             <div className="filter-actions">
-              <button className="clear-filters" onClick={() => {
-                setStartDate(null);
-                setEndDate(null);
-              }}>
+              <button className="clear-filters" onClick={clearFilters}>
                 Effacer les filtres
               </button>
             </div>
           </div>
 
-          {/* Results Summary */}
           <div className="results-summary">
             <p>
               <span className="results-count">{filteredDemandes.length}</span> demandes trouvées
             </p>
           </div>
 
-          {/* Demandes Table */}
           {filteredDemandes.length > 0 ? (
             <div className="table-container">
               <table className="demandes-table">
@@ -422,44 +685,44 @@ const DemandesAutorisation = () => {
                     <th>Nom</th>
                     <th>Période</th>
                     <th>Texte Demande</th>
+                    <th>Fichier</th>
                     <th>Statut</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredDemandes.map((demande) => (
-                    <tr key={demande.id || demande.id_libre_demande} onClick={() => openModal(demande)}>
+                    <tr key={demande.id} onClick={() => openModal(demande)}>
                       <td>
                         <div className="cell-with-icon">
                           <FiCalendar className="cell-icon" />
                           <span>
-                            {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString() : "Inconnu"}
+                            {formatDateTime(demande.dateDemande)}
                           </span>
                         </div>
                       </td>
                       <td>
                         <div className="employee-info">
-                          <span className="employee-name">{demande.matPers?.nom || "Inconnu"}</span>
-                          {demande.matPers?.prenom && (
-                            <span className="employee-details">{demande.matPers.prenom}</span>
-                          )}
+                          <span className="employee-name">{demande.matPers?.nomComplet || "Inconnu"}</span>
                         </div>
                       </td>
                       <td>
                         <div className="date-range-cell">
-                          {demande.dateDebut && demande.dateFin ? (
+                          {demande.dateDebut ? (
                             <>
                               <div className="date-item">
-                                <span className="date-label">Début:</span>
-                                <span className="date-value">{new Date(demande.dateDebut).toLocaleDateString()}</span>
+                                <span className="date-label">Sortie:</span>
+                                <span className="date-value">
+                                  {new Date(demande.dateDebut).toLocaleDateString('fr-FR')} à {formatTime(demande.horaireSortie, demande.minuteSortie)}
+                                </span>
                               </div>
                               <div className="date-item">
-                                <span className="date-label">Fin:</span>
-                                <span className="date-value">{new Date(demande.dateFin).toLocaleDateString()}</span>
+                                <span className="date-label">Retour:</span>
+                                <span className="date-value">
+                                  {new Date(demande.dateDebut).toLocaleDateString('fr-FR')} à {formatTime(demande.horaireRetour, demande.minuteRetour)}
+                                </span>
                               </div>
                             </>
-                          ) : demande.dateDebut ? (
-                            <span>{new Date(demande.dateDebut).toLocaleDateString()}</span>
                           ) : (
                             <span className="no-date">Non spécifiée</span>
                           )}
@@ -471,35 +734,87 @@ const DemandesAutorisation = () => {
                         </div>
                       </td>
                       <td>
-                        <span
-                          className={`status-badge ${
-                            demande.reponseChef === "I"
-                              ? "pending"
-                              : demande.reponseChef === "O"
-                              ? "approved"
-                              : demande.reponseChef === "N"
-                              ? "rejected"
-                              : "processed"
-                          }`}
-                        >
+                        <div className="file-actions-compact">
+                          {demande.files && demande.files.length > 0 ? (
+                            <>
+                              {demande.files.map((file) => (
+                                <div key={file.fileId} className="compact-action-buttons">
+                                  <button
+                                    className="icon-button view"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePreview(file.fileId);
+                                    }}
+                                    title="Aperçu"
+                                  >
+                                    <FiEye />
+                                  </button>
+                                  <button
+                                    className="icon-button download"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(file.fileId, file.filename);
+                                    }}
+                                    title="Télécharger"
+                                  >
+                                    <FiDownload />
+                                  </button>
+                                </div>
+                              ))}
+                              
+                              {previewFileId && (
+                                <div className="preview-modal-overlay" onClick={() => setPreviewFileId(null)}>
+                                  <div className="preview-modal-content" onClick={(e) => e.stopPropagation()}>
+                                    <div className="preview-header">
+                                      <h4>Aperçu du fichier: {demande.files.find(f => f.fileId === previewFileId)?.filename || 'Document'}</h4>
+                                      <div className="preview-actions">
+                                        <button 
+                                          className="download-in-preview"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDownload(previewFileId, demande.files.find(f => f.fileId === previewFileId)?.filename);
+                                          }}
+                                        >
+                                          <FiDownload /> Télécharger
+                                        </button>
+                                        <button 
+                                          className="close-preview" 
+                                          onClick={() => setPreviewFileId(null)}
+                                        >
+                                          <FiX />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <div className="preview-iframe-container">
+                                      <iframe
+                                        src={previewFileUrl}
+                                        title="File Preview"
+                                        className="preview-iframe"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span className="empty-icon">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${
+                          demande.reponseChef === "I" ? "pending" :
+                          demande.reponseChef === "O" ? "approved" :
+                          demande.reponseChef === "N" ? "rejected" : "processed"
+                        }`}>
                           <span className="status-icon">
-                            {demande.reponseChef === "I" ? (
-                              <FiClock />
-                            ) : demande.reponseChef === "O" ? (
-                              <FiCheck />
-                            ) : demande.reponseChef === "N" ? (
-                              <FiX />
-                            ) : (
-                              <FiCheck />
-                            )}
+                            {demande.reponseChef === "I" ? <FiClock /> :
+                             demande.reponseChef === "O" ? <FiCheck /> :
+                             demande.reponseChef === "N" ? <FiX /> : <FiCheck />}
                           </span>
-                          {demande.reponseChef === "I"
-                            ? "En attente"
-                            : demande.reponseChef === "O"
-                            ? "Approuvé"
-                            : demande.reponseChef === "N"
-                            ? "Rejeté"
-                            : "Traitée"}
+                          {demande.reponseChef === "I" ? "En attente" :
+                           demande.reponseChef === "O" ? "Approuvé" :
+                           demande.reponseChef === "N" ? "Rejeté" : "Traitée"}
                         </span>
                       </td>
                       <td>
@@ -507,15 +822,11 @@ const DemandesAutorisation = () => {
                           <button
                             className="action-button approve"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click event
-                              handleConfirmer(demande.id);
+                              e.stopPropagation();
+                              openActionModal(demande.id, "approve");
                             }}
                             disabled={demande.reponseChef !== "I"}
-                            title={
-                              demande.reponseChef !== "I"
-                                ? "Cette demande a déjà été traitée"
-                                : "Approuver cette demande"
-                            }
+                            title={demande.reponseChef !== "I" ? "Déjà traitée" : "Approuver"}
                           >
                             <FiCheck />
                             <span>Approuver</span>
@@ -523,13 +834,11 @@ const DemandesAutorisation = () => {
                           <button
                             className="action-button reject"
                             onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click event
-                              handleRefuser(demande.id);
+                              e.stopPropagation();
+                              openActionModal(demande.id, "reject");
                             }}
                             disabled={demande.reponseChef !== "I"}
-                            title={
-                              demande.reponseChef !== "I" ? "Cette demande a déjà été traitée" : "Rejeter cette demande"
-                            }
+                            title={demande.reponseChef !== "I" ? "Déjà traitée" : "Rejeter"}
                           >
                             <FiX />
                             <span>Rejeter</span>
@@ -548,25 +857,56 @@ const DemandesAutorisation = () => {
               </div>
               <h3>Aucune demande trouvée</h3>
               <p>Aucune demande ne correspond à vos critères de recherche.</p>
-              <button className="clear-filters-button" onClick={() => {
-                setStartDate(null);
-                setEndDate(null);
-                setSearchQuery("");
-                setSelectedStatus("all");
-              }}>
+              <button className="clear-filters-button" onClick={clearFilters}>
                 Effacer les filtres
               </button>
             </div>
           )}
 
-          {/* Modal for Demande Details */}
+          {showObservationModal && (
+            <div className="modal-overlay">
+              <div className={`modal-content ${theme}`}>
+                <h2>
+                  {actionType === "approve" ? "Approuver la demande" : "Rejeter la demande"}
+                </h2>
+                <div className="form-group">
+                  <label>
+                    Observation {actionType === "approve" ? "(facultatif)" : "(obligatoire)"}
+                  </label>
+                  <textarea
+                    value={observation}
+                    onChange={(e) => setObservation(e.target.value)}
+                    placeholder={`Entrez votre observation ${actionType === "approve" ? "(optionnel)" : ""}`}
+                    rows={4}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button 
+                    className="cancel-button" 
+                    onClick={closeActionModal}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    className={`confirm-button ${actionType === "approve" ? "approve" : "reject"}`}
+                    onClick={handleAction}
+                    disabled={actionType === "reject" && !observation.trim()}
+                  >
+                    {actionType === "approve" ? "Confirmer" : "Rejeter"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={closeModal}
-              onApprove={() => handleConfirmer(selectedDemande.id)}
-              onReject={() => handleRefuser(selectedDemande.id)}
+              onApprove={() => openActionModal(selectedDemande.id, "approve")}
+              onReject={() => openActionModal(selectedDemande.id, "reject")}
               isActionable={selectedDemande.reponseChef === "I"}
+              theme={theme}
             />
           )}
         </div>

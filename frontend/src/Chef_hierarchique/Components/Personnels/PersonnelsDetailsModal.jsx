@@ -1,140 +1,121 @@
-import React from "react";
-import { X, Calendar, User, FileText, Clock, CheckCircle, AlertCircle, MapPin, Info, MessageSquare, ChevronRight } from 'lucide-react';
-import "./PersonnelsDetailModal.css";
+"use client"
+import "./PersonnelsDetailModal.css"
 
-const PersonnelDetailsModal = ({ personnel, onClose, onApprove, onReject, isActionable }) => {
-  // Format date to local string
-  const formatDate = (dateString) => {
-    if (!dateString) return "Non spécifiée";
-    return new Date(dateString).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  };
-
-  // Get status text and icon
-  const getStatusInfo = () => {
-    if (!personnel.active) {
-      return { text: "Inactive", icon: <X size={20} />, className: "rejected" };
-    }
-    return { text: "Active", icon: <CheckCircle size={20} />, className: "approved" };
-  };
-
-  const statusInfo = getStatusInfo();
+const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
+  if (!personnel) return null
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="demande-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header" data-status={statusInfo.className}>
-          <div className="status-badge">
-            <span className="status-icon">{statusInfo.icon}</span>
-            <span className="status-text">{statusInfo.text}</span>
-          </div>
-          <h2>Détails du personnel {personnel.nom}</h2>
-          <button className="close-button" onClick={onClose} aria-label="Fermer">
-            <X size={20} />
+    <div className={`modal-overlay ${theme}`}>
+      <div className={`modal-container personnel-details-modal ${theme}`}>
+        <div className="modal-header">
+          <h3>Personnel Details</h3>
+          <button className="close-button" onClick={onClose} aria-label="Close">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
 
-        <div className="modal-content">
-          <div className="demande-info-section">
-            <div className="section-header">
-              <User size={18} />
-              <h3>Informations du Collaborateur</h3>
-            </div>
-            <div className="info-card">
-              <div className="employee-avatar">
-                {personnel.nom?.charAt(0) || "?"}
+        <div className="personnel-details-content">
+          <div className="details-section">
+            <h4>Basic Information</h4>
+            <div className="details-grid">
+              <div className="detail-item">
+                <span className="detail-label">Matricule:</span>
+                <span className="detail-value">{personnel.matricule || "N/A"}</span>
               </div>
-              <div className="employee-details">
-                <div className="employee-name">
-                  {personnel.nom || "Inconnu"} {personnel.prenom || ""}
-                </div>
-                {personnel.email && (
-                  <div className="employee-email">{personnel.email}</div>
-                )}
-                <div className="employee-meta">
-                  {personnel.matricule && (
-                    <div className="employee-matricule">
-                      <span className="meta-label">Matricule:</span>
-                      <span className="meta-value">{personnel.matricule}</span>
-                    </div>
-                  )}
-                  {personnel.serviceName && (
-                    <div className="employee-service">
-                      <span className="meta-label">Service:</span>
-                      <span className="meta-value">{personnel.serviceName}</span>
-                    </div>
-                  )}
-                </div>
+              <div className="detail-item">
+                <span className="detail-label">Name:</span>
+                <span className="detail-value">
+                  {personnel.nom || ""} {personnel.prenom || ""}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Email:</span>
+                <span className="detail-value">{personnel.email || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">{personnel.telephone || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">CIN:</span>
+                <span className="detail-value">{personnel.cin || "N/A"}</span>
               </div>
             </div>
           </div>
 
-          <div className="demande-info-section">
-            <div className="section-header">
-              <Calendar size={18} />
-              <h3>Détails supplémentaires</h3>
-            </div>
-            <div className="info-grid">
-              <div className="info-item">
-                <div className="info-label">
-                  <Calendar size={16} className="info-icon" />
-                  <span>Date d'embauche</span>
-                </div>
-                <div className="info-value">{formatDate(personnel.date_embauche)}</div>
+          <div className="details-section">
+            <h4>Professional Information</h4>
+            <div className="details-grid">
+              <div className="detail-item">
+                <span className="detail-label">Role:</span>
+                <span className="detail-value">{personnel.role || "N/A"}</span>
               </div>
-
-              <div className="info-item">
-                <div className="info-label">
-                  <User size={16} className="info-icon" />
-                  <span>Rôle</span>
-                </div>
-                <div className="info-value">{personnel.role}</div>
+              <div className="detail-item">
+                <span className="detail-label">Status:</span>
+                <span className={`detail-value status-badge ${personnel.active ? "active" : "inactive"}`}>
+                  {personnel.active ? "Active" : "Inactive"}
+                </span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Service:</span>
+                <span className="detail-value">{personnel.serviceName || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Hire Date:</span>
+                <span className="detail-value">{personnel.date_embauche || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Company Code:</span>
+                <span className="detail-value">{personnel.code_soc || "N/A"}</span>
               </div>
             </div>
           </div>
 
-          {personnel.telephone && (
-            <div className="demande-info-section">
-              <div className="section-header">
-                <Info size={18} />
-                <h3>Contact</h3>
+          <div className="details-section">
+            <h4>Personal Information</h4>
+            <div className="details-grid">
+              <div className="detail-item">
+                <span className="detail-label">Gender:</span>
+                <span className="detail-value">{personnel.sexe || "N/A"}</span>
               </div>
-              <div className="info-item">
-                <div className="info-label">
-                  <MapPin size={16} className="info-icon" />
-                  <span>Téléphone</span>
-                </div>
-                <div className="info-value">{personnel.telephone}</div>
+              <div className="detail-item">
+                <span className="detail-label">Marital Status:</span>
+                <span className="detail-value">{personnel.situation || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Birth Date:</span>
+                <span className="detail-value">{personnel.date_naiss || "N/A"}</span>
+              </div>
+              <div className="detail-item">
+                <span className="detail-label">Children:</span>
+                <span className="detail-value">{personnel.nbr_enfants || "0"}</span>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>
-            <X size={16} />
-            <span>Fermer</span>
+          <button className="close-modal-button" onClick={onClose}>
+            Close
           </button>
-
-          {isActionable && (
-            <div className="action-buttons">
-              <button className="btn btn-danger" onClick={onReject}>
-                <X size={16} />
-                <span>Rejeter</span>
-              </button>
-              <button className="btn btn-success" onClick={onApprove}>
-                <CheckCircle size={16} />
-                <span>Approuver</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default PersonnelDetailsModal;
+export default PersonnelDetailsModal
+

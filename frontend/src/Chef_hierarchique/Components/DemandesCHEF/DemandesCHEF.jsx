@@ -1,16 +1,30 @@
-
 import { useState, useEffect } from "react"
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText, FiDownload, FiEye } from "react-icons/fi"
+import {
+  FiSearch,
+  FiFilter,
+  FiCalendar,
+  FiX,
+  FiClock,
+  FiRefreshCw,
+  FiFileText,
+  FiDownload,
+  FiEye,
+  FiUsers,
+  FiCheckCircle,
+  FiXCircle,
+} from "react-icons/fi"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
 import "./DemandesCHEF.css"
+import { API_URL } from "../../../config"; 
 
 const DemandesCHEF = () => {
   const [demandes, setDemandes] = useState([])
   const [filteredDemandes, setFilteredDemandes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  
+  const [theme, setTheme] = useState("light")
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedType, setSelectedType] = useState("all")
@@ -18,117 +32,188 @@ const DemandesCHEF = () => {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const [isFilterExpanded, setIsFilterExpanded] = useState(false)
-  
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(5)
-  
+
   // Selected demande for details view
   const [selectedDemande, setSelectedDemande] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
 
+  // Stats
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  })
+    // Theme management
+    useEffect(() => {
+      const savedTheme = localStorage.getItem("theme") || "light"
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
+  
+      // Listen for theme changes
+      const handleStorageChange = () => {
+        const currentTheme = localStorage.getItem("theme") || "light"
+        setTheme(currentTheme)
+        applyTheme(currentTheme)
+      }
+  
+      window.addEventListener("storage", handleStorageChange)
+      window.addEventListener("themeChanged", (e) => {
+        setTheme(e.detail || "light")
+        applyTheme(e.detail || "light")
+      })
+  
+      return () => {
+        window.removeEventListener("storage", handleStorageChange)
+        window.removeEventListener("themeChanged", handleStorageChange)
+      }
+    }, [])
+  
+    const applyTheme = (theme) => {
+      document.documentElement.classList.remove("light", "dark")
+      document.documentElement.classList.add(theme)
+      document.body.className = theme
+    }
+  
+    const toggleTheme = () => {
+      const newTheme = theme === "light" ? "dark" : "light"
+      setTheme(newTheme)
+      applyTheme(newTheme)
+      localStorage.setItem("theme", newTheme)
+      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+    }
   useEffect(() => {
     fetchDemandes()
   }, [])
 
   const fetchDemandes = async () => {
-    setLoading(true);
-    setError(null);
-  
+    setLoading(true)
+    setError(null)
+
     try {
-      const userId = localStorage.getItem("userId");
-      const authToken = localStorage.getItem("authToken");
-  
+      const userId = localStorage.getItem("userId")
+      const authToken = localStorage.getItem("authToken")
+
       if (!authToken || !userId) {
-        throw new Error("Authentification requise");
+        throw new Error("Authentification requise")
       }
-  
-      const types = ["formation", "conge", "document", "pre-avance", "autorisation"];
-      let allDemandes = [];
-      let errors = [];
-  
+
+      const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
+      let allDemandes = []
+      const errors = []
+
       for (const type of types) {
         try {
-          const response = await fetch(`http://localhost:8080/api/demande-${type}/personnel/${userId}`, {
+          const response = await fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${authToken}`,
+              Authorization: `Bearer ${authToken}`,
             },
-          });
-  
+          })
+
           if (!response.ok) {
-            throw new Error(`Erreur lors de la récupération des demandes de ${type}`);
+            throw new Error(`Erreur ${response.status} lors de la récupération des demandes de ${type}`)
           }
-  
-          const data = await response.json();
+
+          // Check if response has content
+          const text = await response.text()
+          const data = text ? JSON.parse(text) : []
+
+          if (!Array.isArray(data)) {
+            throw new Error(`Format de données invalide pour ${type}`)
+          }
+
           const typedData = data.map((item) => ({
             ...item,
             demandeType: type,
-          }));
-          allDemandes = [...allDemandes, ...typedData];
+          }))
+
+          allDemandes = [...allDemandes, ...typedData]
         } catch (err) {
-          console.error(`Erreur lors de la récupération des demandes de ${type}:`, err);
-          errors.push(err.message);
+          console.error(`Erreur lors de la récupération des demandes de ${type}:`, err)
+          errors.push(err.message)
         }
       }
-  
-      if (errors.length > 0) {
-        setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`);
+
+      if (errors.length > 0 && allDemandes.length === 0) {
+        setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
+      } else if (errors.length > 0) {
+        console.warn(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
       }
-  
-      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande));
-      setDemandes(allDemandes);
-      setFilteredDemandes(allDemandes);
+
+      // Sort by date descending
+      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande))
+
+      // Calculate stats
+      const pendingCount = allDemandes.filter((d) => d.reponseChef === "I").length
+      const approvedCount = allDemandes.filter((d) => d.reponseChef === "O").length
+      const rejectedCount = allDemandes.filter((d) => d.reponseChef === "N").length
+
+      setStats({
+        total: allDemandes.length,
+        pending: pendingCount,
+        approved: approvedCount,
+        rejected: rejectedCount,
+      })
+
+      setDemandes(allDemandes)
+      setFilteredDemandes(allDemandes)
     } catch (err) {
-      setError(err.message || "Une erreur est survenue lors de la récupération des demandes");
+      setError(err.message || "Une erreur est survenue lors de la récupération des demandes")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
+
   useEffect(() => {
     applyFilters()
   }, [searchQuery, selectedType, selectedStatus, startDate, endDate, demandes])
 
   const applyFilters = () => {
     let filtered = [...demandes]
-    
+
     // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(demande => 
-        (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
-        (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (demande) =>
+          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
+          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)),
       )
     }
-    
+
     // Filter by type
     if (selectedType !== "all") {
-      filtered = filtered.filter(demande => demande.demandeType === selectedType)
+      filtered = filtered.filter((demande) => demande.demandeType === selectedType)
     }
-    
+
     // Filter by status
     if (selectedStatus !== "all") {
-      filtered = filtered.filter(demande => {
+      filtered = filtered.filter((demande) => {
         if (selectedStatus === "pending") return demande.reponseChef === "I"
         if (selectedStatus === "approved") return demande.reponseChef === "O"
         if (selectedStatus === "rejected") return demande.reponseChef === "N"
         return true
       })
     }
-    
+
     // Filter by date range
     if (startDate && endDate) {
       const start = new Date(startDate)
       const end = new Date(endDate)
       end.setHours(23, 59, 59) // Include the entire end day
-      
-      filtered = filtered.filter(demande => {
+
+      filtered = filtered.filter((demande) => {
         const demandeDate = new Date(demande.dateDemande)
         return demandeDate >= start && demandeDate <= end
       })
     }
-    
+
     setFilteredDemandes(filtered)
     setCurrentPage(1) // Reset to first page when filters change
   }
@@ -158,22 +243,22 @@ const DemandesCHEF = () => {
   const handleDownloadAttachment = async (demande) => {
     try {
       const authToken = localStorage.getItem("authToken")
-      
+
       if (!authToken) {
         throw new Error("Authentification requise")
       }
-      
-      const response = await fetch(`http://localhost:8080/api/demande-${demande.demandeType}/download/${demande.id}`, {
+
+      const response = await fetch(`${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`, {
         method: "GET",
         headers: {
-          "Authorization": `Bearer ${authToken}`
-        }
+          Authorization: `Bearer ${authToken}`,
+        },
       })
-      
+
       if (!response.ok) {
         throw new Error("Erreur lors du téléchargement du fichier")
       }
-      
+
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
@@ -204,7 +289,7 @@ const DemandesCHEF = () => {
     return date.toLocaleDateString("fr-FR", {
       day: "2-digit",
       month: "2-digit",
-      year: "numeric"
+      year: "numeric",
     })
   }
 
@@ -226,26 +311,26 @@ const DemandesCHEF = () => {
   const getTypeText = (type) => {
     switch (type) {
       case "formation":
-        return "Formation";
+        return "Formation"
       case "conge":
-        return "Congé";
+        return "Congé"
       case "document":
-        return "Document";
-      case "preAvance":
-        return "Pré-Avance";
+        return "Document"
+      case "pre-avance":
+        return "Pré-Avance"
       case "autorisation":
-        return "Autorisation";
+        return "Autorisation"
       default:
-        return type;
+        return type
     }
-  };
+  }
 
   if (loading) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-          <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
@@ -257,10 +342,10 @@ const DemandesCHEF = () => {
 
   if (error) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-          <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
@@ -277,10 +362,10 @@ const DemandesCHEF = () => {
   }
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+    <Sidebar theme={theme} />
       <div className="demandes-chef-container">
-        <Navbar />
+      <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="demandes-chef-content">
           <div className="page-header">
             <h1>Mes Demandes</h1>
@@ -319,7 +404,7 @@ const DemandesCHEF = () => {
             <div className="filter-toggle" onClick={toggleFilterExpand}>
               <FiFilter />
               <span>Filtres</span>
-              <span className={`filter-count ${(selectedType !== "all" || startDate || endDate) ? "active" : ""}`}>
+              <span className={`filter-count ${selectedType !== "all" || startDate || endDate ? "active" : ""}`}>
                 {(selectedType !== "all" ? 1 : 0) + (startDate && endDate ? 1 : 0)}
               </span>
             </div>
@@ -343,15 +428,12 @@ const DemandesCHEF = () => {
             <div className="filter-options">
               <div className="filter-group">
                 <label>Type de Demande</label>
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                >
+                <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
                   <option value="all">Tous les types</option>
                   <option value="formation">Formation</option>
                   <option value="conge">Congé</option>
                   <option value="document">Document</option>
-                  <option value="preAvance">Pré-Avance</option>
+                  <option value="pre-avance">Pré-Avance</option>
                   <option value="autorisation">Autorisation</option>
                 </select>
               </div>
@@ -410,46 +492,49 @@ const DemandesCHEF = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((demande) => (
-                    <tr key={`${demande.demandeType}-${demande.id}`}>
-                      <td>{formatDate(demande.dateDemande)}</td>
-                      <td>
-                        <span className={`type-badge ${demande.demandeType}`}>
-                          {getTypeText(demande.demandeType)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="demande-text">
-                          {demande.texteDemande || demande.titre || <span className="no-content">Aucune description</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`type-badge ${demande.demandeType}`}>
-                          {getTypeText(demande.demandeType)}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="action-button view"
-                            onClick={() => handleViewDetails(demande)}
-                            title="Voir les détails"
-                          >
-                            <FiEye />
-                          </button>
-                          {demande.pieceJointe && (
+                  {currentItems.map((demande) => {
+                    const statusInfo = getStatusInfo(demande.reponseChef)
+                    return (
+                      <tr key={`${demande.demandeType}-${demande.id}`}>
+                        <td>{formatDate(demande.dateDemande)}</td>
+                        <td>
+                          <span className={`type-badge ${demande.demandeType}`}>
+                            {getTypeText(demande.demandeType)}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="demande-text">
+                            {demande.texteDemande || demande.titre || (
+                              <span className="no-content">Aucune description</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${statusInfo.className}`}>{statusInfo.text}</span>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
                             <button
-                              className="action-button download"
-                              onClick={() => handleDownloadAttachment(demande)}
-                              title="Télécharger la pièce jointe"
+                              className="action-button view"
+                              onClick={() => handleViewDetails(demande)}
+                              title="Voir les détails"
                             >
-                              <FiDownload />
+                              <FiEye />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {demande.pieceJointe && (
+                              <button
+                                className="action-button download"
+                                onClick={() => handleDownloadAttachment(demande)}
+                                title="Télécharger la pièce jointe"
+                              >
+                                <FiDownload />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -493,7 +578,10 @@ const DemandesCHEF = () => {
           {showDetailsModal && selectedDemande && (
             <div className="modal-overlay" onClick={closeDetailsModal}>
               <div className="demande-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header" data-status={getStatusInfo(selectedDemande.reponseChef).className.replace('status-', '')}>
+                <div
+                  className="modal-header"
+                  data-status={getStatusInfo(selectedDemande.reponseChef).className.replace("status-", "")}
+                >
                   <div className="header-content">
                     <div className="header-text">
                       <h2>Détails de la Demande</h2>
@@ -567,10 +655,7 @@ const DemandesCHEF = () => {
                         <FiFileText />
                         <h3>Pièce Jointe</h3>
                       </div>
-                      <button
-                        className="download-button"
-                        onClick={() => handleDownloadAttachment(selectedDemande)}
-                      >
+                      <button className="download-button" onClick={() => handleDownloadAttachment(selectedDemande)}>
                         <FiDownload />
                         <span>Télécharger la pièce jointe</span>
                       </button>
@@ -583,9 +668,7 @@ const DemandesCHEF = () => {
                         <FiFileText />
                         <h3>Réponse</h3>
                       </div>
-                      <div className="response-text">
-                        {selectedDemande.texteReponse}
-                      </div>
+                      <div className="response-text">{selectedDemande.texteReponse}</div>
                     </div>
                   )}
                 </div>
@@ -605,3 +688,4 @@ const DemandesCHEF = () => {
 }
 
 export default DemandesCHEF
+

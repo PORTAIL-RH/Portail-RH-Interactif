@@ -44,25 +44,42 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/byId/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/gender-distribution").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/activation-status").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}/accepted").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/active").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/matricule/{matricule}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/reset-password").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/request-password-reset").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/validate-reset-token").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/matricules").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/max-matricule").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/locked-accounts").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/unlock-account").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/Personnel/change-password/{userId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/role-distribution").permitAll()
+
+
+
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/collaborateurs-by-service/{chefserviceid}/approved").permitAll()
 
 
                         //Services Endpoints
                         .requestMatchers(HttpMethod.POST, "/api/services/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/services/all").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/services/by-chef/{chefId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/services/{id}").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/services/delete/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/services/update/{id}").permitAll()
+
+
 
                         //notification endpoints
                         .requestMatchers(HttpMethod.GET, "/api/notifications").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/view").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/notifications/mark-all-read").permitAll()
-
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unread").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unreadnbr").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/nbr").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/notifications/collaborateur/{idPersonnel}").permitAll()
-
-                        //.requestMatchers(HttpMethod.GET, "/ws/**").permitAll() // Allow WebSocket connection
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/ws/**").permitAll()
 
 
                         //roles endpoints
@@ -84,9 +101,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/traiter/{id}").permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/approved").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/demande-conge/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/demande-conge/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/days-used/{matPersId}").permitAll()
 
 
 
@@ -97,8 +117,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/traiter/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-document/personnel/{matPersId}").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/demande-document/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-document/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document/personnel/{matPersId}/files-reponse").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/demande-document/{id}/add-response-file").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document/download/{fileName:.+}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-document/approved").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/demande-document/{id}").permitAll()
+
 
 
                         ///demande pre avance
@@ -109,13 +135,15 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/traiter/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/personnel/{matPersId}").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/demande-pre-avance/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-pre-avance/{id}").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-pre-avance/approved").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/demande-pre-avance/{id}").permitAll()
 
                         //demandeformation endpoints
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/demande-formation/{id}").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/themes/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
@@ -130,8 +158,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/traiter/{id}").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/demande-formation/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/approved").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}/approved").permitAll()
 
 
                         //demandeautorisation endpoints
@@ -139,26 +169,49 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/demande-autorisation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/personnel/{matPersId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/traiter/{id}").permitAll()
-                        .requestMatchers(HttpMethod.DELETE, "/api/demande-autorisation/{id}").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/{id}").permitAll()
-
-
                         .requestMatchers(HttpMethod.POST, "/api/candidatures").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/demande-autorisation/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/approved").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/demande-autorisation/{id}").permitAll()
+
+
+                        //candidat/candidatures enpoints
                         .requestMatchers(HttpMethod.GET, "/api/candidatures").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidatures/disponibles").permitAll()
+
                         .requestMatchers(HttpMethod.POST, "/api/candidats").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candidats").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/upload/cv").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/upload/cv/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candidatures/${candidatureId}").permitAll()
-
-                        .requestMatchers(HttpMethod.GET, "/sse/updates").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/candidats/byCandidature/{candidatureId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidats/by-position/{positionId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidats/{id}/cv").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/candidats/{positionId}/candidate-count").permitAll()
 
-                        .requestMatchers("/actuator/**").permitAll()
+
+
+                        //Sse endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/sse/updates").permitAll()
+
+
+                        // Specific endpoint permissions
+                        .requestMatchers(HttpMethod.POST, "/api/societes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/societes").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/societes/**").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/societes/**").permitAll()
+
+
+
+                        //file
+                        .requestMatchers(HttpMethod.GET, "/api/files/download/{fileId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/files/metadata/{fileId}").permitAll()
+
+                        .requestMatchers(HttpMethod.GET, "/api/files/{fileId}").permitAll()
 
                         .anyRequest().authenticated()
                 )

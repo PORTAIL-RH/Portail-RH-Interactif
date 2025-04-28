@@ -1,131 +1,229 @@
 import { useState, useEffect } from "react"
-import "./Accueil.css"
-import logo3D from '../../assets/logo.png';
 import { useNavigate } from "react-router-dom"
-import Navbar from '../Components/Navbar/Navbar';
-import Sidebar from '../Components/Sidebar/Sidebar';
-import { FiFileText, FiCalendar, FiClock, FiCheckCircle, FiXCircle } from "react-icons/fi"
+import { FiFileText, FiCalendar, FiUsers, FiClock, FiCheckCircle, FiXCircle, FiAlertCircle } from "react-icons/fi"
+import "../common-ui.css" 
+import "./Accueil.css"
+import Navbar from "../Components/Navbar/Navbar"
+import Sidebar from "../Components/Sidebar/Sidebar"
+import { API_URL } from "../../config"
 
-const HomePage = () => {
+const Accueil = () => {
   const navigate = useNavigate()
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
     role: "",
-    department: "",
+    serviceName: "",
   })
   const [stats, setStats] = useState({
     pendingRequests: 0,
     approvedRequests: 0,
     rejectedRequests: 0,
-    upcomingLeaves: 0,
+    leaveBalance: 0,
   })
-  const [recentActivity, setRecentActivity] = useState([])
+  const [activities, setActivities] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activityFilter, setActivityFilter] = useState("all")
 
   useEffect(() => {
-    // Fetch user data
-    const userId = localStorage.getItem("userId")
-    if (userId) {
-      fetchUserData(userId)
-      fetchUserStats(userId)
-      fetchRecentActivity(userId)
+    const fetchUserData = async () => {
+      try {
+        const userId = localStorage.getItem("userId")
+        const token = localStorage.getItem("authToken")
+
+        if (!userId || !token) {
+          throw new Error("Session invalide")
+        }
+
+        const response = await fetch(`${API_URL}/api/Personnel/byId/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error("Erreur lors du chargement des données")
+        }
+
+        const data = await response.json()
+
+        setUserData({
+          firstName: data.nom || "",
+          lastName: data.prenom || "",
+          role: data.role || "Employé",
+          serviceName: data.serviceName || "Non spécifié",
+        })
+
+        // Fetch stats and activities
+        await fetchStats(userId, token)
+        await fetchActivities(userId, token)
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+        setError(error.message)
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchUserData()
   }, [])
 
-  const fetchUserData = async (userId) => {
+  const fetchStats = async (userId, token) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/Personnel/byId/${userId}`)
-      if (response.ok) {
-        const data = await response.json()
-        setUserData({
-          firstName: data.nom || "User",
-          lastName: data.prenom || "",
-          role: data.role || "Collaborateur",
-          department: data.serviceName || "Department",
-        })
-      }
+      // Simulate API call for stats
+      // In a real app, you would fetch this from your API
+      setStats({
+        pendingRequests: 3,
+        approvedRequests: 12,
+        rejectedRequests: 2,
+        leaveBalance: 18,
+      })
     } catch (error) {
-      console.error("Error fetching user data:", error)
-    } finally {
-      setLoading(false)
+      console.error("Error fetching stats:", error)
     }
   }
 
-  const fetchUserStats = async (userId) => {
-    // This would be replaced with actual API calls
-    // Simulating data for now
-    setStats({
-      pendingRequests: 3,
-      approvedRequests: 12,
-      rejectedRequests: 2,
-      upcomingLeaves: 1,
-    })
+  const fetchActivities = async (userId, token) => {
+    try {
+      // Simulate API call for recent activities
+      // In a real app, you would fetch this from your API
+      setActivities([
+        {
+          id: 1,
+          type: "Congé",
+          date: "2023-11-15",
+          status: "Approuvée",
+          description: "Congé annuel",
+        },
+        {
+          id: 2,
+          type: "Document",
+          date: "2023-11-10",
+          status: "En attente",
+          description: "Demande d'attestation de travail",
+        },
+        {
+          id: 3,
+          type: "Formation",
+          date: "2023-11-05",
+          status: "Rejetée",
+          description: "Formation sur les nouvelles technologies",
+        },
+      ])
+    } catch (error) {
+      console.error("Error fetching activities:", error)
+    }
   }
 
-  const fetchRecentActivity = async (userId) => {
-    // This would be replaced with actual API calls
-    // Simulating data for now
-    setRecentActivity([
-      { id: 1, type: "Formation", status: "Approved", date: "2023-11-15", icon: "check" },
-      { id: 2, type: "Congé", status: "Pending", date: "2023-11-10", icon: "clock" },
-      { id: 3, type: "Document", status: "Rejected", date: "2023-11-05", icon: "x" },
-      { id: 4, type: "Autorisation", status: "Approved", date: "2023-10-28", icon: "check" },
-    ])
+  const filterActivities = () => {
+    let filtered = [...activities]
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(
+        (activity) => activity.type.toLowerCase().includes(query) || activity.description.toLowerCase().includes(query),
+      )
+    }
+
+    if (activityFilter !== "all") {
+      filtered = filtered.filter((activity) => activity.status.toLowerCase() === activityFilter.toLowerCase())
+    }
+
+    return filtered
+  }
+
+  const clearFilters = () => {
+    setSearchQuery("")
+    setActivityFilter("all")
   }
 
   const getStatusIcon = (status) => {
     switch (status.toLowerCase()) {
-      case "approved":
+      case "approuvée":
         return <FiCheckCircle className="status-icon approved" />
-      case "pending":
-        return <FiClock className="status-icon pending" />
-      case "rejected":
+      case "rejetée":
         return <FiXCircle className="status-icon rejected" />
       default:
-        return null
+        return <FiClock className="status-icon pending" />
     }
   }
 
   if (loading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Chargement...</p>
+      <div className="app-container">
+        <Sidebar />
+        <div className="content-container">
+          <Navbar />
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Chargement en cours...</p>
+          </div>
+        </div>
       </div>
     )
   }
 
-  return (
-    <div className="dashboard-container">
-      <Navbar />
-      <div className="main-content">
+  if (error) {
+    return (
+      <div className="app-container">
         <Sidebar />
-        <div className="content-area">
+        <div className="content-container">
+          <Navbar />
+          <div className="error-container">
+            <FiAlertCircle size={48} className="error-icon" />
+            <p className="error-message">{error}</p>
+            <button onClick={() => (window.location.href = "/login")}>Se connecter</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const filteredActivities = filterActivities()
+
+  return (
+    <div className="app-container">
+      <Sidebar />
+      <div className="content-container">
+        <Navbar />
+        <div className="page-content">
           <div className="page-header">
-            <h1>Tableau de Bord</h1>
-            <p className="subtitle">
-              Bienvenue, {userData.firstName} {userData.lastName}. Voici un aperçu de vos demandes et activités.
+            <h1>Tableau de bord</h1>
+            <p className="page-subtitle">
+              Bienvenue, {userData.firstName} {userData.lastName}
             </p>
           </div>
 
+          {/* Dashboard Grid */}
           <div className="dashboard-grid">
             {/* Welcome Card */}
-            <div className="dashboard-card welcome-card">
+            <div className="content-card welcome-card">
+              <div className="card-header">
+                <h2>Bienvenue sur votre portail RH</h2>
+              </div>
               <div className="card-content">
                 <div className="welcome-content">
-                  <img src={logo3D || "/placeholder.svg"} alt="Logo" className="welcome-logo" />
+                  <img   src={require("../../assets/logo.png")}
+ alt="Logo" className="welcome-logo" />
                   <div className="welcome-text">
-                    <h2>Bienvenue sur le Portail RH</h2>
-                    <p>Gérez vos demandes et suivez leur statut facilement.</p>
+                    <h2>
+                      Bonjour, {userData.firstName} {userData.lastName}
+                    </h2>
+                    <p>
+                      Bienvenue sur votre portail RH. Gérez vos demandes, consultez vos documents et suivez vos congés
+                      en un seul endroit.
+                    </p>
                     <div className="user-info">
                       <div className="info-item">
-                        <span className="info-label">Rôle:</span>
+                        <span className="info-label">Rôle</span>
                         <span className="info-value">{userData.role}</span>
                       </div>
                       <div className="info-item">
-                        <span className="info-label">Département:</span>
-                        <span className="info-value">{userData.department}</span>
+                        <span className="info-label">Service</span>
+                        <span className="info-value">{userData.serviceName}</span>
                       </div>
                     </div>
                   </div>
@@ -134,9 +232,9 @@ const HomePage = () => {
             </div>
 
             {/* Stats Card */}
-            <div className="dashboard-card stats-card">
+            <div className="content-card stats-card">
               <div className="card-header">
-                <h2 className="card-title">Statistiques des Demandes</h2>
+                <h2>Statistiques</h2>
               </div>
               <div className="card-content">
                 <div className="stats-grid">
@@ -149,7 +247,6 @@ const HomePage = () => {
                       <span className="stat-value">{stats.pendingRequests}</span>
                     </div>
                   </div>
-
                   <div className="stat-box">
                     <div className="stat-icon approved-icon">
                       <FiCheckCircle />
@@ -159,7 +256,6 @@ const HomePage = () => {
                       <span className="stat-value">{stats.approvedRequests}</span>
                     </div>
                   </div>
-
                   <div className="stat-box">
                     <div className="stat-icon rejected-icon">
                       <FiXCircle />
@@ -169,14 +265,13 @@ const HomePage = () => {
                       <span className="stat-value">{stats.rejectedRequests}</span>
                     </div>
                   </div>
-
                   <div className="stat-box">
                     <div className="stat-icon leave-icon">
                       <FiCalendar />
                     </div>
                     <div className="stat-info">
-                      <span className="stat-label">Congés à venir</span>
-                      <span className="stat-value">{stats.upcomingLeaves}</span>
+                      <span className="stat-label">Jours de congé</span>
+                      <span className="stat-value">{stats.leaveBalance}</span>
                     </div>
                   </div>
                 </div>
@@ -184,58 +279,29 @@ const HomePage = () => {
             </div>
 
             {/* Quick Actions Card */}
-            <div className="dashboard-card actions-card">
+            <div className="content-card">
               <div className="card-header">
-                <h2 className="card-title">Actions Rapides</h2>
+                <h2>Actions rapides</h2>
               </div>
               <div className="card-content">
                 <div className="quick-actions">
-                  <button className="action-button" onClick={() => navigate("/DemandeFormation")}>
-                    <FiFileText className="action-icon" />
-                    <span>Nouvelle Formation</span>
-                  </button>
                   <button className="action-button" onClick={() => navigate("/DemandeConge")}>
                     <FiCalendar className="action-icon" />
-                    <span>Demande de Congé</span>
-                  </button>
-                  <button className="action-button" onClick={() => navigate("/DemandeAutorisation")}>
-                    <FiClock className="action-icon" />
-                    <span>Autorisation</span>
+                    Demander un congé
                   </button>
                   <button className="action-button" onClick={() => navigate("/DemandeDocument")}>
                     <FiFileText className="action-icon" />
-                    <span>Document</span>
+                    Demander un document
+                  </button>
+                  <button className="action-button" onClick={() => navigate("/Documents")}>
+                    <FiFileText className="action-icon" />
+                    Mes documents
+                  </button>
+                  <button className="action-button" onClick={() => navigate("/Profile")}>
+                    <FiUsers className="action-icon" />
+                    Mon profil
                   </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Recent Activity Card */}
-            <div className="dashboard-card activity-card">
-              <div className="card-header">
-                <h2 className="card-title">Activités Récentes</h2>
-              </div>
-              <div className="card-content">
-                {recentActivity.length > 0 ? (
-                  <div className="activity-list">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="activity-item">
-                        {getStatusIcon(activity.status)}
-                        <div className="activity-details">
-                          <div className="activity-type">{activity.type}</div>
-                          <div className="activity-date">{activity.date}</div>
-                        </div>
-                        <div className={`activity-status status-${activity.status.toLowerCase()}`}>
-                          {activity.status}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <p>Aucune activité récente</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -245,5 +311,5 @@ const HomePage = () => {
   )
 }
 
-export default HomePage
+export default Accueil
 

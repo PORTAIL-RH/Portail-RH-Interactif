@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import bellIcon from "../../../assets/bell.png";
 import "./NotificationModal.css";
 import useNotifications from "./useNotifications";
+import { API_URL } from "../../../config"; 
 
 const NotificationModal = ({ setUnviewedCount }) => {
   const role = "RH"; // Rôle de l'utilisateur actuel

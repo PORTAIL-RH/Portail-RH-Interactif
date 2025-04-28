@@ -1,339 +1,500 @@
+import React, { useState, useEffect, useCallback } from "react";
+import Sidebar from "../Sidebar/Sidebar";
+import Navbar from "../Navbar/Navbar";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText, FiEye, FiDownload } from "react-icons/fi";
+import "./Demandes.css";
+import DemandeDetailsModal from "./DemandeDetailsModal";
 
-import { useState, useEffect, useCallback } from "react"
-import Sidebar from "../Sidebar/Sidebar"
-import Navbar from "../Navbar/Navbar"
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText } from "react-icons/fi"
-import DemandeDetailsModal from "./DemandeDetailsModal"
-import "./Demandes.css"
+const Formation = () => {
+  // Initialize state with localStorage data if available
+  const [demandesData, setDemandesData] = useState(() => {
+    try {
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.formation && Array.isArray(parsed.formation.data)) {
+          return {
+            formation: {
+              data: parsed.formation.data || [],
+              total: parsed.formation.total || 0,
+              pending: parsed.formation.pending || 0,
+              approved: parsed.formation.approved || 0
+            },
+            timestamp: parsed.timestamp || 0
+          };
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing demandes from localStorage:", e);
+    }
+    // Default empty state
+    return {
+      formation: {
+        data: [],
+        total: 0,
+        pending: 0,
+        approved: 0
+      },
+      timestamp: 0
+    };
+  });
 
-const DemandesFormation = () => {
-  const [demandes, setDemandes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [filteredDemandes, setFilteredDemandes] = useState([])
-  const [selectedStatus, setSelectedStatus] = useState("all")
-  const [startDate, setStartDate] = useState(null)
-  const [endDate, setEndDate] = useState(null)
-  const [error, setError] = useState(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false)
-  const [selectedDemande, setSelectedDemande] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [demandes, setDemandes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filteredDemandes, setFilteredDemandes] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [selectedDemande, setSelectedDemande] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [theme, setTheme] = useState("light");
+  const [observation, setObservation] = useState("");
+  const [showObservationModal, setShowObservationModal] = useState(false);
+  const [actionType, setActionType] = useState(null);
+  const [currentDemandeId, setCurrentDemandeId] = useState(null);
+  const [previewFileId, setPreviewFileId] = useState(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState("");
+  const [dataSource, setDataSource] = useState(""); // Track data source
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      applyTheme(currentTheme);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light");
+      applyTheme(e.detail || "light");
+    });
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
+    document.body.className = theme;
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
+
+  const getUserId = () => {
+    try {
+      const userData = localStorage.getItem("userId");
+      if (!userData) return null;
+
+      try {
+        const parsed = JSON.parse(userData);
+        return parsed?.userId || parsed?.id || null;
+      } catch {
+        return userData;
+      }
+    } catch (e) {
+      console.error("Error reading userId from localStorage:", e);
+      return null;
+    }
+  };
+
+  const userId = getUserId();
+
+  const fetchFromAPI = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+
+      if (!userId) {
+        throw new Error("User ID not found in localStorage");
+      }
+
+      console.log("Fetching formation demandes from API...");
+      const response = await fetch(
+        `http://localhost:8080/api/demande-formation/collaborateurs-by-service/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch demandes");
+      }
+
+      const data = await response.json();
+
+      if (!data.demandes) {
+        throw new Error("Invalid response format: demandes array missing");
+      }
+
+      const demandesFromResponse = Array.isArray(data.demandes) ? data.demandes : [];
+
+      // Process the data for our state structure
+      const processedFormation = {
+        data: demandesFromResponse,
+        total: demandesFromResponse.length,
+        pending: demandesFromResponse.filter(d => d.reponseChef === "I").length,
+        approved: demandesFromResponse.filter(d => d.reponseChef === "O").length
+      };
+
+      // Update localStorage cache
+      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
+      const updatedCache = {
+        ...currentCache,
+        formation: processedFormation,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem("demandes", JSON.stringify(updatedCache));
+
+      // Update state
+      setDemandesData(updatedCache);
+      setDemandes(processedFormation.data);
+      setFilteredDemandes(processedFormation.data);
+      setDataSource("api");
+      
+      // Update last updated timestamp
+      const now = new Date().toLocaleTimeString();
+      setLastUpdated(now);
+      
+      return true;
+    } catch (error) {
+      console.error("API fetch error:", error);
+      throw error;
+    }
+  }, [userId]);
 
   const fetchDemandes = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      const token = localStorage.getItem("authToken")
-
-      // Check if demande-formation data is cached in localStorage
-      const cachedDemandesFormation = localStorage.getItem("demandesFormation")
-      if (cachedDemandesFormation) {
-        const cachedData = JSON.parse(cachedDemandesFormation)
-        setDemandes(cachedData)
-        setFilteredDemandes(cachedData)
-        setLoading(false)
-        return
+      // First try to get from localStorage
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          const cacheAge = Date.now() - (parsed.timestamp || 0);
+          
+          // Use cached data if less than 1 hour old and has valid data
+          if (cacheAge < 3600000 && parsed.formation?.data && Array.isArray(parsed.formation.data)) {
+            console.log("Using cached formation data");
+            setDemandesData(parsed);
+            setDemandes(parsed.formation.data);
+            setFilteredDemandes(parsed.formation.data);
+            setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString());
+            setDataSource("cache");
+            setLoading(false);
+            
+            // Fetch fresh data in background but don't wait for it
+            fetchFromAPI().catch(e => console.error("Background refresh failed:", e));
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing demandes from localStorage:", e);
+        }
       }
 
-      // Fetch demande-formation from the API
-      const formationResponse = await fetch("http://localhost:8080/api/demande-formation", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!formationResponse.ok) {
-        const errorText = await formationResponse.text()
-        throw new Error(`Formation request failed: ${formationResponse.status} - ${errorText}`)
-      }
-
-      const formationData = await formationResponse.json()
-
-      // Get the serviceName of the connected Chef Hiérarchique from local storage
-      const userService = JSON.parse(localStorage.getItem("userService"))
-      const chefServiceName = userService?.serviceName
-
-      // Filter demands to include only those from personnel with role "Collaborateur" and the same serviceName
-      const filteredData = formationData.filter((demande) => {
-        const isCollaborateur = demande.matPers?.role === "collaborateur"
-        const hasSameService = demande.matPers?.serviceName === chefServiceName
-        return isCollaborateur && hasSameService
-      })
-
-      // Cache the filtered data in localStorage
-      localStorage.setItem("demandesFormation", JSON.stringify(filteredData))
-
-      setDemandes(filteredData)
-      setFilteredDemandes(filteredData)
-      setLoading(false)
+      // If no valid cache, fetch from API
+      await fetchFromAPI();
     } catch (error) {
-      setError(error.message)
-      setLoading(false)
+      console.error("Fetch error:", error);
+      setError(error.message || "An unknown error occurred");
+    } finally {
+      setLoading(false);
     }
-  }, [])
+  }, [fetchFromAPI]);
 
-  // Function to handle confirmation (approval) of a demande
-  const handleConfirmer = async (demandeId) => {
-    try {
-      const token = localStorage.getItem("authToken")
-
-      const endpoint = `http://localhost:8080/api/demande-formation/valider/${demandeId}`
-
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        showNotification("Demande confirmée avec succès", "success")
-
-        // Update the state without reloading the page
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "O" } // Update status to "O" (approved)
-              : demande,
-          ),
-        )
-
-        // Update the cached data in localStorage
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "O" } : demande,
-        )
-        localStorage.setItem("demandesFormation", JSON.stringify(updatedDemandes))
-
-        // Close the modal after approval
-        setIsModalOpen(false)
-      } else {
-        const errorText = await response.text()
-        showNotification(`Erreur: ${errorText}`, "error")
-      }
-    } catch (error) {
-      showNotification("Une erreur s'est produite lors de la confirmation de la demande.", "error")
-    }
-  }
-
-  // Function to handle rejection of a demande
-  const handleRefuser = async (demandeId) => {
-    try {
-      const token = localStorage.getItem("authToken")
-
-      const endpoint = `http://localhost:8080/api/demande-formation/refuser/${demandeId}`
-
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        showNotification("Demande refusée avec succès", "success")
-
-        // Update the state without reloading the page
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "N" } // Update status to "N" (rejected)
-              : demande,
-          ),
-        )
-
-        // Update the cached data in localStorage
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "N" } : demande,
-        )
-        localStorage.setItem("demandesFormation", JSON.stringify(updatedDemandes))
-
-        // Close the modal after rejection
-        setIsModalOpen(false)
-      } else {
-        const errorText = await response.text()
-        showNotification(`Erreur: ${errorText}`, "error")
-      }
-    } catch (error) {
-      showNotification("Une erreur s'est produite lors du refus de la demande.", "error")
-    }
-  }
-
-  // Function to show notification instead of alert
-  const showNotification = (message, type) => {
-    const notification = document.createElement("div")
-    notification.className = `notification ${type}`
-    notification.innerHTML = `
-      <div class="notification-content">
-        <span>${message}</span>
-        <button class="close-notification">×</button>
-      </div>
-    `
-    document.body.appendChild(notification)
-
-    // Add event listener to close button
-    const closeButton = notification.querySelector(".close-notification")
-    closeButton.addEventListener("click", () => {
-      document.body.removeChild(notification)
-    })
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification)
-      }
-    }, 5000)
-  }
+  // Initial fetch
   useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/sse/updates");
-  
+    fetchDemandes();
+  }, [fetchDemandes]);
+
+  // SSE connection for real-time updates
+  useEffect(() => {
+    const eventSource = new EventSource("http://localhost:8080/api/sse/updates");
+
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
-      const { type, data } = update;
-  
-      console.log("Received update:", type, data); // Debugging
-  
-      // Refresh data based on the update type
-      switch (type) {
-        case "created":
-        case "updated":
-        case "deleted":
-          fetchDemandes(); // Refresh the demandes list
-          break;
-        default:
-          console.warn("Unknown update type:", type);
+      const { type } = update;
+
+      if (type === "created" || type === "updated" || type === "deleted") {
+        console.log("SSE update received, refreshing data...");
+        fetchDemandes();
       }
     };
-  
+
     eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error);
+      console.error("EventSource error:", error);
       eventSource.close();
     };
-  
+
     return () => {
-      eventSource.close(); // Cleanup on component unmount
+      eventSource.close();
     };
   }, [fetchDemandes]);
-  useEffect(() => {
-    fetchDemandes()
-  }, [fetchDemandes])
 
   useEffect(() => {
-    let filtered = demandes
+    let filtered = demandes;
 
-    // Filter by search query (search in name and texteDemande)
     if (searchQuery) {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (demande) =>
-          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)) ||
-          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)),
-      )
+          (demande.personnel?.nom && demande.personnel.nom.toLowerCase().includes(query)) ||
+          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
+          (demande.titre?.name && demande.titre.name.toLowerCase().includes(query)) ||
+          (demande.theme?.name && demande.theme.name.toLowerCase().includes(query))
+      );
     }
 
-    // Filter by status
     if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => demande.reponseChef === selectedStatus)
+      filtered = filtered.filter((demande) => demande.reponseChef === selectedStatus);
     }
 
-    // Filter by date range (using dateDemande)
     if (startDate && endDate) {
       filtered = filtered.filter((demande) => {
-        const demandeDate = new Date(demande.dateDemande)
-        return demandeDate >= new Date(startDate) && demandeDate <= new Date(endDate)
-      })
+        const demandeDate = new Date(demande.dateDemande);
+        return demandeDate >= new Date(startDate) && demandeDate <= new Date(endDate);
+      });
     }
 
-    setFilteredDemandes(filtered)
-  }, [selectedStatus, startDate, endDate, demandes, searchQuery])
+    setFilteredDemandes(filtered);
+  }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
 
-  const handleStatusChange = (e) => {
-    setSelectedStatus(e.target.value)
-  }
+  const openActionModal = (demandeId, type) => {
+    if (!demandeId) {
+      console.error("ID de demande invalide.");
+      return;
+    }
+    setCurrentDemandeId(demandeId);
+    setActionType(type);
+    setObservation("");
+    setShowObservationModal(true);
+  };
 
-  const handleStartDateChange = (e) => {
-    setStartDate(e.target.value)
-  }
+  const closeActionModal = () => {
+    setShowObservationModal(false);
+    setObservation("");
+    setActionType(null);
+    setCurrentDemandeId(null);
+  };
 
-  const handleEndDateChange = (e) => {
-    setEndDate(e.target.value)
-  }
+  const handleAction = async () => {
+    if (!currentDemandeId) {
+      alert("ID de demande invalide.");
+      return;
+    }
+    try {
+      const token = localStorage.getItem("authToken");
+      const url = actionType === "approve" 
+        ? `http://localhost:8080/api/demande-formation/valider/${currentDemandeId}`
+        : `http://localhost:8080/api/demande-formation/refuser/${currentDemandeId}`;
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-  }
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          observation: observation
+        })
+      });
 
-  const clearFilters = () => {
-    setSelectedStatus("all")
-    setStartDate(null)
-    setEndDate(null)
-    setSearchQuery("")
-  }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText);
+      }
 
-  const toggleFilterExpand = () => {
-    setIsFilterExpanded(!isFilterExpanded)
-  }
+      // Update both state and localStorage
+      const updatedDemandes = demandes.map(d => 
+        d.id === currentDemandeId ? { 
+          ...d, 
+          reponseChef: actionType === "approve" ? "O" : "N",
+          observation: observation 
+        } : d
+      );
 
-  const handleDemandeClick = (demande) => {
-    setSelectedDemande(demande)
-    setIsModalOpen(true)
-  }
+      const updatedFormation = {
+        data: updatedDemandes,
+        total: updatedDemandes.length,
+        pending: updatedDemandes.filter(d => d.reponseChef === "I").length,
+        approved: updatedDemandes.filter(d => d.reponseChef === "O").length
+      };
+
+      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
+      const updatedCache = {
+        ...currentCache,
+        formation: updatedFormation,
+        timestamp: Date.now()
+      };
+      
+      localStorage.setItem("demandes", JSON.stringify(updatedCache));
+
+      setDemandesData(updatedCache);
+      setDemandes(updatedDemandes);
+      setFilteredDemandes(updatedDemandes);
+
+      closeActionModal();
+      
+    } catch (error) {
+      console.error("Action error:", error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const openModal = (demande) => {
+    setSelectedDemande(demande);
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setSelectedDemande(null)
-  }
+    setIsModalOpen(false);
+    setSelectedDemande(null);
+  };
+
+  const toggleFilterExpand = () => {
+    setIsFilterExpanded((prev) => !prev);
+  };
+
+  const fetchFileBlobUrl = async (fileId) => {
+    const token = localStorage.getItem("authToken");
+    const response = await fetch(`http://localhost:8080/api/files/download/${fileId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) throw new Error("Erreur HTTP: " + response.status);
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  };
+
+  const handlePreview = async (fileId) => {
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      console.error("Erreur d'aperçu:", err);
+      alert("Impossible d'afficher la pièce jointe.");
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Erreur de téléchargement:", err);
+      alert("Échec du téléchargement.");
+    }
+  };
+
+  const clearFilters = () => {
+    setSelectedStatus("all");
+    setStartDate(null);
+    setEndDate(null);
+    setSearchQuery("");
+  };
+
+  const handleRefresh = () => {
+    fetchDemandes();
+  };
 
   if (loading) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
             </div>
             <h2>Erreur lors du chargement des données</h2>
             <p>{error}</p>
-            <button className="retry-button" onClick={fetchDemandes}>
+            <button className="retry-button" onClick={handleRefresh}>
               <FiRefreshCw /> Réessayer
             </button>
+            {dataSource.includes("cache") && (
+              <p className="cache-warning">Affichage des données en cache</p>
+            )}
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
       <div className="demandes-container">
-        <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme}/>
         <div className="demandes-content">
           <div className="page-header">
-            <h1>Demandes de Formation</h1>
+            <div className="header-row">
+              <h1>Demandes de Formation</h1>
+              <button className="refresh-button" onClick={handleRefresh}>
+                <FiRefreshCw /> Rafraîchir
+              </button>
+            </div>
             <p>Gérez les demandes de formation de vos collaborateurs</p>
+            <small className="polling-indicator">
+              Dernière mise à jour: {lastUpdated || "Jamais"}
+              {dataSource && (
+                <span className="data-source">
+                  {dataSource === "api" ? " (Données live)" : 
+                   dataSource === "cache" ? " (Données en cache)" : 
+                   " (Données de secours)"}
+                </span>
+              )}
+            </small>
           </div>
 
-          {/* Modern Search and Filter Bar */}
-          {/* Filter Tabs with Filter Toggle Button */}
           <div className="filter-tabs-container">
             <div className="filter-tabs">
               <button
@@ -371,15 +532,14 @@ const DemandesFormation = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
           <div className="search-bar-container">
             <div className="search-bar">
               <FiSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="Rechercher par nom ou contenu..."
+                placeholder="Rechercher par nom, titre ou thème..."
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
@@ -388,7 +548,7 @@ const DemandesFormation = () => {
             <div className="stat-card total">
               <div className="stat-content">
                 <h3>Total Demandes</h3>
-                <p className="stat-value">{demandes.length}</p>
+                <p className="stat-value">{demandesData.formation.total}</p>
               </div>
               <div className="stat-icon">
                 <FiFileText />
@@ -398,7 +558,7 @@ const DemandesFormation = () => {
             <div className="stat-card pending">
               <div className="stat-content">
                 <h3>En Attente</h3>
-                <p className="stat-value">{demandes.filter((d) => d.reponseChef === "I").length}</p>
+                <p className="stat-value">{demandesData.formation.pending}</p>
               </div>
               <div className="stat-icon">
                 <FiClock />
@@ -408,7 +568,7 @@ const DemandesFormation = () => {
             <div className="stat-card approved">
               <div className="stat-content">
                 <h3>Approuvées</h3>
-                <p className="stat-value">{demandes.filter((d) => d.reponseChef === "O").length}</p>
+                <p className="stat-value">{demandesData.formation.approved}</p>
               </div>
               <div className="stat-icon">
                 <FiCheck />
@@ -416,7 +576,6 @@ const DemandesFormation = () => {
             </div>
           </div>
 
-          {/* Expandable Filter Panel */}
           <div className={`filter-panel ${isFilterExpanded ? "expanded" : ""}`}>
             <div className="filter-options">
               <div className="filter-group">
@@ -427,14 +586,19 @@ const DemandesFormation = () => {
                     <input
                       type="date"
                       value={startDate || ""}
-                      onChange={handleStartDateChange}
+                      onChange={(e) => setStartDate(e.target.value)}
                       placeholder="Date de début"
                     />
                   </div>
                   <span className="date-separator">à</span>
                   <div className="date-input">
                     <FiCalendar className="date-icon" />
-                    <input type="date" value={endDate || ""} onChange={handleEndDateChange} placeholder="Date de fin" />
+                    <input
+                      type="date"
+                      value={endDate || ""}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      placeholder="Date de fin"
+                    />
                   </div>
                 </div>
               </div>
@@ -447,14 +611,12 @@ const DemandesFormation = () => {
             </div>
           </div>
 
-          {/* Results Summary */}
           <div className="results-summary">
             <p>
               <span className="results-count">{filteredDemandes.length}</span> demandes trouvées
             </p>
           </div>
 
-          {/* Demandes Table */}
           {filteredDemandes.length > 0 ? (
             <div className="table-container">
               <table className="demandes-table">
@@ -462,50 +624,71 @@ const DemandesFormation = () => {
                   <tr>
                     <th>Date Demande</th>
                     <th>Nom</th>
+                    <th>Titre Formation</th>
+                    <th>Type Formation</th>
+                    <th>Thème Formation</th>
                     <th>Période</th>
                     <th>Texte Demande</th>
+                    <th>Fichier</th>
                     <th>Statut</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredDemandes.map((demande) => (
-                    <tr
-                      key={demande.id || demande.id_libre_demande}
-                      onClick={() => handleDemandeClick(demande)}
-                      className="demande-row"
-                    >
+                    <tr key={demande.id} onClick={() => openModal(demande)}>
                       <td>
                         <div className="cell-with-icon">
                           <FiCalendar className="cell-icon" />
                           <span>
-                            {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString() : "Inconnu"}
+                            {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString('fr-FR') : "Inconnu"}
                           </span>
                         </div>
                       </td>
                       <td>
                         <div className="employee-info">
-                          <span className="employee-name">{demande.matPers?.nom || "Inconnu"}</span>
-                          {demande.matPers?.prenom && (
-                            <span className="employee-details">{demande.matPers.prenom}</span>
+                          <span className="employee-name">
+                            {demande.personnel?.nom && demande.personnel?.prenom 
+                              ? `${demande.personnel.nom} ${demande.personnel.prenom}`
+                              : "Inconnu"}
+                          </span>
+                          {demande.personnel?.matricule && (
+                            <span className="employee-details">Matricule: {demande.personnel.matricule}</span>
                           )}
                         </div>
                       </td>
                       <td>
+                        <div className="demande-title">
+                          {demande.titre?.name || "Sans titre"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="demande-type">
+                          {demande.type?.name || "Non spécifié"}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="demande-theme">
+                          {demande.theme?.name || "Non spécifié"}
+                        </div>
+                      </td>
+                      <td>
                         <div className="date-range-cell">
-                          {demande.dateDebut && demande.dateFin ? (
+                          {demande.dateDebut ? (
                             <>
                               <div className="date-item">
                                 <span className="date-label">Début:</span>
-                                <span className="date-value">{new Date(demande.dateDebut).toLocaleDateString()}</span>
+                                <span className="date-value">
+                                  {new Date(demande.dateDebut).toLocaleDateString('fr-FR')}
+                                </span>
                               </div>
                               <div className="date-item">
-                                <span className="date-label">Fin:</span>
-                                <span className="date-value">{new Date(demande.dateFin).toLocaleDateString()}</span>
+                                <span className="date-label">Durée:</span>
+                                <span className="date-value">
+                                  {demande.nbrJours} jour{demande.nbrJours > 1 ? 's' : ''}
+                                </span>
                               </div>
                             </>
-                          ) : demande.dateDebut ? (
-                            <span>{new Date(demande.dateDebut).toLocaleDateString()}</span>
                           ) : (
                             <span className="no-date">Non spécifiée</span>
                           )}
@@ -513,39 +696,52 @@ const DemandesFormation = () => {
                       </td>
                       <td>
                         <div className="demande-text">
-                          {demande.texteDemande || <span className="no-content">Aucun texte</span>}
+                          {demande.texteDemande || <span className="no-content">Aucun détail fourni</span>}
                         </div>
                       </td>
                       <td>
-                        <span
-                          className={`status-badge ${
-                            demande.reponseChef === "I"
-                              ? "pending"
-                              : demande.reponseChef === "O"
-                                ? "approved"
-                                : demande.reponseChef === "N"
-                                  ? "rejected"
-                                  : "processed"
-                          }`}
-                        >
-                          <span className="status-icon">
-                            {demande.reponseChef === "I" ? (
-                              <FiClock />
-                            ) : demande.reponseChef === "O" ? (
-                              <FiCheck />
-                            ) : demande.reponseChef === "N" ? (
-                              <FiX />
-                            ) : (
-                              <FiCheck />
-                            )}
-                          </span>
-                          {demande.reponseChef === "I"
-                            ? "En attente"
-                            : demande.reponseChef === "O"
-                              ? "Approuvé"
-                              : demande.reponseChef === "N"
-                                ? "Rejeté"
-                                : "Traitée"}
+                        <div className="file-actions-compact">
+                          {demande.files && demande.files.length > 0 ? (
+                            <>
+                              {demande.files.map((file) => (
+                                <div key={file.fileId} className="compact-action-buttons">
+                                  <button
+                                    className="icon-button view"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePreview(file.fileId);
+                                    }}
+                                    title="Aperçu"
+                                  >
+                                    <FiEye />
+                                  </button>
+                                  <button
+                                    className="icon-button download"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(file.fileId, file.filename);
+                                    }}
+                                    title="Télécharger"
+                                  >
+                                    <FiDownload />
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <span className="empty-icon">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${
+                          demande.reponseChef === "I" ? "pending" :
+                          demande.reponseChef === "O" ? "approved" :
+                          demande.reponseChef === "N" ? "rejected" : "processed"
+                        }`}>
+                          {demande.reponseChef === "I" ? "En attente" :
+                           demande.reponseChef === "O" ? "Approuvé" :
+                           demande.reponseChef === "N" ? "Rejeté" : "Traitée"}
                         </span>
                       </td>
                       <td>
@@ -553,15 +749,10 @@ const DemandesFormation = () => {
                           <button
                             className="action-button approve"
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleConfirmer(demande.id)
+                              e.stopPropagation();
+                              openActionModal(demande.id, "approve");
                             }}
                             disabled={demande.reponseChef !== "I"}
-                            title={
-                              demande.reponseChef !== "I"
-                                ? "Cette demande a déjà été traitée"
-                                : "Approuver cette demande"
-                            }
                           >
                             <FiCheck />
                             <span>Approuver</span>
@@ -569,13 +760,10 @@ const DemandesFormation = () => {
                           <button
                             className="action-button reject"
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleRefuser(demande.id)
+                              e.stopPropagation();
+                              openActionModal(demande.id, "reject");
                             }}
                             disabled={demande.reponseChef !== "I"}
-                            title={
-                              demande.reponseChef !== "I" ? "Cette demande a déjà été traitée" : "Rejeter cette demande"
-                            }
                           >
                             <FiX />
                             <span>Rejeter</span>
@@ -600,20 +788,56 @@ const DemandesFormation = () => {
             </div>
           )}
 
+          {showObservationModal && (
+            <div className="modal-overlay">
+              <div className={`modal-content ${theme}`}>
+                <h2>
+                  {actionType === "approve" ? "Approuver la demande" : "Rejeter la demande"}
+                </h2>
+                <div className="form-group">
+                  <label>
+                    Observation {actionType === "approve" ? "(facultatif)" : "(obligatoire)"}
+                  </label>
+                  <textarea
+                    value={observation}
+                    onChange={(e) => setObservation(e.target.value)}
+                    placeholder={`Entrez votre observation ${actionType === "approve" ? "(optionnel)" : ""}`}
+                    rows={4}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button 
+                    className="cancel-button" 
+                    onClick={closeActionModal}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    className={`confirm-button ${actionType === "approve" ? "approve" : "reject"}`}
+                    onClick={handleAction}
+                    disabled={actionType === "reject" && !observation.trim()}
+                  >
+                    {actionType === "approve" ? "Confirmer" : "Rejeter"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={closeModal}
-              onApprove={() => handleConfirmer(selectedDemande.id)}
-              onReject={() => handleRefuser(selectedDemande.id)}
+              onApprove={() => openActionModal(selectedDemande.id, "approve")}
+              onReject={() => openActionModal(selectedDemande.id, "reject")}
               isActionable={selectedDemande.reponseChef === "I"}
+              theme={theme}
             />
           )}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-
-export default DemandesFormation
+export default Formation;

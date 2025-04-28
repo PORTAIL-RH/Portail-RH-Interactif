@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-
+import { API_URL } from "../../../config"; 
 const useNotifications = (role) => {
   const [notifications, setNotifications] = useState([]);
   const [unviewedCount, setUnviewedCount] = useState(0);
@@ -12,7 +12,7 @@ const useNotifications = (role) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:8080/api/notifications?role=${role}`,
+        `${API_URL}/api/notifications?role=${role}`,
         {
           method: "GET",
           headers: {

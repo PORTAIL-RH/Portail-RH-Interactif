@@ -1,0 +1,72 @@
+/* colors.css */
+:root {
+    /* Couleurs principales */
+    --primary-color: #4f46e5;
+    --primary-hover: #4338ca;
+    --primary-light: #f3f3f3;
+    --secondary-color: #64748b;
+    --secondary-light: #E195AB;
+    
+    /* Couleurs d'état */
+    --success-color: #10b981;
+    --success-light: #d1fae5;
+    --warning-color: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger-color: #ef4444;
+    --danger-light: #fee2e2;
+    --info-color: #3b82f6;
+    
+    /* Couleurs de texte */
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --text-tertiary: #94a3b8;
+    --text-light: #1f2937;
+    --text-dark: #f9fafb;
+    
+    /* Arrière-plans */
+    --bg-primary: #d7cece;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --bg-light: #F8FAFC;
+    --bg-dark: #1e1e2d;
+    --card-bg-light: #ffffff;
+    --card-bg-dark: #252636;
+    
+    /* Bordures */
+    --border-color: #e2e8f0;
+    --border-light: #e5e7eb;
+    --border-dark: #374151;
+    
+    /* Autres */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Mode sombre */
+  :root.dark {
+    --primary-color: #6366f1;
+    --primary-hover: #818cf8;
+    --primary-light: #312e81;
+    --secondary-color: #94a3b8;
+    
+    --success-color: #10b981;
+    --success-light: #065f46;
+    --warning-color: #f59e0b;
+    --warning-light: #78350f;
+    --danger-color: #ef4444;
+    --danger-light: #7f1d1d;
+    
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    
+    --bg-primary:  #1f2937;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    --card-bg-dark: #252636;
+    
+    --border-color: #334151;
+    --border-dark: #374151;
+  }
+  

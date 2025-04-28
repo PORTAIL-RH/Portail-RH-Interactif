@@ -1,0 +1,53 @@
+.background-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+  
+  /* Static background elements */
+  .static-background {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  
+  .gradient-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, #0f172a, rgba(15, 23, 42, 0.9), #0f172a);
+  }
+  
+  .top-right-blob {
+    position: absolute;
+    right: 0;
+    top: 0;
+    height: 500px;
+    width: 500px;
+    background-color: rgba(59, 130, 246, 0.1); /* blue-500/10 */
+    filter: blur(100px);
+  }
+  
+  .bottom-left-blob {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 500px;
+    width: 500px;
+    background-color: rgba(168, 85, 247, 0.1); /* purple-500/10 */
+    filter: blur(100px);
+  }
+  
+  /* Mouse move effect */
+  .mouse-move-effect {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: opacity 300ms;
+  }
+  
+  

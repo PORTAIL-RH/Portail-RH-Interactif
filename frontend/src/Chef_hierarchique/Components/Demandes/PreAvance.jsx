@@ -3,7 +3,7 @@ import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
 import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText } from "react-icons/fi";
 import "./Demandes.css";
-import DemandeDetailsModal from "./DemandeDetailsModal"; 
+import DemandeDetailsModal from "./DemandeDetailsModal";
 
 const DemandesPreAvance = () => {
   const [demandes, setDemandes] = useState([]);
@@ -15,88 +15,138 @@ const DemandesPreAvance = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [selectedDemande, setSelectedDemande] = useState(null); 
-  const [isModalOpen, setIsModalOpen] = useState(false); 
+  const [selectedDemande, setSelectedDemande] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [theme, setTheme] = useState("light");
+  const [observation, setObservation] = useState("");
+  const [showObservationModal, setShowObservationModal] = useState(false);
+  const [actionType, setActionType] = useState(null);
+  const [currentDemandeId, setCurrentDemandeId] = useState(null);
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    applyTheme(savedTheme);
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      applyTheme(currentTheme);
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light");
+      applyTheme(e.detail || "light");
+    });
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark");
+    document.documentElement.classList.add(theme);
+    document.body.className = theme;
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    applyTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
+
+  const getUserId = () => {
+    try {
+      const userData = localStorage.getItem("userId");
+      if (!userData) return null;
+      
+      try {
+        const parsed = JSON.parse(userData);
+        return parsed?.userId || parsed?.id || null;
+      } catch {
+        return userData;
+      }
+    } catch (e) {
+      console.error("Error reading userId from localStorage:", e);
+      return null;
+    }
+  };
+
+  const userId = getUserId();
 
   const fetchDemandes = useCallback(async () => {
     try {
+      setLoading(true);
       const token = localStorage.getItem("authToken");
 
-      const cachedDemandesPreAvance = localStorage.getItem("demandesPreAvance");
-      if (cachedDemandesPreAvance) {
-        const cachedData = JSON.parse(cachedDemandesPreAvance);
-        setDemandes(cachedData);
-        setFilteredDemandes(cachedData);
-        setLoading(false);
-        return;
+      localStorage.removeItem("demandesAutorisation");
+
+      if (!userId) {
+        throw new Error("User ID not found in localStorage");
       }
 
-      const formationResponse = await fetch("http://localhost:8080/api/demande-pre-avance", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `http://localhost:8080/api/demande-pre-avance/collaborateurs-by-service/${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      if (!formationResponse.ok) {
-        const errorText = await formationResponse.text();
-        throw new Error(`Pre-avance request failed: ${formationResponse.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || "Failed to fetch demandes");
       }
 
-      const formationData = await formationResponse.json();
+      const data = await response.json();
+      
+      if (!data.demandes) {
+        throw new Error("Invalid response format: demandes array missing");
+      }
 
-      const userService = JSON.parse(localStorage.getItem("userService"));
-      const chefServiceName = userService?.serviceName;
-
-      const filteredData = formationData.filter((demande) => {
-        const isCollaborateur = demande.matPers?.role === "collaborateur";
-        const hasSameService = demande.matPers?.serviceName === chefServiceName;
-        return isCollaborateur && hasSameService;
-      });
-
-      localStorage.setItem("demandesPreAvance", JSON.stringify(filteredData));
-
-      setDemandes(filteredData);
-      setFilteredDemandes(filteredData);
+      const demandesFromResponse = Array.isArray(data.demandes) ? data.demandes : [];
+      
+      setDemandes(demandesFromResponse);
+      setFilteredDemandes(demandesFromResponse);
       setLoading(false);
     } catch (error) {
-      setError(error.message);
+      console.error("Fetch error:", error);
+      setError(error.message || "An unknown error occurred");
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
+
   useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/sse/updates");
+    fetchDemandes();
+  }, [fetchDemandes]);
+
+  useEffect(() => {
+    const eventSource = new EventSource("http://localhost:8080/api/sse/updates");
   
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
-      const { type, data } = update;
+      const { type } = update;
   
-      console.log("Received update:", type, data); // Debugging
-  
-      // Refresh data based on the update type
-      switch (type) {
-        case "created":
-        case "updated":
-        case "deleted":
-          fetchDemandes(); // Refresh the demandes list
-          break;
-        default:
-          console.warn("Unknown update type:", type);
+      if (type === "created" || type === "updated" || type === "deleted") {
+        fetchDemandes();
       }
     };
   
     eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error);
+      console.error("EventSource error:", error);
       eventSource.close();
     };
   
     return () => {
-      eventSource.close(); // Cleanup on component unmount
+      eventSource.close();
     };
-  }, [fetchDemandes]);
-  useEffect(() => {
-    fetchDemandes();
   }, [fetchDemandes]);
 
   useEffect(() => {
@@ -125,79 +175,56 @@ const DemandesPreAvance = () => {
     setFilteredDemandes(filtered);
   }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
 
-  const handleConfirmer = async (demandeId) => {
-    try {
-      const token = localStorage.getItem("authToken");
-
-      const endpoint = `http://localhost:8080/api/demande-pre-avance/valider/${demandeId}`;
-
-      const response = await fetch(endpoint, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.ok) {
-        alert("Demande confirmée avec succès");
-
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "O" } 
-              : demande
-          )
-        );
-
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "O" } : demande
-        );
-        localStorage.setItem("demandesPreAvance", JSON.stringify(updatedDemandes));
-      } else {
-        const errorText = await response.text();
-        alert(`Erreur: ${errorText}`);
-      }
-    } catch (error) {
-      alert("Une erreur s'est produite lors de la confirmation de la demande.");
-    }
+  const openActionModal = (demandeId, type) => {
+    setCurrentDemandeId(demandeId);
+    setActionType(type);
+    setObservation("");
+    setShowObservationModal(true);
   };
 
-  const handleRefuser = async (demandeId) => {
+  const closeActionModal = () => {
+    setShowObservationModal(false);
+    setObservation("");
+    setActionType(null);
+    setCurrentDemandeId(null);
+  };
+
+  const handleAction = async () => {
     try {
       const token = localStorage.getItem("authToken");
+      const url = actionType === "approve" 
+        ? `http://localhost:8080/api/demande-pre-avance/valider/${currentDemandeId}`
+        : `http://localhost:8080/api/demande-pre-avance/refuser/${currentDemandeId}`;
 
-      const endpoint = `http://localhost:8080/api/demande-pre-avance/refuser/${demandeId}`;
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(url, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          observation: observation
+        })
       });
 
-      if (response.ok) {
-        alert("Demande refusée avec succès");
-
-        setDemandes((prevDemandes) =>
-          prevDemandes.map((demande) =>
-            demande.id === demandeId
-              ? { ...demande, reponseChef: "N" } 
-              : demande
-          )
-        );
-
-        const updatedDemandes = demandes.map((demande) =>
-          demande.id === demandeId ? { ...demande, reponseChef: "N" } : demande
-        );
-        localStorage.setItem("demandesPreAvance", JSON.stringify(updatedDemandes));
-      } else {
+      if (!response.ok) {
         const errorText = await response.text();
-        alert(`Erreur: ${errorText}`);
+        throw new Error(errorText);
       }
+
+      setDemandes(prev => prev.map(d => 
+        d.id === currentDemandeId ? { 
+          ...d, 
+          reponseChef: actionType === "approve" ? "O" : "N",
+          observation: observation 
+        } : d
+      ));
+
+      closeActionModal();
+      
     } catch (error) {
-      alert("Une erreur s'est produite lors du refus de la demande.");
+      console.error("Action error:", error);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -224,10 +251,10 @@ const DemandesPreAvance = () => {
 
   if (loading) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
@@ -239,10 +266,10 @@ const DemandesPreAvance = () => {
 
   if (error) {
     return (
-      <div className="app-container">
-        <Sidebar />
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
         <div className="demandes-container">
-          <Navbar />
+          <Navbar theme={theme} toggleTheme={toggleTheme}/>
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
@@ -259,10 +286,10 @@ const DemandesPreAvance = () => {
   }
 
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
       <div className="demandes-container">
-        <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme}/>
         <div className="demandes-content">
           <div className="page-header">
             <h1>Demandes de Pre-Avance</h1>
@@ -485,8 +512,8 @@ const DemandesPreAvance = () => {
                           <button
                             className="action-button approve"
                             onClick={(e) => {
-                              e.stopPropagation(); 
-                              handleConfirmer(demande.id);
+                              e.stopPropagation();
+                              openActionModal(demande.id, "approve");
                             }}
                             disabled={demande.reponseChef !== "I"}
                             title={
@@ -502,7 +529,7 @@ const DemandesPreAvance = () => {
                             className="action-button reject"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRefuser(demande.id);
+                              openActionModal(demande.id, "reject");
                             }}
                             disabled={demande.reponseChef !== "I"}
                             title={
@@ -532,12 +559,49 @@ const DemandesPreAvance = () => {
             </div>
           )}
 
+          {/* Observation Modal */}
+          {showObservationModal && (
+            <div className="modal-overlay">
+              <div className={`modal-content ${theme}`}>
+                <h2>
+                  {actionType === "approve" ? "Approuver la demande" : "Rejeter la demande"}
+                </h2>
+                <div className="form-group">
+                  <label>
+                    Observation {actionType === "approve" ? "(facultatif)" : "(obligatoire)"}
+                  </label>
+                  <textarea
+                    value={observation}
+                    onChange={(e) => setObservation(e.target.value)}
+                    placeholder={`Entrez votre observation ${actionType === "approve" ? "(optionnel)" : ""}`}
+                    rows={4}
+                  />
+                </div>
+                <div className="modal-actions">
+                  <button 
+                    className="cancel-button" 
+                    onClick={closeActionModal}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    className={`confirm-button ${actionType === "approve" ? "approve" : "reject"}`}
+                    onClick={handleAction}
+                    disabled={actionType === "reject" && !observation.trim()}
+                  >
+                    {actionType === "approve" ? "Confirmer" : "Rejeter"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={closeModal}
-              onApprove={() => handleConfirmer(selectedDemande.id)}
-              onReject={() => handleRefuser(selectedDemande.id)}
+              onApprove={() => openActionModal(selectedDemande.id, "approve")}
+              onReject={() => openActionModal(selectedDemande.id, "reject")}
               isActionable={selectedDemande.reponseChef === "I"}
             />
           )}

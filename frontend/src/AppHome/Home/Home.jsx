@@ -1,239 +1,261 @@
-
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
+import { ArrowRight, CheckCircle, Code, Database, Server, Shield, Users, Zap } from "lucide-react"
+import Navbar from "../NavBar/Nav"
+import Footer from "../Footer/Footer"
 import "./Home.css"
-import Navbar from "../NavBar/Nav.jsx"
-import Footer from "../Footer/Footer.jsx"
-import ApplicationModal from "./ApplicationModal.jsx"
 
-const Candidates = () => {
-  const [formData, setFormData] = useState({
-    nom: "",
-    prenom: "",
-    age: "",
-    email: "",
-    numTel: "",
-    cvFilePath: "",
-    cv: null,
-    candidature: {
-      id: "", // Initialize as empty
-    },
-  })
+const Home = () => {
+  const [isVisible, setIsVisible] = useState(false)
 
-  const [activeTab, setActiveTab] = useState("openings")
-  const [jobOpenings, setJobOpenings] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [selectedCandidatureId, setSelectedCandidatureId] = useState("")
-
-  // Fetch job openings from the backend API
   useEffect(() => {
-    const fetchJobOpenings = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/api/candidatures")
-        if (!response.ok) {
-          throw new Error("Failed to fetch job openings")
-        }
-        const data = await response.json()
-        if (!Array.isArray(data)) {
-          throw new Error("Invalid data format received from the server")
-        }
-        setJobOpenings(data)
-      } catch (error) {
-        setError(error.message)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchJobOpenings()
+    setIsVisible(true)
   }, [])
 
-  const handleSubmitApplication = async (formData) => {
-    try {
-      // Retrieve the authentication token
-      const token = localStorage.getItem("authToken")
-      if (!token) {
-        throw new Error("Authentication token not found. Please log in.")
-      }
-
-      // Ensure a file is selected
-      if (!formData.cv) {
-        throw new Error("Please select a CV file to upload.")
-      }
-
-      // Create a new FormData object for the candidate data
-      const candidatFormData = new FormData()
-      candidatFormData.append("nom", formData.nom)
-      candidatFormData.append("prenom", formData.prenom)
-      candidatFormData.append("age", formData.age)
-      candidatFormData.append("email", formData.email)
-      candidatFormData.append("numTel", formData.numTel)
-      candidatFormData.append("candidatureId", formData.candidatureId)
-      candidatFormData.append("cv", formData.cv) // Append the CV file
-
-      // Log the FormData for debugging
-      for (const [key, value] of candidatFormData.entries()) {
-        console.log(key, value)
-      }
-
-      // Send the FormData to the backend
-      const response = await fetch("http://localhost:8080/api/candidats", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`, // Include the token in the request headers
-        },
-        body: candidatFormData, // Send FormData as the body
-      })
-
-      // Handle the response
-      if (!response.ok) {
-        const errorData = await response.text() // Handle plain text or JSON responses
-        throw new Error(errorData || "Failed to submit application")
-      }
-
-      alert("Application submitted successfully!")
-      // Reset form data
-      setFormData({
-        nom: "",
-        prenom: "",
-        age: "",
-        email: "",
-        numTel: "",
-        cv: null,
-        candidature: {
-          id: "",
-        },
-      })
-    } catch (error) {
-      console.error("Error submitting application:", error)
-      alert(error.message || "Failed to submit application. Please try again.")
-    }
-  }
-
-  const handleApplyClick = (candidatureId) => {
-    console.log("Candidature ID:", candidatureId) // Debugging
-    setSelectedCandidatureId(candidatureId)
-    setIsModalOpen(true)
-  }
-
-  const closeModal = () => {
-    setIsModalOpen(false)
-    setSelectedCandidatureId("")
-  }
-
-  if (loading) {
-    return <div className="loading-message">Loading job openings...</div>
-  }
-
-  if (error) {
-    return <div className="error-message">Error: {error}</div>
-  }
-
   return (
-    <div className="candidates-page">
-      <Navbar transparent={true} />
+    <div className="home-page">
+      <Navbar />
 
-      <main>
-        <section className="hero-section">
-          <div className="container">
-            <h1>Rejoignez Notre Équipe d'Innovateurs</h1>
+      {/* Hero Section */}
+      <section className="hero-section">
+        <div className="hero-content">
+          <div className={`hero-text ${isVisible ? "visible" : ""}`}>
+            <h1>Solutions Technologiques Innovantes pour l'Ère Numérique</h1>
             <p>
-              Découvrez des opportunités de carrière passionnantes et participez à notre mission de créer des solutions
-              technologiques de pointe.
+              Nous aidons les entreprises à transformer leurs idées en solutions numériques puissantes. Découvrez
+              comment notre expertise peut propulser votre croissance.
             </p>
-            <button className="primary-button" onClick={() => handleApplyClick("")}>
-              Postuler Maintenant
-            </button>
-          </div>
-        </section>
-
-        <section className="why-join-section">
-          <div className="container">
-            <h2>Pourquoi Rejoindre Société Arab Soft ?</h2>
-            <div className="benefits-grid">
-              <div className="benefit-card">
-                <div className="benefit-icon growth-icon"></div>
-                <h3>Croissance Professionnelle</h3>
-                <p>Opportunités d'apprentissage continu et voies d'avancement de carrière pour tous les employés.</p>
-              </div>
-              <div className="benefit-card">
-                <div className="benefit-icon innovation-icon"></div>
-                <h3>Culture d'Innovation</h3>
-                <p>Travailler sur des projets de pointe et contribuer vos idées dans un environnement collaboratif.</p>
-              </div>
-              <div className="benefit-card">
-                <div className="benefit-icon balance-icon"></div>
-                <h3>Équilibre Vie Professionnelle-Personnelle</h3>
-                <p>Arrangements de travail flexibles et politiques qui respectent votre temps personnel.</p>
-              </div>
-              <div className="benefit-card">
-                <div className="benefit-icon benefits-icon"></div>
-                <h3>Avantages Compétitifs</h3>
-                <p>Assurance santé complète, plans de retraite et autres avantages précieux.</p>
-              </div>
+            <div className="hero-buttons">
+              <Link to="/contact" className="primary-button">
+                Commencer un Projet
+              </Link>
+              <Link to="" className="secondary-button">
+                Découvrir nos Services <ArrowRight size={16} />
+              </Link>
             </div>
           </div>
-        </section>
+          <div className={`hero-image ${isVisible ? "visible" : ""}`}>
+            <img  src={require("../../assets/solutions.jpeg")} alt="Solutions technologiques ArabSoft" />
+          </div>
+        </div>
 
-        <section className="tabs-section">
-          <div className="container">
-            <div className="tabs">
-              <button
-                className={`tab-button ${activeTab === "openings" ? "active" : ""}`}
-                onClick={() => setActiveTab("openings")}
-              >
-                Offres d'Emploi
-              </button>
+      </section>
+
+      {/* Services Section */}
+      <section className="services-section">
+        <div className="section-container">
+          <div className="section-header">
+            <h2>Nos Services</h2>
+            <p>Des solutions complètes pour répondre à tous vos besoins technologiques</p>
+          </div>
+
+          <div className="services-grid">
+            <div className="service-card">
+              <div className="service-icon">
+                <Code size={24} />
+              </div>
+              <h3>Développement Logiciel</h3>
+              <p>
+                Applications web personnalisées, systèmes d'entreprise et solutions e-commerce adaptées à vos besoins
+                spécifiques.
+              </p>
+              <Link to="/services/development" className="service-link">
+                En savoir plus <ArrowRight size={16} />
+              </Link>
             </div>
 
-            <div className="tab-content">
-              <div className="openings-content">
-                <h2>Postes Disponibles</h2>
-                <div className="job-listings">
-                  {jobOpenings?.length === 0 ? (
-                    <p>Aucune offre d'emploi disponible pour le moment.</p>
-                  ) : (
-                    jobOpenings?.map((job) => (
-                      <div className="job-card" key={job.id}>
-                        <h3>{job.description}</h3>
-                        <div className="job-details">
-                          <span className="department">{job.service}</span>
-                          <span className="location">Tunis, Tunisie</span>
-                        </div>
-                        <p className="job-description">{job.exigences}</p>
-                        <div className="requirements">
-                          <h4>Compétences Requises:</h4>
-                          <ul>
-                            {job.skills?.map((skill, index) => (
-                              <li key={index}>{skill}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <button className="secondary-button" onClick={() => handleApplyClick(job.id)}>
-                          Postuler pour ce poste
-                        </button>
-                      </div>
-                    ))
-                  )}
+            <div className="service-card">
+              <div className="service-icon">
+                <Server size={24} />
+              </div>
+              <h3>Solutions Cloud</h3>
+              <p>Migration vers le cloud, architecture cloud et services gérés pour optimiser vos opérations.</p>
+              <Link to="/services/cloud" className="service-link">
+                En savoir plus <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="service-card">
+              <div className="service-icon">
+                <Shield size={24} />
+              </div>
+              <h3>Cybersécurité</h3>
+              <p>
+                Protection des données, évaluations de sécurité et solutions de conformité pour sécuriser votre
+                entreprise.
+              </p>
+              <Link to="/services/security" className="service-link">
+                En savoir plus <ArrowRight size={16} />
+              </Link>
+            </div>
+
+            <div className="service-card">
+              <div className="service-icon">
+                <Database size={24} />
+              </div>
+              <h3>Intelligence Artificielle</h3>
+              <p>
+                Solutions d'IA et d'apprentissage automatique pour automatiser les processus et obtenir des insights
+                précieux.
+              </p>
+              <Link to="/services/ai" className="service-link">
+                En savoir plus <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section className="about-section">
+        <div className="section-container">
+          <div className="about-content">
+            <div className="about-image">
+              <img src={require("../../assets/logo.png")} alt="À propos d'ArabSoft" />
+            </div>
+            <div className="about-text">
+              <h2>Qui Sommes-Nous</h2>
+              <p>
+                Depuis plus de 15 ans, ArabSoft fournit des solutions technologiques de pointe aux entreprises de toutes
+                tailles. Notre équipe d'experts passionnés s'engage à offrir des services de qualité supérieure qui
+                répondent aux défis uniques de nos clients.
+              </p>
+              <div className="about-stats">
+                <div className="stat-item">
+                  <span className="stat-number">15+</span>
+                  <span className="stat-label">Années d'Expérience</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">200+</span>
+                  <span className="stat-label">Projets Réussis</span>
+                </div>
+                <div className="stat-item">
+                  <span className="stat-number">50+</span>
+                  <span className="stat-label">Experts Tech</span>
+                </div>
+              </div>
+              <Link to="" className="secondary-button">
+                En savoir plus sur nous <ArrowRight size={16} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us Section */}
+      <section className="why-choose-section">
+        <div className="section-container">
+          <div className="section-header">
+            <h2>Pourquoi Choisir ArabSoft</h2>
+            <p>Ce qui nous distingue et fait de nous le partenaire idéal pour votre transformation numérique</p>
+          </div>
+
+          <div className="features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Zap size={24} />
+              </div>
+              <h3>Solutions Innovantes</h3>
+              <p>
+                Nous utilisons les dernières technologies pour créer des solutions avant-gardistes qui vous donnent un
+                avantage concurrentiel.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <Users size={24} />
+              </div>
+              <h3>Équipe d'Experts</h3>
+              <p>
+                Notre équipe de développeurs, designers et consultants hautement qualifiés apporte une expertise
+                approfondie à chaque projet.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <CheckCircle size={24} />
+              </div>
+              <h3>Qualité Garantie</h3>
+              <p>
+                Nous suivons des méthodologies rigoureuses et des processus d'assurance qualité pour livrer des produits
+                sans défaut.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="testimonials-section">
+        <div className="section-container">
+          <div className="section-header">
+            <h2>Ce que Disent Nos Clients</h2>
+            <p>Découvrez pourquoi nos clients nous font confiance pour leurs besoins technologiques</p>
+          </div>
+
+          <div className="testimonials-slider">
+            <div className="testimonial-card">
+              <div className="testimonial-content">
+                <p>
+                  "ArabSoft a transformé notre processus commercial avec une solution sur mesure qui a augmenté notre
+                  efficacité de 40%. Leur équipe a été professionnelle et réactive tout au long du projet."
+                </p>
+              </div>
+              <div className="testimonial-author">
+                <img src={require("../../assets/nous.jpg")} alt="Ahmed Benali" className="author-image" />
+                <div className="author-info">
+                  <h4>Ahmed Benali</h4>
+                  <p>Directeur Technique, TechCorp</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="testimonial-card">
+              <div className="testimonial-content">
+                <p>
+                  "La migration vers le cloud orchestrée par ArabSoft a été transparente et a considérablement réduit
+                  nos coûts d'infrastructure. Leur expertise technique et leur approche méthodique ont fait toute la
+                  différence."
+                </p>
+              </div>
+              <div className="testimonial-author">
+                <img src={require("../../assets/nous.jpg")} alt="Leila Mansour" className="author-image" />
+                <div className="author-info">
+                  <h4>Leila Mansour</h4>
+                  <p>CEO, InnovateNow</p>
                 </div>
               </div>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </section>
 
-      <ApplicationModal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        candidatureId={selectedCandidatureId}
-        onSubmit={handleSubmitApplication}
-      />
+      {/* CTA Section */}
+      <section className="cta-section">
+        <div className="section-container">
+          <div className="cta-content">
+            <h2>Prêt à Transformer Votre Entreprise?</h2>
+            <p>
+              Contactez-nous dès aujourd'hui pour discuter de vos besoins et découvrir comment nous pouvons vous aider à
+              atteindre vos objectifs.
+            </p>
+            <div className="cta-buttons">
+              <Link to="/contact" className="primary-button">
+                Nous Contacter
+              </Link>
+              <Link to="" className="outline-button">
+                Voir Nos Études de Cas
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <Footer />
     </div>
   )
 }
 
-export default Candidates
-
+export default Home
