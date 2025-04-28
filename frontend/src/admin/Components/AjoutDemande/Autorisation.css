@@ -41,12 +41,13 @@
   display: flex;
   flex-direction: column;
 }
-
+.sidebar.collapsed ~ .demande-container {
+  margin-left: 70px;
+}
   /* Form container */
   .autorisation-form-container {
     flex: 1;
     padding: 2rem;
-    background-color: var(--bg-color);
   }
   
   /* Form card */

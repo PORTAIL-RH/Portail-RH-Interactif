@@ -1,0 +1,999 @@
+"use client"
+
+import React, { useState, useEffect } from "react"
+import { useParams } from "react-router-dom"
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import Navbar from "../../components/navbar/Navbar.jsx"
+import Footer from "../../components/footer/Footer.jsx"
+import "./Project.css"
+import "./Mindmap.css"
+
+// Create a custom DragDropContext wrapper to ensure single React instance
+const SafeDragDropContext = ({ children, ...props }) => {
+  return React.createElement(DragDropContext, props, children)
+}
+
+// Sample project data with the new structure
+const projectData = {
+  id: 1,
+  name: "Build a Responsive Portfolio Website",
+  category: "Web Development",
+  description:
+    "Create a professional portfolio website using HTML, CSS, and JavaScript. This project will guide you through the process of designing and developing a responsive website that showcases your skills and projects. You'll learn modern web development techniques, responsive design principles, and how to optimize your site for different devices.",
+  picture: "https://images.unsplash.com/photo-1547658719-da2b51169166?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+  promotionalVideo: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+  skillset: [
+    "HTML5",
+    "CSS3",
+    "JavaScript",
+    "Responsive Design",
+    "Web Accessibility",
+    "Version Control (Git)",
+    "Deployment",
+  ],
+  level: "Beginner",
+  estimatedTime: "2 weeks",
+  timeConsumed: "0 hours", // For the current user
+  likes: 342,
+  saves: 128,
+  completedBy: 87, // Number of people
+  completedPercentage: 76, // % of people who started it
+  userProgress: 0, // Current user's progress percentage
+  steps: [
+    {
+      id: 1,
+      type: "Planning",
+      name: "Project Setup",
+      skills: ["Project Management", "Git"],
+      description: "Set up your development environment and create the project structure.",
+      picture:
+        "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 10, // Percentage of the overall project
+      estimatedTime: "1-2 days",
+      timeConsumed: "0 hours", // For the current user
+      state: "not-started", // "not-started", "in-progress", "completed"
+      learningDegree: "normal", // Default selected option
+      normalContent: `
+        <h4>Setting Up Your Development Environment</h4>
+        <p>In this step, you'll set up all the tools you need to build your portfolio website:</p>
+        <ol>
+          <li>Install a code editor (VS Code recommended)</li>
+          <li>Set up Git for version control</li>
+          <li>Create a new project folder with the following structure:
+            <ul>
+              <li>index.html</li>
+              <li>css/styles.css</li>
+              <li>js/main.js</li>
+              <li>images/</li>
+            </ul>
+          </li>
+          <li>Initialize a Git repository</li>
+          <li>Make your first commit</li>
+        </ol>
+        <p>Once you've completed these tasks, you'll have a solid foundation for your project.</p>
+      `,
+      learnContent: [
+        {
+          type: "video",
+          title: "Git & GitHub Crash Course For Beginners",
+          url: "https://www.youtube.com/watch?v=HkdAHXoRtos",
+          duration: "32 min",
+        },
+        {
+          type: "article",
+          title: "VS Code Tips and Tricks",
+          url: "https://code.visualstudio.com/docs/getstarted/tips-and-tricks",
+          duration: "15 min read",
+        },
+        {
+          type: "video",
+          title: "Web Development Project Structure Best Practices",
+          url: "https://www.youtube.com/watch?v=Lp7Fu8-JqXY",
+          duration: "18 min",
+        },
+      ],
+      diveContent: [
+        {
+          type: "course",
+          title: "Git & GitHub - The Complete Git & GitHub Course",
+          platform: "Udemy",
+          url: "https://www.udemy.com/course/git-github-the-complete-git-github-course/",
+          duration: "6.5 hours",
+        },
+        {
+          type: "book",
+          title: "Pro Git",
+          author: "Scott Chacon and Ben Straub",
+          url: "https://git-scm.com/book/en/v2",
+          description: "Everything you need to know about Git",
+        },
+        {
+          type: "tool",
+          title: "GitHub Desktop",
+          url: "https://desktop.github.com/",
+          description: "Simplified Git workflow with a visual interface",
+        },
+      ],
+    },
+    {
+      id: 2,
+      type: "Design",
+      name: "Design Phase",
+      skills: ["UI Design", "Wireframing"],
+      description: "Plan and design your portfolio website.",
+      picture:
+        "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 15,
+      estimatedTime: "2-3 days",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `
+        <h4>Designing Your Portfolio</h4>
+        <p>In this step, you'll create the design for your portfolio website:</p>
+        <ol>
+          <li>Research other portfolio websites for inspiration</li>
+          <li>Create wireframes for desktop and mobile layouts</li>
+          <li>Choose a color scheme and typography</li>
+          <li>Gather content (bio, projects, skills, etc.)</li>
+          <li>Create mockups or sketches of key pages</li>
+        </ol>
+        <p>By the end of this step, you should have a clear vision of how your portfolio will look and function.</p>
+      `,
+      learnContent: [
+        {
+          type: "video",
+          title: "Web Design for Beginners: Real World Coding in HTML & CSS",
+          url: "https://www.youtube.com/watch?v=D-h8L5hgW-w",
+          duration: "1 hour 20 min",
+        },
+        {
+          type: "article",
+          title: "Color Theory for Designers",
+          url: "https://www.smashingmagazine.com/2010/01/color-theory-for-designers-part-1-the-meaning-of-color/",
+          duration: "20 min read",
+        },
+        {
+          type: "tool",
+          title: "Figma - Free Design Tool",
+          url: "https://www.figma.com/",
+          description: "Create wireframes and mockups",
+        },
+      ],
+      diveContent: [
+        {
+          type: "course",
+          title: "UI/UX Design Specialization",
+          platform: "Coursera",
+          url: "https://www.coursera.org/specializations/ui-ux-design",
+          duration: "3 months",
+        },
+        {
+          type: "book",
+          title: "Don't Make Me Think",
+          author: "Steve Krug",
+          url: "https://www.amazon.com/Dont-Make-Think-Revisited-Usability/dp/0321965515",
+          description: "A Common Sense Approach to Web Usability",
+        },
+        {
+          type: "subscription",
+          title: "Adobe Creative Cloud",
+          url: "https://www.adobe.com/creativecloud.html",
+          description: "Professional design tools including Photoshop and XD",
+        },
+      ],
+    },
+    // Additional steps omitted for brevity but would be included in the actual code
+    {
+      id: 3,
+      type: "Development",
+      name: "HTML Structure",
+      skills: ["HTML5", "Semantic HTML"],
+      description: "Build the HTML structure for your website.",
+      picture:
+        "https://images.unsplash.com/photo-1542831371-29b0f74f9713?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 20,
+      estimatedTime: "2-3 days",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `Content omitted for brevity`,
+      learnContent: [],
+      diveContent: [],
+    },
+    {
+      id: 4,
+      type: "Development",
+      name: "CSS Styling",
+      skills: ["CSS3", "Responsive Design", "Flexbox/Grid"],
+      description: "Style your website with CSS.",
+      picture:
+        "https://images.unsplash.com/photo-1523437113738-bbd3cc89fb19?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 25,
+      estimatedTime: "3-4 days",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `Content omitted for brevity`,
+      learnContent: [],
+      diveContent: [],
+    },
+    {
+      id: 5,
+      type: "Development",
+      name: "JavaScript Functionality",
+      skills: ["JavaScript", "DOM Manipulation"],
+      description: "Add interactivity with JavaScript.",
+      picture:
+        "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 20,
+      estimatedTime: "2-3 days",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `Content omitted for brevity`,
+      learnContent: [],
+      diveContent: [],
+    },
+    {
+      id: 6,
+      type: "Testing",
+      name: "Testing & Optimization",
+      skills: ["Testing", "Performance Optimization", "Accessibility"],
+      description: "Test and optimize your website.",
+      picture:
+        "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 5,
+      estimatedTime: "1-2 days",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `Content omitted for brevity`,
+      learnContent: [],
+      diveContent: [],
+    },
+    {
+      id: 7,
+      type: "Deployment",
+      name: "Deployment",
+      skills: ["Deployment", "Domain Management"],
+      description: "Deploy your website to a hosting service.",
+      picture:
+        "https://images.unsplash.com/photo-1589149098258-3e9102cd63d3?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
+      weight: 5,
+      estimatedTime: "1 day",
+      timeConsumed: "0 hours",
+      state: "not-started",
+      learningDegree: "normal",
+      normalContent: `Content omitted for brevity`,
+      learnContent: [],
+      diveContent: [],
+    },
+  ],
+}
+
+const ProjectDetailPage = () => {
+  const { id } = useParams()
+  const [activeStep, setActiveStep] = useState(null)
+  const [learningDegree, setLearningDegree] = useState(projectData.steps.map((step) => step.learningDegree))
+  const [isSaved, setIsSaved] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [modalStep, setModalStep] = useState(null)
+  const [animateProgress, setAnimateProgress] = useState(false)
+
+  // New state for toggling between mindmap and roadmap
+  const [activeView, setActiveView] = useState("mindmap") // 'mindmap' or 'roadmap'
+
+  const getNodePosition = (id) => {
+    const positions = [
+      { top: "15%", left: "15%" },
+      { top: "15%", right: "15%" },
+      { top: "40%", left: "5%" },
+      { top: "40%", right: "5%" },
+      { bottom: "15%", left: "15%" },
+      { bottom: "15%", left: "50%", transform: "translateX(-50%)" },
+      { bottom: "15%", right: "15%" },
+    ]
+    return positions[id - 1] || {}
+  }
+
+  const [nodes, setNodes] = useState(
+    projectData.steps.map((step) => ({
+      id: step.id.toString(),
+      title: step.name,
+      badge: step.type.toUpperCase(),
+      content: step.skills,
+      style: getNodePosition(step.id),
+    })),
+  )
+
+  // Mindmap Component (defined inside ProjectDetailPage)
+  const Mindmap = ({ nodes, onDragEnd }) => {
+    return (
+      <SafeDragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="nodes" direction="horizontal">
+          {(provided) => (
+            <div className="mindmap-nodes-organized" ref={provided.innerRef} {...provided.droppableProps}>
+              {nodes.map((node, index) => (
+                <Draggable key={node.id} draggableId={node.id} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      className={`mindmap-node-organized ${snapshot.isDragging ? "dragging" : ""}`}
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      style={{
+                        ...node.style,
+                        ...provided.draggableProps.style,
+                      }}
+                    >
+                      <div className={`node-badge ${node.badge.toLowerCase()}`}>{node.badge}</div>
+                      <h4 className="node-title emphasized-title">{node.title}</h4>
+                      <div className="node-content">
+                        {node.content.map((text, idx) => (
+                          <p key={idx}>{text}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </SafeDragDropContext>
+    )
+  }
+
+  // Draw connection lines effect
+  useEffect(() => {
+    if (activeView !== "mindmap") return
+
+    const drawConnections = () => {
+      const centerNode = document.querySelector(".mindmap-center-node")
+      const nodes = document.querySelectorAll(".mindmap-node-organized")
+      const connectionsContainer = document.querySelector(".mindmap-connections-organized")
+
+      if (!connectionsContainer) {
+        const container = document.querySelector(".mindmap-container-organized")
+        if (container) {
+          const newConnectionsContainer = document.createElement("div")
+          newConnectionsContainer.className = "mindmap-connections-organized"
+          container.appendChild(newConnectionsContainer)
+        }
+        return
+      }
+
+      connectionsContainer.innerHTML = ""
+
+      if (centerNode && nodes.length) {
+        const centerRect = centerNode.getBoundingClientRect()
+        const containerRect = document.querySelector(".mindmap-container-organized").getBoundingClientRect()
+
+        const centerX = centerRect.left + centerRect.width / 2 - containerRect.left
+        const centerY = centerRect.top + centerRect.height / 2 - containerRect.top
+
+        nodes.forEach((node) => {
+          const nodeRect = node.getBoundingClientRect()
+          const nodeX = nodeRect.left + nodeRect.width / 2 - containerRect.left
+          const nodeY = nodeRect.top + nodeRect.height / 2 - containerRect.top
+
+          const dx = nodeX - centerX
+          const dy = nodeY - centerY
+          const distance = Math.sqrt(dx * dx + dy * dy)
+          const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+
+          const line = document.createElement("div")
+          line.className = "connection-line-organized"
+          line.style.width = distance + "px"
+          line.style.left = centerX + "px"
+          line.style.top = centerY + "px"
+          line.style.transform = `rotate(${angle}deg)`
+
+          connectionsContainer.appendChild(line)
+        })
+      }
+    }
+
+    // Only draw connections if mindmap is active
+    if (activeView === "mindmap") {
+      drawConnections()
+      window.addEventListener("resize", drawConnections)
+      return () => window.removeEventListener("resize", drawConnections)
+    }
+  }, [nodes, activeView])
+
+  const handleOnDragEnd = (result) => {
+    if (!result.destination) return
+    const items = Array.from(nodes)
+    const [reorderedItem] = items.splice(result.source.index, 1)
+    items.splice(result.destination.index, 0, reorderedItem)
+    setNodes(items)
+  }
+
+  useEffect(() => {
+    // Check if dark mode is enabled in localStorage
+    const isDarkMode = localStorage.getItem("theme") === "dark"
+    setDarkMode(isDarkMode)
+
+    // Listen for theme change events
+    const handleThemeChange = (e) => {
+      setDarkMode(e.detail.theme === "dark")
+    }
+
+    window.addEventListener("themeChange", handleThemeChange)
+
+    // Trigger progress animation after component mounts
+    setTimeout(() => {
+      setAnimateProgress(true)
+    }, 500)
+
+    return () => {
+      window.removeEventListener("themeChange", handleThemeChange)
+    }
+  }, [])
+
+  const handleSaveProject = () => {
+    setIsSaved(!isSaved)
+    // In a real app, you would save this to the user's profile
+  }
+
+  const handleLikeProject = () => {
+    setIsLiked(!isLiked)
+    // In a real app, you would update the like count
+  }
+
+  const handleStartProject = () => {
+    // In a real app, you would redirect to the first step or add to user's active projects
+    alert("Project started! You'll be redirected to the first step.")
+  }
+
+  const handleLearningDegreeChange = (stepIndex, degree) => {
+    const newLearningDegrees = [...learningDegree]
+    newLearningDegrees[stepIndex] = degree
+    setLearningDegree(newLearningDegrees)
+  }
+
+  const handleStepStateChange = (stepIndex, newState) => {
+    // In a real app, you would update the step state in the database
+    alert(`Step ${stepIndex + 1} marked as ${newState}`)
+  }
+
+  const toggleStep = (index) => {
+    if (activeStep === index) {
+      setActiveStep(null)
+    } else {
+      setActiveStep(index)
+    }
+  }
+
+  const openStepModal = (step, index) => {
+    setModalStep({ ...step, index })
+    setShowModal(true)
+  }
+
+  const closeModal = () => {
+    setShowModal(false)
+  }
+
+  // Calculate total progress
+  const calculateProgress = () => {
+    const completedWeight = projectData.steps
+      .filter((step, index) => step.state === "completed")
+      .reduce((sum, step) => sum + step.weight, 0)
+    return completedWeight
+  }
+
+  // Function to render content based on learning degree
+  const renderStepContent = (step, index) => {
+    const currentDegree = learningDegree[index]
+
+    switch (currentDegree) {
+      case "normal":
+        return <div className="step-content-normal" dangerouslySetInnerHTML={{ __html: step.normalContent }} />
+      case "learn":
+        return (
+          <div className="step-content-learn">
+            <h4>Additional Learning Resources</h4>
+            <div className="learn-resources">
+              {step.learnContent.map((resource, i) => (
+                <div key={i} className={`learn-resource-card resource-type-${resource.type}`}>
+                  <div className="resource-icon">
+                    <i
+                      className={`fas ${
+                        resource.type === "video"
+                          ? "fa-video"
+                          : resource.type === "article"
+                            ? "fa-file-alt"
+                            : "fa-tools"
+                      }`}
+                    ></i>
+                  </div>
+                  <div className="resource-info">
+                    <div className="resource-type-badge">{resource.type}</div>
+                    <h5>{resource.title}</h5>
+                    <p className="resource-meta">
+                      <span>{resource.duration}</span>
+                    </p>
+                    <a href={resource.url} target="_blank" rel="noopener noreferrer" className="resource-link">
+                      View Resource <i className="fas fa-external-link-alt"></i>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      case "dive":
+        return (
+          <div className="step-content-dive">
+            <h4>Deep Dive Resources</h4>
+            <div className="dive-resources">
+              {step.diveContent.map((resource, i) => (
+                <div key={i} className={`dive-resource-card resource-type-${resource.type}`}>
+                  <div className="resource-type-badge">{resource.type}</div>
+                  <div className="resource-icon">
+                    <i
+                      className={`fas ${
+                        resource.type === "course"
+                          ? "fa-graduation-cap"
+                          : resource.type === "book"
+                            ? "fa-book"
+                            : resource.type === "framework"
+                              ? "fa-layer-group"
+                              : resource.type === "certification"
+                                ? "fa-certificate"
+                                : "fa-puzzle-piece"
+                      }`}
+                    ></i>
+                  </div>
+                  <div className="resource-info">
+                    <h5>{resource.title}</h5>
+                    {resource.author && <p className="resource-author">By {resource.author}</p>}
+                    {resource.platform && <p className="resource-platform">On {resource.platform}</p>}
+                    <p className="resource-description">{resource.description}</p>
+                    <a href={resource.url} target="_blank" rel="noopener noreferrer" className="resource-link">
+                      Explore <i className="fas fa-external-link-alt"></i>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      default:
+        return <div className="step-content-normal" dangerouslySetInnerHTML={{ __html: step.normalContent }} />
+    }
+  }
+
+  return (
+    <div className={`project-detail-page ${darkMode ? "dark-mode" : ""}`}>
+      <Navbar />
+
+      <main className="project-detail-main">
+        <div className="project-header">
+          <div className="container">
+            <div className="project-header-content">
+              {/* Texture Background */}
+          <div className="texture-background">
+            <div className="texture-grid">
+            {[...Array(256)].map((_, i) => (
+              <div
+                key={i}
+                className="texture-cell"
+                style={{
+                  animationDelay: `${i * 50}ms`,
+                  opacity: Math.random() * 0.5,
+                }}
+              />
+            ))}
+            </div>
+          </div>
+
+              <h1 className="project-title">{projectData.name}</h1>
+              <div className="project-meta">
+                <div className="project-meta-item">
+                  <i className="fas fa-folder"></i>
+                  <span>{projectData.category}</span>
+                </div>
+                <div className="project-meta-item">
+                  <i className="fas fa-signal"></i>
+                  <span>{projectData.level}</span>
+                </div>
+                <div className="project-meta-item">
+                  <i className="far fa-clock"></i>
+                  <span>{projectData.estimatedTime}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="container">
+          <div className="project-content">
+            <div className="project-main-content">
+              {/* Project Overview Section */}
+              <section className="project-section">
+                <h2 className="section-title">Project Overview</h2>
+                <div className="project-overview">
+                  <div className="project-image">
+                    <img src={projectData.picture || "/placeholder.svg"} alt={projectData.name} />
+                  </div>
+                  <div className="project-description">
+                    <p>{projectData.description}</p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Video Introduction Section */}
+              <section className="project-section">
+                <h2 className="section-title">Video Introduction</h2>
+                <div className="project-video">
+                  <div className="video-container">
+                    <iframe
+                      src={projectData.promotionalVideo}
+                      title="Project Introduction"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    ></iframe>
+                  </div>
+                </div>
+              </section>
+
+              {/* Combined Mindmap and Roadmap Section with Toggle */}
+              <section className="project-section">
+                <div className="view-toggle-container">
+                  <h2 className="section-title">Project Visualization</h2>
+                  <div className="view-toggle-buttons">
+                    <button
+                      className={`view-toggle-btn ${activeView === "mindmap" ? "active" : ""}`}
+                      onClick={() => setActiveView("mindmap")}
+                    >
+                      <i className="fas fa-project-diagram"></i> Mindmap View
+                    </button>
+                    <button
+                      className={`view-toggle-btn ${activeView === "roadmap" ? "active" : ""}`}
+                      onClick={() => setActiveView("roadmap")}
+                    >
+                      <i className="fas fa-road"></i> Roadmap View
+                    </button>
+                  </div>
+                </div>
+
+                <div className="project-visualization-container">
+                  {/* Mindmap View */}
+                  <div className={`project-mindmap-modern ${activeView === "mindmap" ? "active" : "hidden"}`}>
+                    <div className="mindmap-container-organized">
+                      <div className="mindmap-center-node">
+                        <div className="center-node-content">
+                          
+                          <h3>Build a Responsive Portfolio Website</h3>
+                          <p>Beginner</p>
+                        </div>
+                      </div>
+                      <div className="mindmap-connections-organized"></div>
+                      <Mindmap nodes={nodes} onDragEnd={handleOnDragEnd} />
+                    </div>
+                  </div>
+
+                  {/* Roadmap View */}
+                  <div className={`project-roadmap ${activeView === "roadmap" ? "active" : "hidden"}`}>
+                    <div className="project-progress-overview">
+                      <div className="progress-bar-container">
+                        <div className="progress-bar">
+                          <div className="progress-fill" style={{ width: `${calculateProgress()}%` }}></div>
+                        </div>
+                        <div className="progress-text">
+                          <span>{calculateProgress()}% Complete</span>
+                        </div>
+                      </div>
+                      <div className="project-stats">
+                        <div className="stat-item">
+                          <i className="fas fa-users"></i>
+                          <span>{projectData.completedBy} people completed this project</span>
+                        </div>
+                        <div className="stat-item">
+                          <i className="fas fa-chart-line"></i>
+                          <span>{projectData.completedPercentage}% completion rate</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="vertical-roadmap">
+                      {projectData.steps.map((step, index) => (
+                        <div
+                          key={step.id}
+                          className={`roadmap-step ${index === activeStep ? "active" : ""} ${step.state}`}
+                        >
+                          <div className="step-timeline">
+                            <div className="timeline-line"></div>
+                            <div className="timeline-dot">
+                              {step.state === "completed" ? (
+                                <i className="fas fa-check"></i>
+                              ) : step.state === "in-progress" ? (
+                                <i className="fas fa-spinner fa-spin"></i>
+                              ) : (
+                                <span>{index + 1}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="step-card">
+                            <div className="step-header" onClick={() => toggleStep(index)}>
+                              <div className="step-info">
+                                <span className="step-type">{step.type}</span>
+                                <h3 className="step-name">{step.name}</h3>
+                              </div>
+                              <div className="step-meta">
+                                <div className="step-weight">
+                                  <i className="fas fa-percentage"></i>
+                                  <span>{step.weight}% of project</span>
+                                </div>
+                                <div className="step-time">
+                                  <i className="far fa-clock"></i>
+                                  <span>{step.estimatedTime}</span>
+                                </div>
+                                <button
+                                  className="btn-explore"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    openStepModal(step, index)
+                                  }}
+                                >
+                                  <i className="fas fa-external-link-alt"></i> Explore
+                                </button>
+                              </div>
+                            </div>
+
+                            {index === activeStep && (
+                              <div className="step-details">
+                                <div className="step-image">
+                                  <img src={step.picture || "/placeholder.svg"} alt={step.name} />
+                                </div>
+
+                                <div className="step-description">
+                                  <p>{step.description}</p>
+                                  <div className="step-skills">
+                                    {step.skills.map((skill, i) => (
+                                      <span key={i} className="skill-tag">
+                                        {skill}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="step-actions">
+                                  <button
+                                    className={`btn ${step.state === "completed" ? "btn-success" : "btn-primary"}`}
+                                    onClick={() => handleStepStateChange(index, "completed")}
+                                  >
+                                    {step.state === "completed" ? (
+                                      <>
+                                        <i className="fas fa-check"></i> Completed
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="fas fa-check"></i> Mark as Complete
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    className={`btn ${step.state === "in-progress" ? "btn-warning" : "btn-outline"}`}
+                                    onClick={() => handleStepStateChange(index, "in-progress")}
+                                  >
+                                    {step.state === "in-progress" ? (
+                                      <>
+                                        <i className="fas fa-spinner"></i> In Progress
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="fas fa-spinner"></i> Mark as In Progress
+                                      </>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    className="btn btn-primary"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openStepModal(step, index)
+                                    }}
+                                  >
+                                    <i className="fas fa-book-reader"></i> Learning Resources
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="project-sidebar">
+              {/* Action Buttons */}
+              <div className="project-actions">
+                <button className="btn btn-primary btn-block" onClick={handleStartProject}>
+                  <i className="fas fa-play"></i> Start Project
+                </button>
+                <button
+                  className={`btn ${isSaved ? "btn-secondary" : "btn-outline"} btn-block`}
+                  onClick={handleSaveProject}
+                >
+                  <i className={`${isSaved ? "fas" : "far"} fa-bookmark`}></i>{" "}
+                  {isSaved ? "Saved to Profile" : "Save for Later"}
+                </button>
+                <button
+                  className={`btn ${isLiked ? "btn-secondary" : "btn-outline"} btn-block btn-like`}
+                  onClick={handleLikeProject}
+                >
+                  <i className={`${isLiked ? "fas" : "far"} fa-heart`}></i> {isLiked ? "Liked" : "Like Project"}
+                </button>
+              </div>
+
+              {/* Skills Section */}
+              <div className="sidebar-section">
+                <h3 className="sidebar-title">Skills You'll Develop</h3>
+                <div className="skills-list">
+                  {projectData.skillset.map((skill, index) => (
+                    <div key={index} className="skill-tag">
+                      {skill}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Project Stats */}
+              <div className="sidebar-section">
+                <h3 className="sidebar-title">Project Stats</h3>
+                <div className="project-stats-sidebar">
+                  <div className="stat-row">
+                    <div className="stat-label">
+                      <i className="fas fa-heart"></i> Likes
+                    </div>
+                    <div className="stat-value">{projectData.likes}</div>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-label">
+                      <i className="fas fa-bookmark"></i> Saves
+                    </div>
+                    <div className="stat-value">{projectData.saves}</div>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-label">
+                      <i className="fas fa-users"></i> Completed By
+                    </div>
+                    <div className="stat-value">{projectData.completedBy} users</div>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-label">
+                      <i className="fas fa-chart-line"></i> Completion Rate
+                    </div>
+                    <div className="stat-value">{projectData.completedPercentage}%</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Your Progress - Dynamic Animation */}
+              <div className="sidebar-section progress-card">
+                <h3 className="sidebar-title">Your Progress</h3>
+                <div className="progress-stats-simple">
+                  <div className={`progress-stat-row ${animateProgress ? "animate" : ""}`}>
+                    <span className="stat-label">Time Spent:</span>
+                    <span className="stat-value">0 hours</span>
+                  </div>
+                  <div
+                    className={`progress-stat-row ${animateProgress ? "animate" : ""}`}
+                    style={{ transitionDelay: "0.2s" }}
+                  >
+                    <span className="stat-label">Estimated Time:</span>
+                    <span className="stat-value">{projectData.estimatedTime}</span>
+                  </div>
+                  <div
+                    className={`progress-stat-row ${animateProgress ? "animate highlight" : ""}`}
+                    style={{ transitionDelay: "0.4s" }}
+                  >
+                    <span className="stat-label">Steps Completed:</span>
+                    <span className="stat-value">
+                      {projectData.steps.filter((step) => step.state === "completed").length} of{" "}
+                      {projectData.steps.length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Step Modal */}
+      {showModal && modalStep && (
+        <div className="step-modal-overlay" onClick={closeModal}>
+          <div className="step-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close" onClick={closeModal}>
+              <i className="fas fa-times"></i>
+            </button>
+
+            <div className="modal-header">
+              
+              <span className="step-type">{modalStep.type}</span>
+              <h2>{modalStep.name}</h2>
+            </div>
+
+            <div className="modal-content">
+              <div className="modal-tabs">
+                <button
+                  className={learningDegree[modalStep.index] === "normal" ? "active" : ""}
+                  onClick={() => handleLearningDegreeChange(modalStep.index, "normal")}
+                >
+                  <i className="fas fa-tasks"></i>
+                  <span>Do</span>
+                </button>
+                <button
+                  className={learningDegree[modalStep.index] === "learn" ? "active" : ""}
+                  onClick={() => handleLearningDegreeChange(modalStep.index, "learn")}
+                >
+                  <i className="fas fa-book"></i>
+                  <span>Learn</span>
+                </button>
+                <button
+                  className={learningDegree[modalStep.index] === "dive" ? "active" : ""}
+                  onClick={() => handleLearningDegreeChange(modalStep.index, "dive")}
+                >
+                  <i className="fas fa-graduation-cap"></i>
+                  <span>Dive Deeper</span>
+                </button>
+              </div>
+
+              <div className="modal-body">{renderStepContent(modalStep, modalStep.index)}</div>
+
+              <div className="modal-footer">
+                <button
+                  className={`btn ${modalStep.state === "completed" ? "btn-success" : "btn-primary"}`}
+                  onClick={() => handleStepStateChange(modalStep.index, "completed")}
+                >
+                  {modalStep.state === "completed" ? (
+                    <>
+                      <i className="fas fa-check"></i> Completed
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-check"></i> Mark as Complete
+                    </>
+                  )}
+                </button>
+
+                <button
+                  className={`btn ${modalStep.state === "in-progress" ? "btn-warning" : "btn-outline"}`}
+                  onClick={() => handleStepStateChange(modalStep.index, "in-progress")}
+                >
+                  {modalStep.state === "in-progress" ? (
+                    <>
+                      <i className="fas fa-spinner"></i> In Progress
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-spinner"></i> Mark as In Progress
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Footer />
+    </div>
+  )
+}
+
+export default ProjectDetailPage

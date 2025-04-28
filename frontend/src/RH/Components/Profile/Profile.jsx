@@ -1,225 +1,398 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiFileText, FiEdit, FiSun, FiMoon, FiList } from "react-icons/fi";
-import { FaBriefcase, FaIdCard } from "react-icons/fa";
+import { User, Mail, Phone, Briefcase, Calendar, MapPin, Copy, Lock, X } from 'lucide-react';
 import "./Profile.css";
+import { API_URL } from "../../../config"; 
 
-const ProfilePage = () => {
-  const [theme, setTheme] = useState("light");
-  const [userData, setUserData] = useState({
-    id: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    cin: "",
-    sexe: "",
-    department: "",
-    hireDate: "",
-    situation: "",
-    status: "",
-    date_naiss: "",
-    serviceName: "",
-    skills: [],
-  });
+const Profile = () => {
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [theme, setTheme] = useState("light");
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: ""
+  });
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Retrieve userId from localStorage
-  const userId = localStorage.getItem("userId");
-
-  // Retrieve userService from localStorage and parse it
-  const userService = JSON.parse(localStorage.getItem("userService"));
-  const serviceName = userService?.serviceName || ""; // Extract serviceName from userService
-
-  // Effet pour initialiser le thème
+  // Theme management
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
 
-  // Fetch personnel data from API
+    // Listen for theme changes
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light"
+      setTheme(currentTheme)
+      applyTheme(currentTheme)
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light")
+      applyTheme(e.detail || "light")
+    })
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("themeChanged", handleStorageChange)
+    }
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    document.body.className = theme
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        // You could add a toast notification here
+        console.log('Copied to clipboard:', text);
+      })
+      .catch(err => {
+        console.error('Failed to copy:', err);
+      });
+  };
+
+  // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/Personnel/byId/${userId}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
+        setLoading(true);
+        const userId = localStorage.getItem("userId");
+        
+        if (!userId) {
+          throw new Error("User not authenticated");
         }
+
+        const response = await fetch(`${API_URL}/api/Personnel/byId/${userId}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch user data. Status: ${response.status}`);
+        }
+
         const data = await response.json();
-        setUserData({
-          id: data.id,
-          firstName: data.nom || "",
-          lastName: data.prenom || "",
-          email: data.email || "",
-          phone: data.telephone || "",
-          cin: data.cin || "",
-          sexe: data.sexe || "",
-          department: data.department || "",
-          hireDate: data.date_embauche || "",
-          situation: data.situation || "",
-          status: data.status || "",
-          date_naiss: data.date_naiss || "",
-          serviceName: serviceName, // Use the serviceName from localStorage
-          skills: data.skills || [],
-        });
-        setLoading(false);
-      } catch (error) {
-        setError(error.message);
+        setUser(data);
+      } catch (err) {
+        setError(err.message);
+        console.error("Error fetching user data:", err);
+      } finally {
         setLoading(false);
       }
     };
 
-    if (userId) {
-      fetchUserData();
-    } else {
-      setError("User ID not found in localStorage.");
-      setLoading(false);
-    }
-  }, [userId, serviceName]);
+    fetchUserData();
+  }, []);
 
-  // Fonction pour basculer entre les thèmes
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
+  // Get initials for avatar
+  const getInitials = (user) => {
+    if (!user) return "";
+    const firstName = user.prenom ? user.prenom.charAt(0).toUpperCase() : "";
+    const lastName = user.nom ? user.nom.charAt(0).toUpperCase() : "";
+    return firstName + lastName;
   };
 
-  // Fonction pour accéder aux demandes
-  const handleAccessDemandes = () => {
-    // Rediriger vers la page des demandes
-    window.location.href = "/DemandesCHEF"; // Mettez à jour l'URL selon votre route
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const validatePasswordForm = () => {
+    const errors = {};
+    
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = "Current password is required";
+    }
+    
+    if (!passwordData.newPassword) {
+      errors.newPassword = "New password is required";
+    } else if (passwordData.newPassword.length < 8) {
+      errors.newPassword = "Password must be at least 8 characters";
+    }
+    
+    if (!passwordData.confirmPassword) {
+      errors.confirmPassword = "Please confirm new password";
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = "Passwords don't match";
+    }
+    
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validatePasswordForm()) return;
+    
+    try {
+      setIsChangingPassword(true);
+      setPasswordErrors({});
+      
+      const userId = localStorage.getItem("userId");
+      const token = localStorage.getItem("authToken");
+      
+      const response = await fetch(`${API_URL}/api/Personnel/change-password/${userId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(passwordData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to change password");
+      }
+      
+      setPasswordSuccess(true);
+      setTimeout(() => {
+        setShowPasswordModal(false);
+        setPasswordSuccess(false);
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: ""
+        });
+      }, 2000);
+    } catch (error) {
+      setPasswordErrors({ submit: error.message });
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
+        <div className="profile-container">
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <div className="profile-content">
+            <div className="loading-message">Loading profile data...</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
+        <div className="demandes-chef-container">
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <div className="demandes-chef-content">
+            <div className="error-message">{error}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
+        <div className="profile-container">
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <div className="profile-content">
+            <div className="error-message">No user data available</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className={`app-container ${theme}`}>
-      <Sidebar />
-      <div className="dashboard-container">
-        <Navbar />
-        <div className="dashboard-content">
-          <div className="dashboard-header">
-            <div className="header-top">
-              <h1>Profil de l'Employé</h1>
-              <div className="header-actions">
-                <button 
-                  className="access-demandes-button" 
-                  onClick={handleAccessDemandes}
-                >
-                  <FiList />
-                  <span>Espace Des Demandes</span>
-                </button>
-                <button 
-                  className="theme-toggle-button" 
-                  onClick={toggleTheme}
-                  aria-label={theme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
-                >
-                  {theme === "light" ? <FiMoon /> : <FiSun />}
-                </button>
-              </div>
-            </div>
-            <p>Consultez les informations de profil de l'employé.</p>
-          </div>
+      <Sidebar theme={theme} />
+      <div className="profile-container">
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <div className="profile-content">
+          <header className="page-header">
+            <h1>My Profile</h1>
+            <button 
+              className="change-password-button"
+              onClick={() => setShowPasswordModal(true)}
+            >
+              <Lock size={16} className="button-icon" />
+              Change Password
+            </button>
+          </header>
 
-          <div className="profile-grid">
-            {/* Carte d'informations personnelles */}
-            <div className="dashboard-card profile-card">
-              <div className="card-header">
-                <h2>Informations Personnelles</h2>
-              </div>
-              <div className="card-content">
+          <div className="profile-layout">
+            {/* Profile Sidebar */}
+            <div className="profile-sidebar">
+              <div className="profile-card">
                 <div className="profile-header">
                   <div className="profile-avatar">
-                    {userData.firstName.charAt(0)}{userData.lastName.charAt(0)}
+                    {getInitials(user)}
                   </div>
-                  <div className="profile-name">
-                    <h3>{userData.firstName} {userData.lastName}</h3>
-                    <p className="profile-position">{userData.position}</p>
-                    <p className="profile-department">{userData.department}</p>
-                  </div>
+                  <h2 className="profile-name">{user.nom} {user.prenom}</h2>
+                  <p className="profile-role">{user.role}</p>
                 </div>
-
                 <div className="profile-details">
-                  <div className="detail-item">
-                    <FiMail className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Email</h4>
-                      <p>{userData.email}</p>
+                  <div className="profile-info-item">
+                    <div className="profile-info-icon">
+                      <Mail size={18} />
+                    </div>
+                    <div className="profile-info-content">
+                      <p className="profile-info-label">Email</p>
+                      <div className="profile-info-value-with-copy">
+                        <p className="profile-info-value">{user.email || "Not specified"}</p>
+                        {user.email && (
+                          <button 
+                            className="copy-button" 
+                            onClick={() => copyToClipboard(user.email)}
+                            title="Copy email"
+                          >
+                            <Copy size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="detail-item">
-                    <FiPhone className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Téléphone</h4>
-                      <p>{userData.phone}</p>
+                  <div className="profile-info-item">
+                    <div className="profile-info-icon">
+                      <Phone size={18} />
+                    </div>
+                    <div className="profile-info-content">
+                      <p className="profile-info-label">Phone</p>
+                      <p className="profile-info-value">{user.telephone || "Not specified"}</p>
                     </div>
                   </div>
-                  <div className="detail-item">
-                    <FiMapPin className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Date de naissance</h4>
-                      <p>{userData.date_naiss}</p>
+                  <div className="profile-info-item">
+                    <div className="profile-info-icon">
+                      <Briefcase size={18} />
+                    </div>
+                    <div className="profile-info-content">
+                      <p className="profile-info-label">Department</p>
+                      <p className="profile-info-value">{user.serviceName || "Not specified"}</p>
                     </div>
                   </div>
-                  <div className="detail-item">
-                    <FiMapPin className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Sexe</h4>
-                      <p>{userData.sexe}</p>
+                  <div className="profile-info-item">
+                    <div className="profile-info-icon">
+                      <Calendar size={18} />
+                    </div>
+                    <div className="profile-info-content">
+                      <p className="profile-info-label">Hire Date</p>
+                      <p className="profile-info-value">{user.date_embauche || "Not specified"}</p>
                     </div>
                   </div>
-                  <div className="detail-item">
-                    <FiMapPin className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>CIN</h4>
-                      <p>{userData.cin}</p>
+                  {user.adresse && (
+                    <div className="profile-info-item">
+                      <div className="profile-info-icon">
+                        <MapPin size={18} />
+                      </div>
+                      <div className="profile-info-content">
+                        <p className="profile-info-label">Address</p>
+                        <p className="profile-info-value">{user.adresse}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="detail-item">
-                    <FiMapPin className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Situation</h4>
-                      <p>{userData.situation}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Carte d'informations professionnelles */}
-            <div className="dashboard-card profile-card">
-              <div className="card-header">
-                <h2>Informations Professionnelles</h2>
-              </div>
-              <div className="card-content">
-                <div className="profile-details">
-                  <div className="detail-item">
-                    <FaBriefcase className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Service</h4>
-                      <p>{userData.serviceName}</p>
+            {/* Profile Main Content */}
+            <div className="profile-main">
+              {/* Personal Information Section */}
+              <div className="profile-section">
+                <div className="section-header">
+                  <h2>Personal Information</h2>
+                </div>
+                <div className="section-content">
+                  <div className="info-display">
+                    <div className="info-grid">
+                      <div className="info-item">
+                        <h3 className="info-label">Employee ID</h3>
+                        <div className="info-value-with-copy">
+                          <p className="info-value">{user.matricule || "Not specified"}</p>
+                          {user.matricule && (
+                            <button 
+                              className="copy-button" 
+                              onClick={() => copyToClipboard(user.matricule)}
+                              title="Copy employee ID"
+                            >
+                              <Copy size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="info-item">
+                        <h3 className="info-label">ID Card</h3>
+                        <p className="info-value">{user.cin || "Not specified"}</p>
+                      </div>
+                      <div className="info-item">
+                        <h3 className="info-label">Birth Date</h3>
+                        <p className="info-value">{user.date_naiss || "Not specified"}</p>
+                      </div>
+                      <div className="info-item">
+                        <h3 className="info-label">Marital Status</h3>
+                        <p className="info-value">{user.situation || "Not specified"}</p>
+                      </div>
+                      <div className="info-item">
+                        <h3 className="info-label">Children</h3>
+                        <p className="info-value">{user.nbr_enfants || "0"}</p>
+                      </div>
+                      <div className="info-item">
+                        <h3 className="info-label">Gender</h3>
+                        <p className="info-value">{user.sexe || "Not specified"}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="detail-item">
-                    <FiCalendar className="detail-icon" />
-                    <div className="detail-content">
-                      <h4>Date d'embauche</h4>
-                      <p>{userData.hireDate}</p>
+                </div>
+              </div>
+
+              {/* Professional Information Section */}
+              <div className="profile-section">
+                <div className="section-header">
+                  <h2>Professional Information</h2>
+                </div>
+                <div className="section-content">
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <h3 className="info-label">Department</h3>
+                      <p className="info-value">{user.serviceName || "Not specified"}</p>
+                    </div>
+                    <div className="info-item">
+                      <h3 className="info-label">Role</h3>
+                      <p className="info-value">{user.role || "Not specified"}</p>
+                    </div>
+                    <div className="info-item">
+                      <h3 className="info-label">Hire Date</h3>
+                      <p className="info-value">{user.date_embauche || "Not specified"}</p>
+                    </div>
+                    <div className="info-item">
+                      <h3 className="info-label">Company Code</h3>
+                      <p className="info-value">{user.code_soc || "Not specified"}</p>
+                    </div>
+                    <div className="info-item">
+                      <h3 className="info-label">Status</h3>
+                      <p className={`info-value status-badge ${user.active ? "active" : "inactive"}`}>
+                        {user.active ? "Active" : "Inactive"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -228,8 +401,120 @@ const ProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay">
+          <div className={`modal-container ${theme}`}>
+            <div className="modal-header">
+              <h3>Change Password</h3>
+              <button 
+                className="modal-close-button"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordErrors({});
+                  setPasswordData({
+                    currentPassword: "",
+                    newPassword: "",
+                    confirmPassword: ""
+                  });
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handlePasswordSubmit} className="password-form">
+              {passwordSuccess ? (
+                <div className="success-message">
+                  <p>Your password has been changed successfully!</p>
+                </div>
+              ) : (
+                <>
+                  {passwordErrors.submit && (
+                    <div className="error-message">
+                      <p>{passwordErrors.submit}</p>
+                    </div>
+                  )}
+                  
+                  <div className="form-group">
+                    <label htmlFor="currentPassword">Current Password</label>
+                    <input
+                      type="password"
+                      id="currentPassword"
+                      name="currentPassword"
+                      value={passwordData.currentPassword}
+                      onChange={handlePasswordChange}
+                      className={passwordErrors.currentPassword ? "error" : ""}
+                    />
+                    {passwordErrors.currentPassword && (
+                      <span className="error-text">{passwordErrors.currentPassword}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="newPassword">New Password</label>
+                    <input
+                      type="password"
+                      id="newPassword"
+                      name="newPassword"
+                      value={passwordData.newPassword}
+                      onChange={handlePasswordChange}
+                      className={passwordErrors.newPassword ? "error" : ""}
+                    />
+                    {passwordErrors.newPassword && (
+                      <span className="error-text">{passwordErrors.newPassword}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="confirmPassword">Confirm New Password</label>
+                    <input
+                      type="password"
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      value={passwordData.confirmPassword}
+                      onChange={handlePasswordChange}
+                      className={passwordErrors.confirmPassword ? "error" : ""}
+                    />
+                    {passwordErrors.confirmPassword && (
+                      <span className="error-text">{passwordErrors.confirmPassword}</span>
+                    )}
+                  </div>
+                  
+                  <div className="form-actions">
+                    <button
+                      type="button"
+                      className="cancel-button"
+                      onClick={() => {
+                        setShowPasswordModal(false);
+                        setPasswordErrors({});
+                        setPasswordData({
+                          currentPassword: "",
+                          newPassword: "",
+                          confirmPassword: ""
+                        });
+                      }}
+                      disabled={isChangingPassword}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="submit-button"
+                      disabled={isChangingPassword}
+                    >
+                      {isChangingPassword ? "Processing..." : "Change Password"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default ProfilePage;
+export default Profile;

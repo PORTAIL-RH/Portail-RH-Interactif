@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
+import { API_URL } from "../../../config"; 
 
 const useNotifications = (role) => {
   const [notifications, setNotifications] = useState([]);
@@ -12,7 +13,7 @@ const useNotifications = (role) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:8080/api/notifications?role=${role}`,
+        `${API_URL}/api/notifications?role=${role}`,
         {
           method: "GET",
           headers: {
@@ -39,7 +40,7 @@ const useNotifications = (role) => {
 
     const token = localStorage.getItem("authToken");
     const client = new Client({
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
+      webSocketFactory: () => new SockJS(`${API_URL}/ws`),
       reconnectDelay: 5000,
       debug: (str) => console.log("🛜 WebSocket:", str),
       connectHeaders: { Authorization: `Bearer ${token}` },

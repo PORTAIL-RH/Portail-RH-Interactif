@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Date;
 
 @Document(collection = "Demandes_Autorisation")
+
 public class DemandeAutorisation {
 
     @Id
@@ -24,7 +25,7 @@ public class DemandeAutorisation {
     private String codeSoc;
     private Date dateDebut;
     private String texteDemande;
-
+    private String observation;
     private Reponse reponseChef;
     private Reponse reponseRH;
 
@@ -48,6 +49,14 @@ public class DemandeAutorisation {
     }
 
     // Getters and Setters
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
+    }
 
     public String getId() {
         return id;

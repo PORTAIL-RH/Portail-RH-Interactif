@@ -1,0 +1,460 @@
+/* CSS Variables for Theming */
+:root {
+  --page-bg: #f8fafc;
+  --card-bg: #ffffff;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-tertiary: #718096;
+  --border-color: #e2e8f0;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  --primary: #3182ce;
+  --primary-hover: #2c5282;
+  --primary-light: #ebf8ff;
+
+  --success: #38a169;
+  --success-light: #f0fff4;
+  --warning: #dd6b20;
+  --warning-light: #fffaf0;
+  --danger: #e53e3e;
+  --danger-light: #fff5f5;
+  --info: #3182ce;
+  --info-light: #ebf8ff;
+
+  --document-color: #805ad5;
+  --document-light: #f5f0ff;
+  --leave-color: #38b2ac;
+  --leave-light: #e6fffa;
+  --reminder-color: #d69e2e;
+  --reminder-light: #fffbea;
+
+  --button-bg: #f7fafc;
+  --button-hover: #edf2f7;
+  --button-active: #e2e8f0;
+
+  --transition-speed: 0.2s;
+}
+
+.dark {
+  --page-bg: #1a202c;
+  --card-bg: #2d3748;
+  --text-primary: #f7fafc;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #a0aec0;
+  --border-color: #4a5568;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+
+  --primary: #63b3ed;
+  --primary-hover: #90cdf4;
+  --primary-light: #2a4365;
+
+  --success: #68d391;
+  --success-light: #1c4532;
+  --warning: #f6ad55;
+  --warning-light: #652b19;
+  --danger: #fc8181;
+  --danger-light: #63171b;
+  --info: #63b3ed;
+  --info-light: #2a4365;
+
+  --document-color: #b794f4;
+  --document-light: #44337a;
+  --leave-color: #4fd1c5;
+  --leave-light: #234e52;
+  --reminder-color: #f6e05e;
+  --reminder-light: #5f370e;
+
+  --button-bg: #2d3748;
+  --button-hover: #4a5568;
+  --button-active: #718096;
+}
+
+/* Main Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-color);
+}
+
+.notifications-container {
+  flex: 1;
+  margin-left: 250px; /* Match sidebar width */
+  transition: margin-left 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
+}
+
+.sidebar.closed ~ .notifications-container {
+  margin-left: 70px; /* Match collapsed sidebar width */
+}
+
+/* Main Container */
+.notifications-content {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+/* Header */
+.notifications-header {
+  margin-bottom: 2rem;
+}
+
+.notifications-header h1 {
+  font-size: 1.75rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.notifications-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.filter-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: var(--button-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+  font-size: 0.875rem;
+}
+
+.filter-button:hover {
+  background-color: var(--button-hover);
+}
+
+.filter-button.active {
+  background-color: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.refresh-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+}
+
+.refresh-button:hover {
+  background-color: var(--button-hover);
+}
+
+.refresh-button svg {
+  font-size: 1.125rem;
+}
+
+.mark-all-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: var(--button-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+  font-size: 0.875rem;
+}
+
+.mark-all-button:hover {
+  background-color: var(--button-hover);
+}
+
+/* Notifications Content */
+.notifications-content {
+  background-color: var(--card-bg);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+/* Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-tertiary);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--button-bg);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--danger);
+}
+
+.error-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.error-state p {
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.error-state button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
+}
+
+.error-state button:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+  margin-bottom: 1rem;
+}
+
+.empty-icon svg {
+  font-size: 2rem;
+  color: var(--text-tertiary);
+}
+
+.empty-state h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+}
+
+/* Notifications List */
+.notifications-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.notification-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background-color var(--transition-speed) ease;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-item:hover {
+  background-color: var(--button-hover);
+}
+
+.notification-item.unread {
+  background-color: var(--primary-light);
+}
+
+.notification-item.unread:hover {
+  background-color: var(--button-hover);
+}
+
+.notification-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  cursor: pointer;
+}
+
+.notification-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+}
+
+.notification-icon {
+  font-size: 1.25rem;
+}
+
+.notification-icon.document {
+  color: var(--document-color);
+}
+
+.notification-icon.leave {
+  color: var(--leave-color);
+}
+
+.notification-icon.reminder {
+  color: var(--reminder-color);
+}
+
+.notification-icon.warning {
+  color: var(--warning);
+}
+
+.notification-icon.success {
+  color: var(--success);
+}
+
+.notification-icon.info {
+  color: var(--info);
+}
+
+.notification-details {
+  flex: 1;
+}
+
+.notification-message {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.notification-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+  color: var(--text-secondary);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+}
+
+.action-button:hover {
+  background-color: var(--button-hover);
+}
+
+.action-button.read-button:hover {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.action-button.delete-button:hover {
+  background-color: var(--danger-light);
+  color: var(--danger);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .notifications-container {
+    padding: 1rem;
+  }
+
+  .notifications-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .notification-item {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .notification-content {
+    gap: 0.75rem;
+  }
+
+  .notification-icon-container {
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .notification-message {
+    font-size: 0.8125rem;
+  }
+
+  .action-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+

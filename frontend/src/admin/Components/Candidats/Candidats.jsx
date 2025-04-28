@@ -2,171 +2,267 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiArrowLeft, FiDownload, FiEye, FiXCircle, FiClock, FiRefreshCw, FiUser, FiMail, FiPhone, FiFileText, FiMapPin, FiBriefcase } from "react-icons/fi";
+import { API_URL } from "../../../config";
+import {
+  FiArrowLeft,
+  FiDownload,
+  FiXCircle,
+  FiRefreshCw,
+  FiUser,
+  FiMail,
+  FiPhone,
+  FiBriefcase,
+  FiChevronDown,
+  FiChevronUp,
+} from "react-icons/fi";
 import "./Candidats.css";
+import { FaStar } from "react-icons/fa";
 
 const CandidatsPostulation = () => {
-  const { id } = useParams(); // Extract the `id` parameter from the URL
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [candidats, setCandidats] = useState([]); // Store fetched candidates
-  const [filteredCandidats, setFilteredCandidats] = useState([]); // Store filtered candidates
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error state
+  const [candidats, setCandidats] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [theme, setTheme] = useState("light");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [expandedSkills, setExpandedSkills] = useState({});
+  const [totalCandidates, setTotalCandidates] = useState(0);
 
-  // Fetch candidates for the specific candidature
   useEffect(() => {
-    const fetchCandidats = async () => {
-      try {
-        if (!id) {
-          console.error("Candidature ID is undefined");
-          return;
-        }
-
-        console.log("Fetching candidates for candidature ID:", id);
-        const url = `http://localhost:8080/api/candidats/byCandidature/${id}`;
-        console.log("Fetch URL:", url);
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Erreur lors du chargement des candidats: ${response.statusText}`);
-        }
-        const data = await response.json();
-        console.log("Fetched data:", data);
-
-        // Ensure `skills` is defined
-        if (!data.skills) {
-          data.skills = []; // Set a default value for `skills`
-        }
-
-        // Handle single candidate object
-        setCandidats([data]);
-        setFilteredCandidats([data]);
-      } catch (error) {
-        console.error("Fetch error:", error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
+    const handleSidebarToggle = (e) => {
+      setSidebarCollapsed(e.detail);
     };
 
+    window.addEventListener("sidebarToggled", handleSidebarToggle);
+    return () => window.removeEventListener("sidebarToggled", handleSidebarToggle);
+  }, []);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
+  }, []);
+
+  const fetchCandidats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!id) throw new Error("Candidature ID is undefined");
+
+      // Fetch candidate count with credentials
+      const countResponse = await fetch(`${API_URL}/api/candidats/${id}/candidate-count`, {
+        credentials: 'include'
+      });
+      
+      if (!countResponse.ok) throw new Error(`Failed to load candidate count: ${countResponse.statusText}`);
+      const count = await countResponse.json();
+      setTotalCandidates(count);
+
+      // Fetch candidates with credentials
+      const candidatesResponse = await fetch(`${API_URL}/api/candidats/by-position/${id}`, {
+        credentials: 'include'
+      });
+      
+      if (!candidatesResponse.ok) throw new Error(`Failed to load candidates: ${candidatesResponse.statusText}`);
+
+      const responseData = await candidatesResponse.json();
+      
+      // Check if the response is an array or contains an array in a property
+      let candidatesArray = Array.isArray(responseData) ? responseData : 
+                          (responseData.candidates || responseData.content || []);
+      
+      if (!Array.isArray(candidatesArray)) {
+        throw new Error("Invalid data format received from API");
+      }
+
+      const formattedCandidates = candidatesArray.map(candidat => ({
+        ...candidat,
+        id: candidat.id || candidat._id, // Handle both id and _id cases
+        technicalSkills: candidat.technicalSkills || {},
+        languageSkills: candidat.languageSkills || {},
+        date_candidature: candidat.dateCandidature || candidat.date_candidature || null,
+        score: Math.round(candidat.matchPercentage || candidat.score || 0),
+        status: candidat.accepted ? "Accepted" : "Pending",
+        experience: "N/A"
+      }));
+
+      setCandidats(formattedCandidates);
+      initializeExpandedSkills(formattedCandidates);
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializeExpandedSkills = (candidates) => {
+    const initialExpandedState = {};
+    candidates.forEach(candidat => {
+      initialExpandedState[`tech-${candidat.id}`] = false;
+      initialExpandedState[`lang-${candidat.id}`] = false;
+    });
+    setExpandedSkills(initialExpandedState);
+  };
+
+  useEffect(() => {
     fetchCandidats();
   }, [id]);
 
-  // Render the component
-  return (
-    <div className="app-container">
-      <Sidebar />
-      <div className="candidats-container">
-        <Navbar />
-        <div className="candidats-content">
-          {/* Loading State */}
-          {loading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Chargement des candidats...</p>
-            </div>
-          ) : error ? (
-            // Error State
-            <div className="error-container">
-              <div className="error-icon">
-                <FiXCircle size={48} />
+  const handleDownloadCV = async (candidatId, cvFilePath) => {
+    try {
+      if (!cvFilePath) throw new Error("No CV file available");
+
+      const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
+        method: "GET",
+        credentials: "include"
+      });
+
+      if (!response.ok) throw new Error("Failed to download CV");
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = cvFilePath.split('/').pop() || "CV.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading CV:", error);
+      alert("Error downloading CV: " + error.message);
+    }
+  };
+
+  const toggleSkills = (skillType, candidatId) => {
+    setExpandedSkills(prev => ({
+      ...prev,
+      [`${skillType}-${candidatId}`]: !prev[`${skillType}-${candidatId}`]
+    }));
+  };
+
+  const renderSkills = (skills, skillType, candidatId) => {
+    if (!skills || Object.keys(skills).length === 0) {
+      return <p className="no-skills">No skills specified</p>;
+    }
+
+    const isExpanded = expandedSkills[`${skillType}-${candidatId}`];
+    const visibleSkills = isExpanded ? Object.entries(skills) : Object.entries(skills).slice(0, 3);
+
+    return (
+      <>
+        <div className="skills-container">
+          {visibleSkills.map(([skill, percentage]) => (
+            <div key={skill} className="skill-item">
+              <div className="skill-info">
+                <span className="skill-name">{skill}</span>
+                <span className="skill-percentage">{Math.round(percentage)}%</span>
               </div>
-              <h2>Erreur lors du chargement des données</h2>
-              <p>{error}</p>
-              <button className="retry-button" onClick={() => window.location.reload()}>
-                <FiRefreshCw /> Réessayer
-              </button>
+              <div className="skill-bar-container">
+                <div className="skill-bar" style={{ width: `${Math.round(percentage)}%` }}></div>
+              </div>
             </div>
-          ) : (
-            // Success State
-            <div className="candidats-grid">
-              {filteredCandidats.map((candidat) => (
-                <div key={candidat.id} className="candidat-card">
-                  <div className="candidat-header">
-                    <div className="candidat-photo">
-                      <img src={candidat.photo || "/placeholder.svg"} alt={candidat.nom} />
-                    </div>
-                    <div className="candidat-info">
-                      <h3 className="candidat-name">{candidat.nom} {candidat.prenom}</h3>
-                      <div className="candidat-meta">
-                        <span className="candidat-experience">{candidat.experience}</span>
-                        <span className="candidat-location">
-                          <FiMapPin className="meta-icon" />
-                          {candidat.location}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="candidat-status">
-                      <span className={`status-badge ${candidat.status}`}>
-                        {candidat.status}
-                      </span>
+          ))}
+        </div>
+        {Object.keys(skills).length > 3 && (
+          <button 
+            className="skills-toggle" 
+            onClick={() => toggleSkills(skillType, candidatId)}
+          >
+            {isExpanded ? "Show Less" : "Show More"}
+          </button>
+        )}
+      </>
+    );
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("fr-FR", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "N/A";
+    }
+  };
+
+  if (loading) return <div className="loading-container">Loading candidates...</div>;
+  if (error) return <div className="error-container">Error: {error}</div>;
+  if (candidats.length === 0) return <div className="empty-state">No candidates found</div>;
+
+  return (
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
+      <div className={`candidats-container ${sidebarCollapsed ? "collapsed" : ""}`}>
+        <Navbar theme={theme} />
+        <div className="candidats-content">
+          <div className="header-section">
+            <button onClick={() => navigate(-1)} className="back-button">
+              <FiArrowLeft /> Back
+            </button>
+            <h2>Candidates for Position</h2>
+            <div className="candidate-count">{totalCandidates} candidates</div>
+          </div>
+
+          <div className="candidats-grid">
+            {candidats.map(candidat => (
+              <div key={candidat.id} className="candidat-card">
+                <div className="candidat-header">
+                  <div className="candidat-info">
+                    <h3>{candidat.nom} {candidat.prenom}, {candidat.age} years</h3>
+                    <div className="candidat-meta">
+                      <span><FiBriefcase /> {candidat.experience}</span>
+                      <span><FaStar /> {candidat.score}% match</span>
                     </div>
                   </div>
-
-                  <div className="candidat-body">
-                    <div className="candidat-contact">
-                      <div className="contact-item">
-                        <FiMail className="contact-icon" />
-                        <span>{candidat.email}</span>
-                      </div>
-                      <div className="contact-item">
-                        <FiPhone className="contact-icon" />
-                        <span>{candidat.numTel}</span>
-                      </div>
-                    </div>
-
-                    <div className="candidat-skills">
-                      {candidat.skills?.slice(0, 5).map((skill, index) => (
-                        <span key={index} className="skill-badge">{skill}</span>
-                      ))}
-                      {candidat.skills?.length > 5 && (
-                        <span className="skill-badge more">+{candidat.skills.length - 5}</span>
-                      )}
-                    </div>
-
-                    <div className="candidat-details">
-                      <div className="detail-item">
-                        <span className="detail-label">Date de candidature</span>
-                        <span className="detail-value">
-                          {candidat.applicationDate ? new Date(candidat.applicationDate).toLocaleDateString("fr-FR") : "N/A"}
-                        </span>
-                      </div>
-                      <div className="detail-item">
-                        <span className="detail-label">Formation</span>
-                        <span className="detail-value education">{candidat.education || "N/A"}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="candidat-footer">
-                    <button
-                      className="action-button view"
-                      onClick={() => navigate(`/candidats/${candidat.id}`)}
-                      title="Voir les détails"
-                    >
-                      <FiEye />
-                      <span>Détails</span>
-                    </button>
-                    <button
-                      className="action-button download"
-                      onClick={() => alert(`Téléchargement du CV de ${candidat.nom}`)}
-                      title="Télécharger le CV"
-                    >
-                      <FiDownload />
-                      <span>CV</span>
-                    </button>
-                    <button
-                      className="action-button download"
-                      onClick={() => alert(`Téléchargement de la lettre de motivation de ${candidat.nom}`)}
-                      title="Télécharger la lettre de motivation"
-                    >
-                      <FiFileText />
-                      <span>LM</span>
-                    </button>
+                  <div className={`status-badge ${candidat.status.toLowerCase()}`}>
+                    {candidat.status}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="candidat-body">
+                  <div className="candidat-contact">
+                    <div><FiMail /> {candidat.email}</div>
+                    <div><FiPhone /> {candidat.numTel}</div>
+                  </div>
+
+                  <div className="skills-section">
+                    <h4>Technical Skills</h4>
+                    {renderSkills(candidat.technicalSkills, "tech", candidat.id)}
+                  </div>
+
+                  <div className="skills-section">
+                    <h4>Language Skills</h4>
+                    {renderSkills(candidat.languageSkills, "lang", candidat.id)}
+                  </div>
+
+                  <div className="detail-item">
+                    <span>Application Date:</span>
+                    <span>{formatDate(candidat.date_candidature)}</span>
+                  </div>
+                </div>
+
+                <div className="candidat-footer">
+                  <button
+                    onClick={() => handleDownloadCV(candidat.id, candidat.cvFilePath)}
+                    disabled={!candidat.cvFilePath}
+                    title={candidat.cvFilePath ? "Download CV" : "No CV available"}
+                  >
+                    <FiDownload /> CV
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

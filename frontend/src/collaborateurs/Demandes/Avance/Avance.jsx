@@ -193,14 +193,17 @@ const PreAvanceForm = () => {
   }
 
   return (
-    <div className="dashboard-container">
-      <Navbar />
-      <div className="main-content">
-        <Sidebar />
-        <div className="content-area">
+    <div className="app-container">
+      <Sidebar />
+      <div className="demande-container">
+        <Navbar />
+        <div className="demande-content">
           <div className="page-header">
             <h1>Demande de Pré-Avance</h1>
-            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p>
+            
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p><br/>
+            <bold><p className="subtitle">NB: Si tu veux avoir un montant élevé tu doit contacter votre direction de département directement</p></bold>
+
           </div>
 
           <div className="form-card">

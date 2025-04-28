@@ -1,0 +1,77 @@
+/* Import reset */
+@import url("./reset.css");
+
+/* Main Layout Variables */
+:root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 70px;
+  --transition-speed: 0.3s;
+
+  /* Light Theme */
+  --bg-color-light: #f8fafc;
+  --bg-card-light: #ffffff;
+  --text-primary-light: #1e293b;
+
+  /* Dark Theme */
+  --bg-color-dark: #0f172a;
+  --bg-card-dark: #1e293b;
+  --text-primary-dark: #f1f5f9;
+}
+
+/* Main Layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-color-light);
+}
+
+.app-container.dark {
+  background-color: var(--bg-color-dark);
+}
+
+.main-content-wrapper {
+  flex: 1;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition-speed) ease;
+  min-height: 100vh;
+  position: relative;
+  isolation: isolate; /* Create a new stacking context */
+  width: calc(100% - var(--sidebar-width));
+}
+
+.sidebar.collapsed ~ .main-content-wrapper {
+  margin-left: var(--sidebar-collapsed-width);
+  width: calc(100% - var(--sidebar-collapsed-width));
+}
+
+.content-area {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Light/Dark Theme Text Colors */
+.app-container {
+  color: var(--text-primary-light);
+}
+
+.app-container.dark {
+  color: var(--text-primary-dark);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .main-content-wrapper {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .sidebar.collapsed ~ .main-content-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+    width: calc(100% - var(--sidebar-collapsed-width));
+  }
+
+  .content-area {
+    padding: 1rem;
+  }
+}
