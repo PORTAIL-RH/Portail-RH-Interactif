@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react"
 import { FiUser, FiMail, FiPhone, FiMapPin, FiCalendar, FiBriefcase, FiEdit } from "react-icons/fi"
 import Navbar from '../Components/Navbar/Navbar';
 import Sidebar from '../Components/Sidebar/Sidebar';
+import Demandes from "./Demandes"
 import "./Profile.css"
 
 const Profile = () => {
@@ -21,7 +23,6 @@ const Profile = () => {
   const [activeTab, setActiveTab] = useState("profile")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [demandes, setDemandes] = useState([])
 
   // Retrieve the userId from localStorage
   const userId = localStorage.getItem("userId")
@@ -29,7 +30,6 @@ const Profile = () => {
   useEffect(() => {
     if (userId) {
       fetchUserData(userId)
-      fetchUserDemandes(userId)
     }
   }, [userId])
 
@@ -65,35 +65,7 @@ const Profile = () => {
     }
   }
 
-  const fetchUserDemandes = async (userId) => {
-    try {
-      // This would be replaced with actual API calls
-      // Simulating data for now
-      setDemandes([
-        { id: 1, type: "Formation", status: "Approuvée", date: "2023-11-15" },
-        { id: 2, type: "Congé", status: "En attente", date: "2023-11-10" },
-        { id: 3, type: "Document", status: "Rejetée", date: "2023-11-05" },
-        { id: 4, type: "Autorisation", status: "Approuvée", date: "2023-10-28" },
-      ])
-    } catch (error) {
-      console.error("Error fetching user demandes:", error)
-    }
-  }
-
-  const getStatusClass = (status) => {
-    switch (status.toLowerCase()) {
-      case "approuvée":
-        return "status-approved"
-      case "en attente":
-        return "status-pending"
-      case "rejetée":
-        return "status-rejected"
-      default:
-        return ""
-    }
-  }
-
-  if (loading) {
+  if (loading && !userData.nom) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
@@ -228,51 +200,7 @@ const Profile = () => {
             </div>
           )}
 
-          {activeTab === "demandes" && (
-            <div className="demandes-content">
-              <div className="demandes-card">
-                <div className="demandes-header">
-                  <h2>Historique des Demandes</h2>
-                </div>
-                <div className="demandes-table-container">
-                  <table className="demandes-table">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Type</th>
-                        <th>Date</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {demandes.length > 0 ? (
-                        demandes.map((demande) => (
-                          <tr key={demande.id}>
-                            <td>{demande.id}</td>
-                            <td>{demande.type}</td>
-                            <td>{demande.date}</td>
-                            <td>
-                              <span className={`status-badge ${getStatusClass(demande.status)}`}>{demande.status}</span>
-                            </td>
-                            <td>
-                              <button className="action-button view-button">Voir</button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="5" className="empty-table">
-                            Aucune demande trouvée
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
+          {activeTab === "demandes" && <Demandes userId={userId} />}
         </div>
       </div>
     </div>
