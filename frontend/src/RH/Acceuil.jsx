@@ -1,210 +1,351 @@
-import { useState, useEffect } from "react";
-import Sidebar from "./Components/Sidebar/Sidebar";
-import Navbar from "./Components/Navbar/Navbar";
-import { FiUsers, FiUserCheck, FiUserX, FiBell, FiMail, FiSun, FiMoon } from "react-icons/fi";
-import { FaFemale, FaMale } from "react-icons/fa";
-import "./Acceuil.css";
+"use client"
+import { useState, useEffect, useRef, useCallback } from "react"
+import Sidebar from "./Components/Sidebar/Sidebar"
+import Navbar from "./Components/Navbar/Navbar"
+import { FiUsers, FiUserCheck, FiUserX, FiClock, FiMapPin, FiRefreshCw } from "react-icons/fi"
+import { FaFemale, FaMale } from "react-icons/fa"
+import "./Acceuil.css"
+import { API_URL } from "../config"
+
+// Cache management helper
+const useCache = () => {
+  const get = (key, defaultValue) => {
+    try {
+      const stored = localStorage.getItem(key)
+      return stored ? JSON.parse(stored) : defaultValue
+    } catch (e) {
+      console.error(`Cache read error for ${key}:`, e)
+      return defaultValue
+    }
+  }
+
+  const set = (key, value) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch (e) {
+      console.error(`Cache write error for ${key}:`, e)
+    }
+  }
+
+  return { get, set }
+}
 
 const Accueil = () => {
-  const [unviewedCount, setUnviewedCount] = useState(0);
-  const [totalNotifications, setTotalNotifications] = useState(0);
-  const [activatedPersonnel, setActivatedPersonnel] = useState(0);
-  const [nonActivatedPersonnel, setNonActivatedPersonnel] = useState(0);
-  const [totalPersonnel, setTotalPersonnel] = useState(0);
-  const [demandesConge, setDemandesConge] = useState([]);
-  const [demandesFormation, setDemandesFormation] = useState([]);
-  const [demandesDocument, setDemandesDocument] = useState([]);
-  const [demandesPreAvance, setDemandesPreAvance] = useState([]);
-  const [demandesAutorisation, setDemandesAutorisation] = useState([]);
-  const [theme, setTheme] = useState("light");
+  const { get: getCache, set: setCache } = useCache()
+  const [dashboardStats, setDashboardStats] = useState(() => 
+    getCache('dashboardStats', {
+      personnel: { activated: 0, nonActivated: 0, total: 0 },
+      gender: { male: 0, female: 0, total: 0 },
+      notifications: { unread: 0, total: 0 }
+    })
+  )
 
-  const [genderDistribution, setGenderDistribution] = useState({
-    male: 0,
-    female: 0,
-  });
+  const [demandes, setDemandes] = useState(() => 
+    getCache('demandes', {
+      conge: [], formation: [], document: [], preAvance: [], autorisation: []
+    })
+  )
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [personnel, setPersonnel] = useState(() => getCache('personnel', []))
+  const [upcomingFormations, setUpcomingFormations] = useState(() => getCache('upcomingFormations', []))
+  const [theme, setTheme] = useState("light")
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState('')
+  const [error, setError] = useState(null)
 
-  // Initialize theme
+  // Refs for cleanup
+  const pollingRef = useRef(null)
+  const isMountedRef = useRef(true)
+
+  // Theme management
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
-    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  // Toggle theme
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
-
-  // Fetch and filter demandes
-  const fetchAndFilterDemandes = async (endpoint, setState, localStorageKey, forceRefresh = false) => {
-    const cachedData = localStorage.getItem(localStorageKey);
-
-    if (forceRefresh || !cachedData) {
-      try {
-        const response = await fetch(endpoint);
-        const data = await response.json();
-        console.log("Fetched data:", data); // Debugging
-
-        // Remove filtering conditions to include all demandes
-        const filteredData = data; // No filtering, include all demandes
-        console.log("Filtered data:", filteredData); // Debugging
-
-        setState(filteredData);
-        localStorage.setItem(localStorageKey, JSON.stringify(filteredData));
-        console.log("Updated localStorage for key:", localStorageKey); // Debugging
-      } catch (error) {
-        console.error(`Error fetching ${localStorageKey}:`, error);
-      }
-    } else {
-      console.log("Using cached data from localStorage for key:", localStorageKey); // Debugging
-      setState(JSON.parse(cachedData));
-    }
-  };
-
-  // Fetch initial data and listen for SSE updates
-  useEffect(() => {
-    setIsLoading(true);
-
-    // Fetch activation status
-    fetch("http://localhost:8080/api/Personnel/activation-status")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Fetched activation status:", data); // Debugging
-        setActivatedPersonnel(data.activated);
-        setNonActivatedPersonnel(data.nonActivated);
-      })
-      .catch((error) => {
-        console.error("Error fetching activation status:", error);
-      });
-
-    // Fetch gender distribution
-    fetch("http://localhost:8080/api/Personnel/gender-distribution")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Fetched gender distribution:", data); // Debugging
-        setGenderDistribution({
-          male: data.male,
-          female: data.female,
-        });
-      })
-      .catch((error) => {
-        console.error("Error fetching gender distribution:", error);
-      });
-
-    // Fetch total personnel
-    fetch("http://localhost:8080/api/Personnel/all")
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("Fetched personnel data:", data); // Debugging
-        setTotalPersonnel(data.length);
-      })
-      .catch((error) => {
-        console.error("Error fetching personnel data:", error);
-      });
-
-    // Fetch notifications
-    fetch("http://localhost:8080/api/notifications/unreadnbr?role=RH")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => setUnviewedCount(data))
-      .catch((error) => console.error("Error fetching unread notifications:", error));
-
-    fetch("http://localhost:8080/api/notifications/nbr?role=RH")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        return response.json();
-      })
-      .then((data) => setTotalNotifications(data))
-      .catch((error) => console.error("Error fetching total notifications:", error));
-
-    // Fetch demandes
-    fetchAndFilterDemandes("http://localhost:8080/api/demande-conge", setDemandesConge, "demandesConge");
-    fetchAndFilterDemandes("http://localhost:8080/api/demande-formation", setDemandesFormation, "demandesFormation");
-    fetchAndFilterDemandes("http://localhost:8080/api/demande-document", setDemandesDocument, "demandesDocument");
-    fetchAndFilterDemandes("http://localhost:8080/api/demande-pre-avance", setDemandesPreAvance, "demandesPreAvance");
-    fetchAndFilterDemandes("http://localhost:8080/api/demande-autorisation", setDemandesAutorisation, "demandesAutorisation");
-
-    // Listen for SSE updates
-    const eventSource = new EventSource("http://localhost:8080/sse/updates");
-
-    eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data);
-      const { type, data } = update;
-
-      console.log("Received update:", type, data); // Debugging
-
-      // Refresh data based on the update type
-      switch (type) {
-        case "created":
-        case "updated":
-        case "deleted":
-          fetchAndFilterDemandes("http://localhost:8080/api/demande-conge", setDemandesConge, "demandesConge", true);
-          fetchAndFilterDemandes("http://localhost:8080/api/demande-formation", setDemandesFormation, "demandesFormation", true);
-          fetchAndFilterDemandes("http://localhost:8080/api/demande-document", setDemandesDocument, "demandesDocument", true);
-          fetchAndFilterDemandes("http://localhost:8080/api/demande-pre-avance", setDemandesPreAvance, "demandesPreAvance", true);
-          fetchAndFilterDemandes("http://localhost:8080/api/demande-autorisation", setDemandesAutorisation, "demandesAutorisation", true);
-          break;
-        default:
-          console.warn("Unknown update type:", type);
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error);
-      eventSource.close();
-    };
-
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    document.documentElement.className = savedTheme
+    
     return () => {
-      eventSource.close();
-    };
-  }, []);
+      document.documentElement.className = ''
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    document.documentElement.className = newTheme
+    localStorage.setItem("theme", newTheme)
+  }
+
+  // Fetch upcoming formations with retry logic
+  const fetchFormations = useCallback(async () => {
+    try {
+      const timestamp = Date.now()
+      const response = await fetch(`${API_URL}/api/demande-formation/approved?timestamp=${timestamp}`)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const now = new Date()
+      
+      const upcoming = (Array.isArray(data) ? data : [])
+        .filter(f => f?.dateDebut && new Date(f.dateDebut) >= now)
+        .sort((a, b) => new Date(a.dateDebut) - new Date(b.dateDebut))
+        .slice(0, 3)
+
+      if (isMountedRef.current) {
+        setUpcomingFormations(upcoming)
+        setCache('upcomingFormations', upcoming)
+        setError(null)
+      }
+      
+      return upcoming
+    } catch (err) {
+      console.error("Formations fetch failed:", err)
+      if (isMountedRef.current) {
+        setError("Erreur de chargement des formations")
+      }
+      throw err
+    }
+  }, [setCache])
+
+  // Main data fetching function
+  const fetchAllData = useCallback(async () => {
+    if (!isMountedRef.current) return
+    
+    console.log("Starting data refresh...")
+    setIsRefreshing(true)
+    setError(null)
+    
+    try {
+      const timestamp = Date.now()
+      const cacheBuster = `?timestamp=${timestamp}`
+      
+      // Define all endpoints
+      const endpoints = {
+        stats: {
+          activation: `${API_URL}/api/Personnel/activation-status${cacheBuster}`,
+          gender: `${API_URL}/api/Personnel/gender-distribution${cacheBuster}`,
+          unread: `${API_URL}/api/notifications/unreadnbr?role=RH${cacheBuster}`,
+          total: `${API_URL}/api/notifications/nbr?role=RH${cacheBuster}`,
+          personnel: `${API_URL}/api/Personnel/active${cacheBuster}`
+        },
+        demandes: {
+          conge: `${API_URL}/api/demande-conge/approved${cacheBuster}`,
+          formation: `${API_URL}/api/demande-formation/approved${cacheBuster}`,
+          document: `${API_URL}/api/demande-document${cacheBuster}`,
+          preAvance: `${API_URL}/api/demande-pre-avance${cacheBuster}`,
+          autorisation: `${API_URL}/api/demande-autorisation/approved${cacheBuster}`
+        }
+      }
+
+      // Fetch all data in parallel
+      const [
+        activationRes,
+        genderRes,
+        unreadRes,
+        totalRes,
+        personnelRes,
+        congeRes,
+        formationRes,
+        documentRes,
+        preAvanceRes,
+        autorisationRes
+      ] = await Promise.all([
+        fetch(endpoints.stats.activation),
+        fetch(endpoints.stats.gender),
+        fetch(endpoints.stats.unread),
+        fetch(endpoints.stats.total),
+        fetch(endpoints.stats.personnel),
+        fetch(endpoints.demandes.conge),
+        fetch(endpoints.demandes.formation),
+        fetch(endpoints.demandes.document),
+        fetch(endpoints.demandes.preAvance),
+        fetch(endpoints.demandes.autorisation)
+      ])
+
+      // Check for any failed responses
+      const responses = [activationRes, genderRes, unreadRes, totalRes, personnelRes, 
+                         congeRes, formationRes, documentRes, preAvanceRes, autorisationRes]
+      
+      const failed = responses.some(res => !res.ok)
+      if (failed) {
+        throw new Error("Une ou plusieurs requêtes ont échoué")
+      }
+
+      // Process all responses
+      const [
+        activationData,
+        genderData,
+        unreadData,
+        totalData,
+        personnelData,
+        congeData,
+        formationData,
+        documentData,
+        preAvanceData,
+        autorisationData
+      ] = await Promise.all(responses.map(res => res.json()))
+
+      // Update state
+      if (isMountedRef.current) {
+        setDashboardStats({
+          personnel: {
+            activated: activationData.activated,
+            nonActivated: activationData.nonActivated,
+            total: personnelData.length
+          },
+          gender: {
+            male: genderData.male,
+            female: genderData.female,
+            total: genderData.male + genderData.female
+          },
+          notifications: {
+            unread: unreadData,
+            total: totalData
+          }
+        })
+
+        setDemandes({
+          conge: congeData,
+          formation: formationData,
+          document: documentData,
+          preAvance: preAvanceData,
+          autorisation: autorisationData
+        })
+
+        setPersonnel(personnelData)
+
+        // Update cache
+        setCache('dashboardStats', {
+          personnel: {
+            activated: activationData.activated,
+            nonActivated: activationData.nonActivated,
+            total: personnelData.length
+          },
+          gender: {
+            male: genderData.male,
+            female: genderData.female,
+            total: genderData.male + genderData.female
+          },
+          notifications: {
+            unread: unreadData,
+            total: totalData
+          }
+        })
+
+        setCache('demandes', {
+          conge: congeData,
+          formation: formationData,
+          document: documentData,
+          preAvance: preAvanceData,
+          autorisation: autorisationData
+        })
+
+        setCache('personnel', personnelData)
+
+        // Update timestamp
+        setLastUpdated(new Date().toLocaleTimeString())
+      }
+
+      // Fetch formations separately
+      await fetchFormations()
+
+    } catch (err) {
+      console.error("Data fetch error:", err)
+      if (isMountedRef.current) {
+        setError("Erreur de chargement des données. Réessayez...")
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsRefreshing(false)
+        console.log("Data refresh completed")
+      }
+    }
+  }, [fetchFormations, setCache])
+
+  // Setup polling
+  useEffect(() => {
+    isMountedRef.current = true
+    
+    // Initial load
+    fetchAllData()
+    
+    // Setup polling every 10 seconds
+    pollingRef.current = setInterval(fetchAllData, 10000)
+    
+    // Cleanup
+    return () => {
+      isMountedRef.current = false
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
+    }
+  }, [fetchAllData])
+
+  // Manual refresh handler
+  const handleRefresh = () => {
+    if (!isRefreshing) {
+      fetchAllData()
+    }
+  }
+
+  // Calculate percentages
+  const malePercentage = dashboardStats.gender.total > 0 
+    ? (dashboardStats.gender.male / dashboardStats.gender.total * 100).toFixed(2)
+    : 0
+  const femalePercentage = dashboardStats.gender.total > 0 
+    ? (dashboardStats.gender.female / dashboardStats.gender.total * 100).toFixed(2)
+    : 0
+
+  // Calculate request totals
+  const demandesTotals = {
+    conge: demandes.conge?.length || 0,
+    formation: demandes.formation?.length || 0,
+    document: demandes.document?.length || 0,
+    preAvance: demandes.preAvance?.length || 0,
+    autorisation: demandes.autorisation?.length || 0
+  }
 
   return (
     <div className={`app-container ${theme}`}>
-      <Sidebar />
+      <Sidebar theme={theme} />
       <div className="dashboard-container">
-        <Navbar />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        
         <div className="dashboard-content">
+          {/* Loading and error indicators */}
+          {isRefreshing && (
+            <div className="refreshing-indicator">
+              <FiRefreshCw className="spinning" />
+              <span>Actualisation en cours...</span>
+            </div>
+          )}
+          
+          {error && (
+            <div className="error-message">
+              {error}
+              <button onClick={handleRefresh}>Réessayer</button>
+            </div>
+          )}
+
           <div className="dashboard-header">
             <div className="header-top">
               <h1>Aperçu du Tableau de Bord</h1>
-              <div className="header-actions">
-                <button
-                  className="theme-toggle-button"
-                  onClick={toggleTheme}
-                  aria-label={theme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
-                >
-                  {theme === "light" ? <FiMoon /> : <FiSun />}
-                </button>
-              </div>
+              <button 
+                className={`refresh-btn ${isRefreshing ? 'disabled' : ''}`}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                <FiRefreshCw /> Rafraîchir
+              </button>
             </div>
             <p>Bienvenue, RH. Voici ce qui se passe avec votre équipe aujourd'hui.</p>
+            {lastUpdated && (
+              <div className="last-updated">
+                <FiClock /> Dernière mise à jour: {lastUpdated}
+              </div>
+            )}
           </div>
 
           <div className="dashboard-grid">
@@ -221,29 +362,10 @@ const Accueil = () => {
                     </div>
                     <div className="stat-details">
                       <h3>Activé</h3>
-                      <p className="stat-value">{activatedPersonnel}</p>
+                      <p className="stat-value">{dashboardStats.personnel.activated}</p>
                     </div>
                   </div>
 
-                  <div className="stat-card">
-                    <div className="stat-icon non-activated">
-                      <FiUserX />
-                    </div>
-                    <div className="stat-details">
-                      <h3>Non Activé</h3>
-                      <p className="stat-value">{nonActivatedPersonnel}</p>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon total">
-                      <FiUsers />
-                    </div>
-                    <div className="stat-details">
-                      <h3>Total</h3>
-                      <p className="stat-value">{totalPersonnel}</p>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
@@ -262,84 +384,31 @@ const Accueil = () => {
                         <span>Hommes</span>
                       </div>
                       <div className="gender-bar-wrapper">
-                        <div
-                          className="gender-bar male-bar"
-                          style={{ width: `${genderDistribution.male}%` }}
+                        <div 
+                          className="gender-bar male-bar" 
+                          style={{ width: `${malePercentage}%` }}
                         ></div>
-                        <span className="gender-percentage">{genderDistribution.male.toFixed(2)}%</span>
+                        <span className="gender-percentage">{malePercentage}%</span>
                       </div>
                     </div>
-
                     <div className="gender-bar-container">
                       <div className="gender-label">
                         <FaFemale className="female-icon" />
                         <span>Femmes</span>
                       </div>
                       <div className="gender-bar-wrapper">
-                        <div
-                          className="gender-bar female-bar"
-                          style={{ width: `${genderDistribution.female}%` }}
+                        <div 
+                          className="gender-bar female-bar" 
+                          style={{ width: `${femalePercentage}%` }}
                         ></div>
-                        <span className="gender-percentage">{genderDistribution.female.toFixed(2)}%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="gender-pie-chart">
-                    <div
-                      className="pie-chart"
-                      style={{
-                        background: `conic-gradient(
-                          #4f46e5 0% ${genderDistribution.male}%, 
-                          #ec4899 ${genderDistribution.male}% 100%
-                        )`,
-                      }}
-                    ></div>
-                    <div className="pie-chart-legend">
-                      <div className="legend-item">
-                        <FaMale className="male-icon" />
-                        <span>Hommes</span>
-                      </div>
-                      <div className="legend-item">
-                        <FaFemale className="female-icon" />
-                        <span>Femmes</span>
+                        <span className="gender-percentage">{femalePercentage}%</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-
-            {/* Notifications Card */}
-            <div className="dashboard-card notifications">
-              <div className="card-header">
-                <h2>Notifications</h2>
-              </div>
-              <div className="card-content">
-                <div className="stat-cards">
-                  <div className="stat-card">
-                    <div className="stat-icon unread">
-                      <FiBell />
-                    </div>
-                    <div className="stat-details">
-                      <h3>Non lues</h3>
-                      <p className="stat-value">{unviewedCount}</p>
-                    </div>
-                  </div>
-
-                  <div className="stat-card">
-                    <div className="stat-icon total-notifications">
-                      <FiMail />
-                    </div>
-                    <div className="stat-details">
-                      <h3>Total</h3>
-                      <p className="stat-value">{totalNotifications}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
+            
             {/* Recent Requests Card */}
             <div className="dashboard-card recent-requests">
               <div className="card-header">
@@ -348,33 +417,87 @@ const Accueil = () => {
               <div className="card-content">
                 <div className="requests-summary">
                   <div className="request-type">
-                    <h3>Demandes de Congé</h3>
-                    <p>{demandesConge.length || 0}</p>
+                    <h3>Congé</h3>
+                    <p>{demandesTotals.conge}</p>
                   </div>
                   <div className="request-type">
-                    <h3>Demandes de Formation</h3>
-                    <p>{demandesFormation.length || 0}</p>
+                    <h3>Formation</h3>
+                    <p>{demandesTotals.formation}</p>
                   </div>
                   <div className="request-type">
-                    <h3>Demandes de Documents</h3>
-                    <p>{demandesDocument.length || 0}</p>
+                    <h3>Documents</h3>
+                    <p>{demandesTotals.document}</p>
                   </div>
                   <div className="request-type">
-                    <h3>Demandes de Pré-Avance</h3>
-                    <p>{demandesPreAvance.length || 0}</p>
+                    <h3>Pré-Avance</h3>
+                    <p>{demandesTotals.preAvance}</p>
                   </div>
                   <div className="request-type">
-                    <h3>Demandes d'Autorisation</h3>
-                    <p>{demandesAutorisation.length || 0}</p>
+                    <h3>Autorisation</h3>
+                    <p>{demandesTotals.autorisation}</p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Upcoming Training Card */}
+            <div className="dashboard-card upcoming-formations">
+              <div className="card-header">
+                <h2>Formations à Venir</h2>
+              </div>
+              <div className="card-content">
+                {upcomingFormations.length > 0 ? (
+                  <div className="formations-list">
+                    {upcomingFormations.map((formation, index) => {
+                      const startDate = new Date(formation.dateDebut)
+                      const endDate = formation.dateFin ? new Date(formation.dateFin) : null
+                      
+                      return (
+                        <div key={index} className="formation-event">
+                          <div className="calendar-badge">
+                            <div className="calendar-month">
+                              {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
+                            </div>
+                            <div className="calendar-day">{startDate.getDate()}</div>
+                            <div className="calendar-weekday">
+                              {startDate.toLocaleString("fr-FR", { weekday: "short" })}
+                            </div>
+                          </div>
+                          <div className="formation-info">
+                            <h3 className="formation-title">
+                              {formation.theme?.name || formation.titre?.name || "Formation"}
+                            </h3>
+                            <div className="formation-meta">
+                              <span className="meta-item">
+                                <FiClock /> 
+                                {endDate 
+                                  ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} jours`
+                                  : "1 jour"}
+                              </span>
+                              {formation.lieu && (
+                                <span className="meta-item">
+                                  <FiMapPin /> {formation.lieu}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="no-formations">
+                    <FiClock className="no-data-icon" />
+                    <p>Aucune formation prévue</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Accueil;
+export default Accueil

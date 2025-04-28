@@ -5,6 +5,6 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CandidatureRepository extends MongoRepository<Candidature, String> {
+public interface CandidatureRepository extends MongoRepository<Candidature, String>, CustomCandidatureRepository {
 
 }

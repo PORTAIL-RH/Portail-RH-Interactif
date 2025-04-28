@@ -2,10 +2,17 @@ package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.DemandeAutorisationRepository;
+import com.example.PortailRH.Repository.FichierJointRepository;
 import com.example.PortailRH.Repository.PersonnelRepository;
+import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
+import jakarta.validation.Valid;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -13,15 +20,14 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/demande-autorisation")
@@ -37,11 +43,14 @@ public class DemandeAutorisationController {
     private NotificationService notificationService;
     @Autowired
     private PersonnelRepository personnelRepository;
-
     @Autowired
-    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
+    private ServiceRepository serviceRepository;
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
     @Autowired
     private SseController sseController;
+    @Autowired
+    private FichierJointRepository fichierJointRepository;
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> createDemande(
@@ -115,7 +124,7 @@ public class DemandeAutorisationController {
                         String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
 
                         // Create a notification with role and serviceId
-                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getServiceId());
+                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getId());
                     } else {
                         System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
                     }
@@ -154,15 +163,73 @@ public class DemandeAutorisationController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandeAutorisation demandeAutorisation) {
-        if (!demandeAutorisationRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updateDemande(
+            @PathVariable String id,
+            @RequestParam(value = "dateDebut", required = false) String dateDebutStr,
+            @RequestParam(value = "texteDemande", required = false) String texteDemande,
+            @RequestParam(value = "heureSortie", required = false) String heureSortieStr,
+            @RequestParam(value = "heureRetour", required = false) String heureRetourStr,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
 
-        demandeAutorisation.setId(id);
-        demandeAutorisationRepository.save(demandeAutorisation);
-        return ResponseEntity.ok("Demande mise à jour avec succès");
+        return demandeAutorisationRepository.findById(id).map(existingDemande -> {
+            try {
+                // Update date if provided
+                if (dateDebutStr != null && !dateDebutStr.isEmpty()) {
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                    existingDemande.setDateDebut(dateFormat.parse(dateDebutStr));
+                }
+
+                // Update text if provided
+                if (texteDemande != null && !texteDemande.isEmpty()) {
+                    existingDemande.setTexteDemande(texteDemande);
+                }
+
+                // Update departure time if provided
+                if (heureSortieStr != null && !heureSortieStr.isEmpty()) {
+                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                    LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
+                    existingDemande.setHoraireSortie(heureSortie.getHour());
+                    existingDemande.setMinuteSortie(heureSortie.getMinute());
+                }
+
+                // Update return time if provided
+                if (heureRetourStr != null && !heureRetourStr.isEmpty()) {
+                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+                    LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
+                    existingDemande.setHoraireRetour(heureRetour.getHour());
+                    existingDemande.setMinuteRetour(heureRetour.getMinute());
+                }
+
+                // Handle file upload if provided
+                if (file != null && !file.isEmpty()) {
+                    // Remove old files if needed
+                    if (existingDemande.getFiles() != null && !existingDemande.getFiles().isEmpty()) {
+                        fichierJointRepository.deleteAll(existingDemande.getFiles());
+                    }
+
+                    // Save new file
+                    Fichier_joint fichier = fichierJointService.saveFile(file);
+                    existingDemande.setFiles(List.of(fichier));
+                }
+
+                // Save the updated demande
+                DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(existingDemande);
+
+                return ResponseEntity.ok(Map.of(
+                        "message", "Demande d'autorisation mise à jour avec succès",
+                        "demandeId", updatedDemande.getId()
+                ));
+
+            } catch (ParseException e) {
+                return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
+            } catch (DateTimeParseException e) {
+                return ResponseEntity.badRequest().body("Format d'heure invalide. Utilisez le format 'HH:mm'.");
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Erreur lors du traitement du fichier: " + e.getMessage());
+            }
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
@@ -182,30 +249,212 @@ public class DemandeAutorisationController {
     }
 
     @PutMapping("/valider/{id}")
-    public ResponseEntity<String> validerDemande(@PathVariable String id) {
+    public ResponseEntity<?> validerDemande(
+            @PathVariable String id,
+            @RequestBody(required = false) TraitementDemandeRequest request) {
+
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
-            demandeAutorisationRepository.save(demande);
-            return ResponseEntity.ok("Demande validée avec succès");
+
+            // Set observation if provided in request body (optional for approval)
+            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
+                demande.setObservation(request.getObservation().trim());
+            } else {
+                demande.setObservation(null); // Clear observation if not provided
+            }
+
+            DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(demande);
+            sseController.sendUpdate("demande_updated", updatedDemande);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Demande validée avec succès",
+                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
+            ));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/refuser/{id}")
-    public ResponseEntity<String> refuserDemande(@PathVariable String id) {
+    public ResponseEntity<?> refuserDemande(
+            @PathVariable String id,
+            @RequestBody @Valid TraitementDemandeRequest request) {
+
+        // Validation will be handled by @Valid annotation
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
-            demandeAutorisationRepository.save(demande);
-            return ResponseEntity.ok("Demande refusée avec succès");
+            demande.setObservation(request.getObservation().trim());
+
+            DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(demande);
+            sseController.sendUpdate("demande_updated", updatedDemande);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Demande refusée avec succès",
+                    "observation", updatedDemande.getObservation()
+            ));
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/traiter/{id}")
-    public ResponseEntity<String> traiterDemande(@PathVariable String id) {
+    public ResponseEntity<String> traiterDemande(
+            @PathVariable String id,
+            @RequestParam(value = "observation", required = false) String observation) {
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseRH(Reponse.T);
+            demande.setObservation(observation); // Set observation if provided
             demandeAutorisationRepository.save(demande);
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());
+    }
+    @Autowired
+    private MongoTemplate mongoTemplate;
+
+    @GetMapping("/collaborateurs-by-service/{chefserviceid}")
+    public ResponseEntity<?> getDemandesByCollaborateursService(@PathVariable String chefserviceid) {
+        try {
+            // 1. Trouver le service par ID du chef
+            Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
+            if (service == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "Aucun service trouvé pour ce chef hiérarchique",
+                                "serviceId", chefserviceid
+                        ));
+            }
+
+            // 2. Obtenir les collaborateurs de ce service
+            List<Personnel> collaborateurs = personnelRepository.findByRoleAndService("collaborateur", service);
+
+            if (collaborateurs.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Aucun collaborateur trouvé dans ce service",
+                        "service", service.getServiceName(),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 3. Obtenir les demandes pour ces collaborateurs
+            List<ObjectId> collaborateurObjectIds = collaborateurs.stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            Query query = new Query();
+            query.addCriteria(Criteria.where("matPers.$id").in(collaborateurObjectIds));
+
+            List<DemandeAutorisation> demandes = mongoTemplate.find(query, DemandeAutorisation.class);
+
+            // Conversion en DTOs avec tous les détails, sans inclure les fichiers complets
+            List<Map<String, Object>> demandeResponses = demandes.stream()
+                    .map(demande -> {
+                        Map<String, Object> response = new HashMap<>();
+                        response.put("id", demande.getId());
+                        response.put("dateDemande", demande.getDateDemande());
+                        response.put("matPers", Map.of(
+                                "id", demande.getMatPers().getId(),
+                                "matricule", demande.getMatPers().getMatricule(),
+                                "nomComplet", demande.getMatPers().getNom() + " " + demande.getMatPers().getPrenom()
+                        ));
+                        response.put("dateDebut", demande.getDateDebut());
+                        response.put("texteDemande", demande.getTexteDemande());
+                        response.put("observation", demande.getObservation());
+                        response.put("reponseChef", demande.getReponseChef());
+
+                        // Only return file metadata (ID, filename, etc.) without the content
+                        response.put("files", demande.getFiles().stream()
+                                .map(f -> Map.of(
+                                        "id", f.getId(),
+                                        "filename", f.getFilename(),
+                                        "fileId", f.getFileId() // This can be used to fetch file content later
+                                ))
+                                .collect(Collectors.toList()));
+
+                        response.put("heureSortie", demande.getHeureSortie());
+                        response.put("minuteSortie", demande.getMinuteSortie());
+                        response.put("heureRetour", demande.getHeureRetour());
+                        response.put("minuteRetour", demande.getMinuteRetour());
+                        response.put("horaireSortie", demande.getHoraireSortie());
+                        response.put("horaireRetour", demande.getHoraireRetour());
+                        return response;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "service", service.getServiceName(),
+                    "demandes", demandeResponses
+            ));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", "Erreur lors de la récupération des demandes",
+                            "error", e.getMessage()
+                    ));
+        }
+    }
+
+
+    @GetMapping("/approved")
+    public ResponseEntity<List<DemandeAutorisation>> getApprovedDemandes() {
+        List<DemandeAutorisation> approvedDemandes = demandeAutorisationRepository.findByReponseChef(Reponse.O);
+        return ResponseEntity.ok(approvedDemandes);
+    }
+
+    // Enhanced endpoint to get all information of a specific demande
+    @GetMapping("/{id}/details")
+    public ResponseEntity<?> getDemandeDetails(@PathVariable String id) {
+        Optional<DemandeAutorisation> demandeOpt = demandeAutorisationRepository.findById(id);
+
+        if (demandeOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        DemandeAutorisation demande = demandeOpt.get();
+
+        // Create a detailed response DTO
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", demande.getId());
+        response.put("dateDemande", demande.getDateDemande());
+        response.put("typeDemande", demande.getTypeDemande());
+        response.put("dateDebut", demande.getDateDebut());
+        response.put("texteDemande", demande.getTexteDemande());
+        response.put("reponseChef", demande.getReponseChef());
+        response.put("reponseRH", demande.getReponseRH());
+        response.put("codeSoc", demande.getCodeSoc());
+        response.put("codAutorisation", demande.getCodAutorisation());
+        response.put("observation", demande.getObservation());
+        // Format time information
+        response.put("heureSortie", String.format("%02d:%02d", demande.getHoraireSortie(), demande.getMinuteSortie()));
+        response.put("heureRetour", String.format("%02d:%02d", demande.getHoraireRetour(), demande.getMinuteRetour()));
+
+        // Personnel information
+        if (demande.getMatPers() != null) {
+            Map<String, Object> personnelInfo = new HashMap<>();
+            personnelInfo.put("id", demande.getMatPers().getId());
+            personnelInfo.put("nom", demande.getMatPers().getNom());
+            personnelInfo.put("prenom", demande.getMatPers().getPrenom());
+            personnelInfo.put("matricule", demande.getMatPers().getMatricule());
+            response.put("personnel", personnelInfo);
+        }
+
+        // Files information
+        if (demande.getFiles() != null && !demande.getFiles().isEmpty()) {
+            List<Map<String, Object>> filesList = demande.getFiles().stream()
+                    .map(file -> {
+                        Map<String, Object> fileMap = new HashMap<>();
+                        fileMap.put("id", file.getId());
+                        fileMap.put("filename", file.getFilename());
+                        fileMap.put("fileType", file.getFileType());
+                        return fileMap;
+                    })
+                    .collect(Collectors.toList());
+            response.put("fichiersJoint", filesList);
+        }
+
+        return ResponseEntity.ok(response);
     }
 
 }

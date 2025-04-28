@@ -140,11 +140,11 @@ const DocumentForm = () => {
   }
 
   return (
-    <div className="dashboard-container">
-      <Navbar />
-      <div className="main-content">
-        <Sidebar />
-        <div className="content-area">
+    <div className="app-container">
+      <Sidebar />
+      <div className="demande-container">
+        <Navbar />
+        <div className="demande-content">
           <div className="page-header">
             <h1>Demande de Document</h1>
             <p className="subtitle">Remplissez le formulaire pour soumettre une demande de document</p>

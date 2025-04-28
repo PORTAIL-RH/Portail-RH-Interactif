@@ -1,189 +1,152 @@
+"use client"
 import { useState, useEffect } from "react"
 import useNotifications from "./useNotifications"
 import NotificationModal from "./NotificationModal"
 import "./Navbar.css"
 import bellIcon from "../../../assets/bell1.png"
-import { FiSun, FiMoon } from "react-icons/fi"
+import { FiSun, FiMoon, FiLogOut, FiUser } from "react-icons/fi"
 
-const Navbar = () => {
+const Navbar = ({ theme, toggleTheme }) => {
   const [userData, setUserData] = useState({
     id: "",
     firstName: "",
     lastName: "",
+    role: ""
   })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [theme, setTheme] = useState("dark") // Default to dark theme
-  const [notifications, setNotifications] = useState([]) // State for notifications
+  const [notifications, setNotifications] = useState([])
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const role = "RH"; // Récupérez le rôle de l'utilisateur (par exemple, depuis le contexte ou l'API)
-  const userId = localStorage.getItem("userId") // Retrieve userId from localStorage
+  
   const {
     notifications: hookNotifications,
     unviewedCount,
     fetchNotifications,
     markAsRead,
-  } = useNotifications(role, userId)
+  } = useNotifications()
 
-  // Fetch user data
+  // Load user data from localStorage
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        if (!userId) {
-          throw new Error("User ID not found in localStorage.")
-        }
-
-        const response = await fetch(`http://localhost:8080/api/Personnel/byId/${userId}`)
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`)
-        }
-
-        const data = await response.json()
+    try {
+      setLoading(true)
+      const storedUserData = localStorage.getItem("userData")
+      
+      if (storedUserData) {
+        const parsedData = JSON.parse(storedUserData)
         setUserData({
-          id: data.id,
-          firstName: data.nom || "",
-          lastName: data.prenom || "",
+          id: parsedData.id || localStorage.getItem("userId") || "",
+          firstName: parsedData.nom || parsedData.firstName || "",
+          lastName: parsedData.prenom || parsedData.lastName || "",
+          role: parsedData.role || localStorage.getItem("userRole") || ""
         })
-        setLoading(false)
-      } catch (error) {
-        setError(error.message)
-        setLoading(false)
+      } else {
+        // Fallback to individual localStorage items if userData doesn't exist
+        setUserData({
+          id: localStorage.getItem("userId") || "",
+          firstName: localStorage.getItem("userFirstName") || "",
+          lastName: localStorage.getItem("userLastName") || "",
+          role: localStorage.getItem("userRole") || ""
+        })
       }
-    }
-
-    fetchUserData()
-  }, [userId])
-
-  // SSE Logic for Real-Time Updates
-  useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/sse/updates")
-
-    eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data)
-      const { type, data } = update
-
-      console.log("Received update:", type, data) // Debugging
-
-      // Handle updates based on type
-      switch (type) {
-        case "new_notification":
-          setNotifications((prevNotifications) => {
-            const updatedNotifications = [...prevNotifications, data]
-            localStorage.setItem("notifications", JSON.stringify(updatedNotifications))
-            return updatedNotifications
-          })
-          break
-
-        case "created":
-        case "demande_updated":
-          // Handle demande updates (e.g., refresh data on other pages)
-          console.log("Demande updated:", data)
-
-          const demandeTypeMap = {
-            formation: "demandesFormation",
-            PreAvnace: "demandesPreAvance",
-            Document: "demandesDocument",
-            autorisation: "demandesAutorisation",
-            congé: "demandesConge",
-          }
-
-          const localStorageKey = demandeTypeMap[data.typeDemande] || "demandesOther"
-          const demandes = JSON.parse(localStorage.getItem(localStorageKey) || "[]")
-
-          let updatedDemandes
-          if (type === "created") {
-            updatedDemandes = [...demandes, data]
-          } else {
-            updatedDemandes = demandes.map((demande) => (demande.id === data.id ? { ...demande, ...data } : demande))
-          }
-
-          localStorage.setItem(localStorageKey, JSON.stringify(updatedDemandes))
-          break
-
-        default:
-          console.warn("Unknown update type:", type)
-      }
-    }
-
-    eventSource.onerror = (error) => {
-      console.error("EventSource failed:", error)
-      eventSource.close()
-    }
-
-    return () => {
-      eventSource.close()
+    } catch (error) {
+      setError("Failed to load user data")
+      console.error("Error loading user data:", error)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  // Load notifications from localStorage on component mount
+  // Notification handling
   useEffect(() => {
     const savedNotifications = localStorage.getItem("notifications")
     if (savedNotifications) {
-      setNotifications(JSON.parse(savedNotifications))
+      try {
+        setNotifications(JSON.parse(savedNotifications))
+      } catch (e) {
+        console.error("Error parsing notifications:", e)
+      }
     }
-
-    // Set dark theme by default
-    document.documentElement.classList.add("dark")
-    localStorage.setItem("theme", "dark")
   }, [])
 
-  // Toggle notifications modal
-  const toggleNotifications = () => {
-    setIsNotificationsOpen((prev) => !prev)
-  }
-
-  // Mark notification as read
   const handleMarkAsRead = async (id) => {
-    await markAsRead(id)
-    fetchNotifications() // Refresh notifications after marking as read
+    try {
+      await markAsRead(id)
+      fetchNotifications()
+    } catch (error) {
+      console.error("Error marking notification as read:", error)
+    }
   }
 
-  // Theme toggle logic
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    document.documentElement.classList.toggle("dark", newTheme === "dark")
-    localStorage.setItem("theme", newTheme)
+  const handleLogout = () => {
+    // Clear all relevant localStorage items
+    const itemsToRemove = [
+      "userId", "authToken", "usermatricule", "userCodeSoc", "userRole", 
+      "userServiceName", "userData", "demandesOther", "demandesPreAvance", 
+      "demandesAutorisation", "demandesConge", "demandesDocument", 
+      "demandesFormation", "notifications","dashboardStats","demandes","personnel","personnelData"
+    ]
+    
+    itemsToRemove.forEach(item => localStorage.removeItem(item))
+    window.location.href = "/"
   }
 
-  if (loading) {
-    return <div className="navbar loading">Chargement des données...</div>
-  }
-
-  if (error) {
-    return <div className="navbar error">Erreur: {error}</div>
-  }
+  if (loading) return <div className={`navbar loading ${theme}`}>Loading...</div>
+  if (error) return <div className={`navbar error ${theme}`}>Error: {error}</div>
 
   return (
-    <nav className="navbar">
+    <nav className={`navbar ${theme}`}>
       <div className="navbar-welcome">
-        <span className="welcome-text">
-          RH. Welcome, {userData.firstName} {userData.lastName}
-        </span>
+        <div className="user-info">
+          <div className="user-avatar">
+            <FiUser />
+          </div>
+          <span className="welcome-text">
+            {userData.role ? `${userData.role}. ` : ''}
+            Welcome, {userData.firstName} {userData.lastName}
+          </span>
+        </div>
       </div>
+      
       <div className="navbar-actions">
-        <button
-          className="theme-toggle"
-          onClick={toggleTheme}
-          aria-label={theme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
+        <button 
+          className="theme-toggle" 
+          onClick={toggleTheme} 
+          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
         >
           {theme === "light" ? <FiMoon /> : <FiSun />}
         </button>
+        
         <div className="notification-container">
-          {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
-          <button className="notification-button" onClick={toggleNotifications}>
-            <img src={bellIcon || "/placeholder.svg"} alt="Notifications" className="notification-icon-img" />
+          {unviewedCount > 0 && (
+            <span className="notification-badge">{unviewedCount}</span>
+          )}
+          <button 
+            className="notification-button" 
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          >
+            {theme === "light" ? (
+              <img src={bellIcon} alt="Notifications" className="notification-icon-img light" />
+            ) : (
+              <img src={bellIcon} alt="Notifications" className="notification-icon-img dark" />
+            )}
           </button>
+          
           {isNotificationsOpen && (
             <NotificationModal
               notifications={notifications}
               unviewedCount={unviewedCount}
               markAsRead={handleMarkAsRead}
-              userServiceId={userId}
+              userServiceId={userData.id}
               onClose={() => setIsNotificationsOpen(false)}
+              theme={theme}
             />
           )}
         </div>
+
+        <button className="logout-button" onClick={handleLogout}>
+          <FiLogOut className="logout-icon" />
+          <span className="logout-text">Déconnexion</span>
+        </button>
       </div>
     </nav>
   )

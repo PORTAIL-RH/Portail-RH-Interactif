@@ -3,41 +3,38 @@ package com.example.PortailRH.Model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
 @Document(collection = "Demandes_Document")
-
 public class DemandeDocument {
     @Id
     private String id;
     private String typeDemande;
     private Date dateDemande = new Date();
-
-
     private String typeDocument;
+
     @DBRef
     private Personnel matPers;
-    private String TexteDemande;
+
+    @Field("TexteDemande")
+    private String texteDemande;
+
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
     private String codeSoc;
-    @DBRef(lazy = true)
-    private Collection<Fichier_joint> Files = new ArrayList<>();
+    private String observation;
 
-    @DBRef(lazy = true)
-    private Collection<Fichier_joint> FilesReponse = new ArrayList<>();
+    @DBRef
+    private List<Fichier_joint> files = new ArrayList<>();
 
-    public String getTexteDemande() {
-        return TexteDemande;
-    }
+    @DBRef
+    private List<Fichier_joint> filesReponse = new ArrayList<>();
 
-    public void setTexteDemande(String texteDemande) {
-        TexteDemande = texteDemande;
-    }
-
+    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -54,6 +51,21 @@ public class DemandeDocument {
         this.typeDemande = typeDemande;
     }
 
+    public Date getDateDemande() {
+        return dateDemande;
+    }
+
+    public void setDateDemande(Date dateDemande) {
+        this.dateDemande = dateDemande;
+    }
+
+    public String getTypeDocument() {
+        return typeDocument;
+    }
+
+    public void setTypeDocument(String typeDocument) {
+        this.typeDocument = typeDocument;
+    }
 
     public Personnel getMatPers() {
         return matPers;
@@ -63,17 +75,12 @@ public class DemandeDocument {
         this.matPers = matPers;
     }
 
-    // CodeSoc will be derived dynamically from Personnel object
-    /*public String getCodeSoc() {
-        return matPers != null ? matPers.getCode_soc() : null;
-    }*/
-
-    public Collection<Fichier_joint> getFilesReponse() {
-        return FilesReponse;
+    public String getTexteDemande() {
+        return texteDemande;
     }
 
-    public void setFilesReponse(Collection<Fichier_joint> filesReponse) {
-        FilesReponse = filesReponse;
+    public void setTexteDemande(String texteDemande) {
+        this.texteDemande = texteDemande;
     }
 
     public Reponse getReponseChef() {
@@ -83,6 +90,7 @@ public class DemandeDocument {
     public void setReponseChef(Reponse reponseChef) {
         this.reponseChef = reponseChef;
     }
+
     public Reponse getReponseRH() {
         return reponseRH;
     }
@@ -90,13 +98,7 @@ public class DemandeDocument {
     public void setReponseRH(Reponse reponseRH) {
         this.reponseRH = reponseRH;
     }
-    public Date getDateDemande() {
-        return dateDemande;
-    }
 
-    public void setDateDemande(Date dateDemande) {
-        this.dateDemande = dateDemande;
-    }
     public String getCodeSoc() {
         return codeSoc;
     }
@@ -104,19 +106,28 @@ public class DemandeDocument {
     public void setCodeSoc(String codeSoc) {
         this.codeSoc = codeSoc;
     }
-    public Collection<Fichier_joint> getFiles() {
-        return Files;
+
+    public String getObservation() {
+        return observation;
     }
 
-    public void setFiles(Collection<Fichier_joint> files) {
-        this.Files = files;
-    }
-    public String getTypeDocument() {
-        return typeDocument;
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
-    public void setTypeDocument(String typeDocument) {
-        this.typeDocument = typeDocument;
+    public List<Fichier_joint> getFiles() {
+        return files;
     }
 
+    public void setFiles(List<Fichier_joint> files) {
+        this.files = files;
+    }
+
+    public List<Fichier_joint> getFilesReponse() {
+        return filesReponse;
+    }
+
+    public void setFilesReponse(List<Fichier_joint> filesReponse) {
+        this.filesReponse = filesReponse;
+    }
 }

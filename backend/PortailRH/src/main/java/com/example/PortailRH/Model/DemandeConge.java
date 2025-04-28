@@ -2,17 +2,22 @@ package com.example.PortailRH.Model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 @Data
 @Document(collection = "Demandes_Conge")
+
 public class DemandeConge {
+    public static final int MAX_DAYS_PER_YEAR = 80;
 
     @Id
     private String id_libre_demande;
@@ -29,20 +34,30 @@ public class DemandeConge {
     private int nbrJours;
 
 
-
+    private int year;
     private String texteDemande;
 
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
-
+    private String observation;
     @DBRef(lazy = true) // Relation avec les fichiers joints
     private Collection<Fichier_joint> Files = new ArrayList<>(); // Ensure this field exists
 
-
+    public DemandeConge() {
+        // Initialiser l'année avec l'année courante
+        Calendar cal = Calendar.getInstance();
+        this.year = cal.get(Calendar.YEAR);
+    }
 
     public void setDateDebut(Date dateDebut) {
         this.dateDebut = dateDebut;
         calculateDateReprisePrevAndNbrJours();
+        // Mettre à jour l'année si la date de début change
+        if (dateDebut != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(dateDebut);
+            this.year = cal.get(Calendar.YEAR);
+        }
     }
 
     public void setDateFin(Date dateFin) {
@@ -50,17 +65,27 @@ public class DemandeConge {
         calculateDateReprisePrevAndNbrJours();
     }
 
-    // Private method to calculate dateReprisePrev and nbrJours
     private void calculateDateReprisePrevAndNbrJours() {
         if (this.dateDebut != null && this.dateFin != null) {
-            // Calculate the difference in days
             long diffInMillies = Math.abs(dateFin.getTime() - dateDebut.getTime());
-            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+            this.nbrJours = (int) TimeUnit.DAYS.convert(diffInMillies, TimeUnit.MILLISECONDS) + 1; // +1 pour inclure le premier jour
         }
     }
 
+
+
+
+
     public String getId() {
         return id_libre_demande;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
     public void setId(String id) {

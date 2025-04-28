@@ -13,7 +13,7 @@ public class DemandePreAvance {
     @Id
     private String id;
 
-    private String typeDemande="PreAvnace";
+    private String typeDemande="PreAvance";
 
     private String type;
     private Date dateDemande;
@@ -24,6 +24,8 @@ public class DemandePreAvance {
     private Personnel matPers;
     private Reponse reponseChef;
     private Reponse reponseRH;
+
+    private String observation;
     private String codeSoc;
     @DBRef(lazy = true)
     private Collection<Fichier_joint> Files = new ArrayList<>();
@@ -105,6 +107,14 @@ public class DemandePreAvance {
 
     public void setTexteDemande(String texteDemande) {
         this.texteDemande = texteDemande;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
     public String getId() {

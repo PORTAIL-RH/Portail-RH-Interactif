@@ -1,6 +1,7 @@
 
 import { useState } from "react"
 import "./JoinUs.css"
+import { API_URL } from "../../config"; 
 
 const JobPlatform = () => {
   const [selectedCategory, setSelectedCategory] = useState("All")

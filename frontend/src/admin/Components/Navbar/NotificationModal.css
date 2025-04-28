@@ -27,8 +27,9 @@
 /* Dark mode variables */
 .dark {
   --primary-color: #6366f1;
-  --primary-light: #1e1b4b;
+  --primary-light: #38355f;
   --primary-dark: #818cf8;
+  --background-image: #ffffff;
   --primary-gradient: linear-gradient(135deg, #6366f1, #8b5cf6);
   --text-primary: #f9fafb;
   --text-secondary: #e5e7eb;

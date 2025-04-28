@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { FiFileText, FiUpload, FiSend, FiList } from "react-icons/fi"
 import { ToastContainer, toast } from "react-toastify"
@@ -7,7 +5,8 @@ import "react-toastify/dist/ReactToastify.css"
 import { useNavigate } from "react-router-dom"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar"; 
-import "./Document.css"
+import "./ajoutDemande.css"
+import { API_URL } from "../../../config"; 
 
 const DocumentForm = () => {
   const [formData, setFormData] = useState({
@@ -23,7 +22,47 @@ const DocumentForm = () => {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const navigate = useNavigate()
+  const [theme, setTheme] = useState("light")
 
+
+    // Theme management
+    useEffect(() => {
+      const savedTheme = localStorage.getItem("theme") || "light"
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
+  
+      // Listen for theme changes
+      const handleStorageChange = () => {
+        const currentTheme = localStorage.getItem("theme") || "light"
+        setTheme(currentTheme)
+        applyTheme(currentTheme)
+      }
+  
+      window.addEventListener("storage", handleStorageChange)
+      window.addEventListener("themeChanged", (e) => {
+        setTheme(e.detail || "light")
+        applyTheme(e.detail || "light")
+      })
+  
+      return () => {
+        window.removeEventListener("storage", handleStorageChange)
+        window.removeEventListener("themeChanged", handleStorageChange)
+      }
+    }, [])
+  
+    const applyTheme = (theme) => {
+      document.documentElement.classList.remove("light", "dark")
+      document.documentElement.classList.add(theme)
+      document.body.className = theme
+    }
+  
+    const toggleTheme = () => {
+      const newTheme = theme === "light" ? "dark" : "light"
+      setTheme(newTheme)
+      applyTheme(newTheme)
+      localStorage.setItem("theme", newTheme)
+      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+    }
   useEffect(() => {
     const userId = localStorage.getItem('userId')
     const userCodeSoc = localStorage.getItem('userCodeSoc')
@@ -111,7 +150,7 @@ const DocumentForm = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:8080/api/demande-document/create', {
+      const response = await fetch(`${API_URL}/api/demande-document/create`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -175,10 +214,10 @@ const DocumentForm = () => {
     }
   }
   return (
-    <div className="app-container">
-      <Sidebar />
+    <div className={`app-container ${theme}`}>
+      <Sidebar theme={theme} />
       <div className="demande-container">
-        <Navbar />
+      <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="document-form-container">
                 {/* Navigation Bar */}
       <div className="request-nav-bar">

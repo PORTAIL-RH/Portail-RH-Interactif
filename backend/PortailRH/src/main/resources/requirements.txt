@@ -1,0 +1,8 @@
+tika
+pymongo
+python-dotenv
+sys
+json
+re
+bson
+collections

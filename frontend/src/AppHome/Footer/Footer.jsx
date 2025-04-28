@@ -1,89 +1,88 @@
-import React from "react";
-import "./Footer.css"; 
-import logo from "../../assets/logo.png";
+import { Link } from "react-router-dom"
+import { Facebook, Twitter, Linkedin, Instagram, Mail, Phone, MapPin } from 'lucide-react'
+import "./Footer.css"
 
 const Footer = () => {
+  const currentYear = new Date().getFullYear()
+
   return (
     <footer className="footer">
-      <div className="container">
-        <div className="footer-content">
-          <div className="footer-logo">
-            <img src={logo || "/placeholder.svg"} alt="Logo de Société Arab Soft" className="logo-image" />
-            <p className="company-description">
-              Votre partenaire technologique de confiance pour des solutions innovantes et sur mesure.
+      <div className="footer-container">
+        <div className="footer-top">
+          <div className="footer-column">
+            <Link to="/" className="footer-logo">
+              <span className="footer-logo-text">Arab<span className="footer-logo-accent">Soft</span></span>
+            </Link>
+            <p className="footer-description">
+              Fournisseur leader de solutions informatiques innovantes, aidant les entreprises à prospérer dans l'ère numérique.
             </p>
-            <div className="social-links">
-              <a href="#" className="social-link">
-                <i className="social-icon facebook"></i>
+            <div className="footer-social">
+              <a href="https://facebook.com" className="social-link" aria-label="Facebook">
+                <Facebook size={18} />
               </a>
-              <a href="#" className="social-link">
-                <i className="social-icon twitter"></i>
+              <a href="https://twitter.com" className="social-link" aria-label="Twitter">
+                <Twitter size={18} />
               </a>
-              <a href="#" className="social-link">
-                <i className="social-icon instagram"></i>
+              <a href="https://linkedin.com" className="social-link" aria-label="LinkedIn">
+                <Linkedin size={18} />
               </a>
-              <a href="#" className="social-link">
-                <i className="social-icon linkedin"></i>
+              <a href="https://instagram.com" className="social-link" aria-label="Instagram">
+                <Instagram size={18} />
               </a>
             </div>
           </div>
-          
-          <div className="footer-links">
-            <div className="footer-column">
-              <h4 className="column-title">Entreprise</h4>
-              <ul className="footer-menu">
-                <li className="footer-menu-item">
-                  <a href="/about" className="footer-menu-link">À propos</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/services" className="footer-menu-link">Services</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/candidates" className="footer-menu-link">Carrières</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/contact" className="footer-menu-link">Contact</a>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="footer-column">
-              <h4 className="column-title">Ressources</h4>
-              <ul className="footer-menu">
-                <li className="footer-menu-item">
-                  <a href="/blog" className="footer-menu-link">Blog</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/case-studies" className="footer-menu-link">Études de cas</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/faq" className="footer-menu-link">FAQ</a>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="footer-column">
-              <h4 className="column-title">Légal</h4>
-              <ul className="footer-menu">
-                <li className="footer-menu-item">
-                  <a href="/privacy" className="footer-menu-link">Politique de confidentialité</a>
-                </li>
-                <li className="footer-menu-item">
-                  <a href="/terms" className="footer-menu-link">Conditions d'utilisation</a>
-                </li>
-              </ul>
-            </div>
+
+          <div className="footer-column">
+            <h3 className="footer-heading">Services</h3>
+            <ul className="footer-links">
+              <li><Link to="">Développement Logiciel</Link></li>
+              <li><Link to="">Conseil IT</Link></li>
+              <li><Link to="">Solutions Cloud</Link></li>
+              <li><Link to="">Applications Mobiles</Link></li>
+              <li><Link to="">Intelligence Artificielle</Link></li>
+            </ul>
+          </div>
+
+          <div className="footer-column">
+            <h3 className="footer-heading">Entreprise</h3>
+            <ul className="footer-links">
+              <li><Link to="">À Propos</Link></li>
+              <li><Link to="/careers">Carrières</Link></li>
+              <li><Link to="">Partenaires</Link></li>
+            </ul>
+          </div>
+
+          <div className="footer-column">
+            <h3 className="footer-heading">Contact</h3>
+            <ul className="footer-contact">
+              <li>
+                <Phone size={16} />
+                <span>+216 71 123 456</span>
+              </li>
+              <li>
+                <Mail size={16} />
+                <span>contact@arabsoft.com</span>
+              </li>
+              <li>
+                <MapPin size={16} />
+                <span>123 Rue Technologie, Tunis, Tunisie</span>
+              </li>
+            </ul>
           </div>
         </div>
-        
+
         <div className="footer-bottom">
-          <p className="copyright">
-            &copy; {new Date().getFullYear()} Société Arab Soft. Tous droits réservés.
-          </p>
+          <div className="copyright">
+            &copy; {currentYear} ArabSoft. Tous droits réservés.
+          </div>
+          <div className="footer-legal">
+            <Link to="/privacy">Politique de Confidentialité</Link>
+            <Link to="/terms">Conditions d'Utilisation</Link>
+          </div>
         </div>
       </div>
     </footer>
-  );
-};
+  )
+}
 
-export default Footer;
+export default Footer

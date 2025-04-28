@@ -1,110 +1,167 @@
-/* Navbar */
+/* CSS Variables for Theming */
+:root {
+  --navbar-bg: #ffffff;
+  --navbar-text: #1a202c;
+  --navbar-border: #e2e8f0;
+  --navbar-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --navbar-height: 64px;
+
+  --logo-color: #3182ce;
+  --logo-hover: #2c5282;
+
+  --button-bg: #f7fafc;
+  --button-text: #4a5568;
+  --button-hover: #edf2f7;
+  --button-active: #e2e8f0;
+
+  --avatar-bg: #ebf8ff;
+  --avatar-color: #3182ce;
+  --avatar-border: #bee3f8;
+
+  --dropdown-bg: #ffffff;
+  --dropdown-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --dropdown-border: #e2e8f0;
+  --dropdown-hover: #f7fafc;
+
+  --logout-bg: #fff5f5;
+  --logout-color: #e53e3e;
+  --logout-hover: #fed7d7;
+
+  --notification-badge-bg: #e53e3e;
+  --notification-badge-text: #ffffff;
+
+  --transition-speed: 0.2s;
+}
+
+.dark {
+  --navbar-bg: #1a202c;
+  --navbar-text: #f7fafc;
+  --navbar-border: #2d3748;
+  --navbar-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  --logo-color: #63b3ed;
+  --logo-hover: #90cdf4;
+
+  --button-bg: #2d3748;
+  --button-text: #e2e8f0;
+  --button-hover: #4a5568;
+  --button-active: #718096;
+
+  --avatar-bg: #2c5282;
+  --avatar-color: #ebf8ff;
+  --avatar-border: #2b6cb0;
+
+  --dropdown-bg: #2d3748;
+  --dropdown-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --dropdown-border: #4a5568;
+  --dropdown-hover: #4a5568;
+
+  --logout-bg: #742a2a;
+  --logout-color: #fc8181;
+  --logout-hover: #9b2c2c;
+
+  --notification-badge-bg: #fc8181;
+  --notification-badge-text: #1a202c;
+}
+
+/* Navbar Layout */
 .navbar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  height: 60px;
-  padding: 0 25px;
-  background-color: #1a2233;
-  color: #ffffff;
-  border-bottom: 1px solid #2d3748;
-  position: fixed;
+  justify-content: space-between;
+  height: var(--navbar-height);
+  padding: 0 1.5rem;
+  background-color: var(--navbar-bg);
+  color: var(--navbar-text);
+  border-bottom: 1px solid var(--navbar-border);
+  box-shadow: var(--navbar-shadow);
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 100;
-  transition: all 0.3s ease;
 }
 
-/* Dark mode styles for navbar */
-.dark .navbar {
-  background-color: #1e293b;
-  border-bottom: 1px solid #334155;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-/* Navbar Logo */
+/* Logo */
 .navbar-logo {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--logo-color);
   cursor: pointer;
-  color: #ffffff;
-  transition: color 0.2s;
+  transition: color var(--transition-speed) ease;
 }
 
 .navbar-logo:hover {
-  color: #6366f1;
+  color: var(--logo-hover);
 }
 
 /* Navbar Actions */
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 1rem;
 }
 
 /* Theme Toggle */
 .theme-toggle {
-  background: none;
-  border: none;
-  color: #a0aec0;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
 }
 
 .theme-toggle:hover {
-  background-color: #2a3349;
-  color: #6366f1;
+  background-color: var(--button-hover);
 }
 
-/* Notification Container */
-.notification-container {
+.theme-toggle svg {
+  font-size: 1.25rem;
+}
+
+/* Notification Button */
+.notification-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--button-bg);
+  color: var(--button-text);
+  border: none;
+  cursor: pointer;
+  transition: background-color var(--transition-speed) ease;
   position: relative;
 }
 
-.notification-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  color: #a0aec0;
-  transition: all 0.2s;
-}
-
 .notification-button:hover {
-  background-color: #2a3349;
-  color: #6366f1;
+  background-color: var(--button-hover);
 }
 
-/* Notification Badge */
+.notification-button svg {
+  font-size: 1.25rem;
+}
+
 .notification-badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  background-color: #ef4444;
-  color: white;
-  font-size: 10px;
-  font-weight: 600;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
+  top: -5px;
+  right: -5px;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 18px;
+  height: 18px;
   padding: 0 5px;
-  border: 2px solid #1a2233;
-  z-index: 1;
+  border-radius: 9999px;
+  background-color: var(--notification-badge-bg);
+  color: var(--notification-badge-text);
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 /* User Dropdown */
@@ -115,141 +172,114 @@
 .user-button {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: none;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background-color: var(--button-bg);
+  color: var(--button-text);
   border: none;
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 6px;
-  color: #ffffff;
-  transition: background-color 0.2s;
+  transition: background-color var(--transition-speed) ease;
 }
 
 .user-button:hover {
-  background-color: #2a3349;
+  background-color: var(--button-hover);
 }
 
 .user-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #6366f1;
+  background-color: var(--avatar-bg);
+  color: var(--avatar-color);
+  border: 2px solid var(--avatar-border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #ffffff;
+  text-transform: uppercase;
 }
 
 .user-name {
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 
 /* Dropdown Menu */
 .dropdown-menu {
   position: absolute;
-  top: calc(100% + 5px);
+  top: calc(100% + 0.5rem);
   right: 0;
   width: 200px;
-  background-color: #232c43;
-  border-radius: 8px;
-  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+  background-color: var(--dropdown-bg);
+  border-radius: 0.5rem;
+  border: 1px solid var(--dropdown-border);
+  box-shadow: var(--dropdown-shadow);
   overflow: hidden;
-  z-index: 10;
-  animation: fadeIn 0.2s ease-out;
+  z-index: 101;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity var(--transition-speed) ease, visibility var(--transition-speed) ease, transform
+    var(--transition-speed) ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .dropdown-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 12px 15px;
-  background: none;
-  border: none;
-  text-align: left;
-  color: #e2e8f0;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: var(--button-text);
+  text-decoration: none;
+  transition: background-color var(--transition-speed) ease;
 }
 
 .dropdown-item:hover {
-  background-color: #2a3349;
+  background-color: var(--dropdown-hover);
 }
 
-.dropdown-icon {
-  font-size: 16px;
-  color: #a0aec0;
+.dropdown-item svg {
+  font-size: 1.25rem;
 }
 
 /* Logout Button */
 .logout-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background-color: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #ef4444;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background-color: var(--logout-bg);
+  color: var(--logout-color);
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color var(--transition-speed) ease;
 }
 
 .logout-button:hover {
-  background-color: rgba(239, 68, 68, 0.2);
+  background-color: var(--logout-hover);
 }
 
 .logout-icon {
-  font-size: 16px;
+  font-size: 1.25rem;
 }
 
-.navbar-links {
-  display: flex;
-  align-items: center;
+.logout-text {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-.navbar-links a {
-  color: white;
-  text-decoration: none;
-  margin-left: 1.5rem;
-  font-size: 1.2rem;
-  padding: 0.5rem 0.5rem;
-  transition: all 0.3s ease-in-out;
-  border-radius: 5px;
-}
-
-.navbar-links a:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.Déconnexion {
-  margin-right: 2.8rem;
-}
-.navbar-links .Déconnexion:hover {
-  background-color: #c0392b;
-}
-
-/* Responsive Adjustments */
+/* Responsive Design */
 @media (max-width: 768px) {
   .navbar {
-    padding: 0 15px;
+    padding: 0 1rem;
   }
 
   .user-name {
@@ -261,28 +291,37 @@
   }
 
   .logout-button {
-    padding: 8px;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .user-button {
+    padding: 0.25rem;
   }
 }
 
 @media (max-width: 480px) {
   .navbar-logo {
-    font-size: 18px;
+    font-size: 1rem;
   }
 
   .navbar-actions {
-    gap: 10px;
+    gap: 0.5rem;
   }
 
-  .theme-toggle {
-    padding: 6px;
-    font-size: 18px;
+  .theme-toggle,
+  .notification-button,
+  .logout-button {
+    width: 36px;
+    height: 36px;
   }
 
   .user-avatar {
     width: 28px;
     height: 28px;
-    font-size: 10px;
+    font-size: 0.7rem;
   }
 }
-

@@ -1,0 +1,138 @@
+/* Shared Variables */
+:root {
+    /* Color Palette - Light Theme */
+    --primary-color: #4361ee;
+    --primary-hover: #3a56d4;
+    --primary-light: #eef2ff;
+    --primary-transparent: rgba(67, 97, 238, 0.1);
+  
+    --secondary-color: #6c757d;
+    --secondary-hover: #5a6268;
+    --secondary-light: #f8f9fa;
+  
+    --success-color: #10b981;
+    --success-hover: #0ca678;
+    --success-light: #d1fae5;
+    --success-transparent: rgba(16, 185, 129, 0.1);
+  
+    --danger-color: #ef4444;
+    --danger-hover: #dc2626;
+    --danger-light: #fee2e2;
+    --danger-transparent: rgba(239, 68, 68, 0.1);
+  
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-tertiary: #64748b;
+    --text-muted: #94a3b8;
+  
+    --bg-color: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-input: #ffffff;
+    --bg-hover: #f7fafc;
+    --bg-tertiary: #f1f5f9;
+  
+    --border-color: #e2e8f0;
+    --border-light: #f1f5f9;
+    --border-focus: #4361ee;
+  
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+    /* Sidebar dimensions - must match sidebar.css */
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 70px;
+    --transition-speed: 0.3s;
+  }
+  
+  .dark {
+    --primary-color: #6366f1;
+    --primary-hover: #818cf8;
+    --primary-light: #1e1b4b;
+    --primary-transparent: rgba(99, 102, 241, 0.2);
+  
+    --secondary-color: #9ca3af;
+    --secondary-hover: #d1d5db;
+    --secondary-light: #1f2937;
+  
+    --success-color: #10b981;
+    --success-hover: #34d399;
+    --success-light: #064e3b;
+    --success-transparent: rgba(16, 185, 129, 0.2);
+  
+    --danger-color: #ef4444;
+    --danger-hover: #f87171;
+    --danger-light: #7f1d1d;
+    --danger-transparent: rgba(239, 68, 68, 0.2);
+  
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-tertiary: #94a3b8;
+    --text-muted: #64748b;
+  
+    --bg-color: #0f172a;
+    --bg-card: #1e293b;
+    --bg-input: #2d3748;
+    --bg-hover: #334155;
+    --bg-tertiary: #334155;
+  
+    --border-color: #334155;
+    --border-light: #475569;
+    --border-focus: #6366f1;
+  
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Main Layout */
+  .app-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: var(--bg-color);
+  }
+  
+  .main-content {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    transition: margin-left var(--transition-speed) ease;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .sidebar.collapsed ~ .main-content {
+    margin-left: var(--sidebar-collapsed-width);
+  }
+  
+  /* Animations */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    .main-content {
+      margin-left: 0;
+    }
+  
+    .sidebar.collapsed ~ .main-content {
+      margin-left: var(--sidebar-collapsed-width);
+    }
+  }
+  

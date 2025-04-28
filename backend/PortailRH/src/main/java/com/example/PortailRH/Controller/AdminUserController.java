@@ -3,9 +3,15 @@ package com.example.PortailRH.Controller;
 import com.example.PortailRH.Model.AdminUser;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.AdminUserService;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -13,12 +19,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/admin")
+
 public class AdminUserController {
 
     @Autowired
     private AdminUserService adminUserService;
     private ServiceRepository serviceRepository;
 
+    private static final Logger log = LoggerFactory.getLogger(AdminUserController.class);
 
 
     /**
@@ -27,39 +35,40 @@ public class AdminUserController {
     @PostMapping("/activate-personnel/{id}")
     public ResponseEntity<?> activateCollaborateur(
             @PathVariable String id,
-            @RequestBody Map<String, String> payload) {
+            @RequestBody Map<String, String> payload,
+            HttpServletRequest request) {
+
+        // Verify authentication
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Authentication required"));
+        }
+
+        log.info("Activation request for personnel ID: {} by user: {}", id, authentication.getName());
 
         try {
             String role = payload.get("role");
             String serviceId = payload.get("serviceId");
 
-            // Validate role
             if (role == null || role.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("message", "Role is required."));
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Role is required"));
             }
 
-            // Validate serviceId for "collaborateur" and "Chef Hiérarchique" roles
-            if ((role.equals("collaborateur") || role.equals("Chef Hiérarchique"))) {
-                if (serviceId == null || serviceId.isEmpty()) {
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                            .body(Map.of("message", "Service ID is required for '" + role + "' role."));
-                }
-            } else {
-                // For other roles, set serviceId to null
-                serviceId = null;
-            }
-
-            // Call the service method
             adminUserService.activateCollaborateur(id, role, serviceId);
 
-            return ResponseEntity.ok(Map.of("message", "Personnel activé avec succès !"));
+            return ResponseEntity.ok()
+                    .body(Map.of("message", "Personnel activated successfully"));
+
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.badRequest()
                     .body(Map.of("message", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Une erreur est survenue : " + e.getMessage()));
+            log.error("Server error: {}", e.getMessage());
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "An error occurred while processing your request"));
         }
     }
 

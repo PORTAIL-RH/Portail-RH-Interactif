@@ -27,7 +27,7 @@ public class DemandeFormation {
     private String nbrJours;
 
     private String texteDemande;
-
+    private String observation;
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
 
@@ -43,7 +43,7 @@ public class DemandeFormation {
     @DBRef
     private theme theme;
 
-    private String annee_f;  //annne de la formation
+    private String annee_f;
 
     public String getId_libre_demande() {
         return id_libre_demande;
@@ -51,6 +51,14 @@ public class DemandeFormation {
 
     public void setId_libre_demande(String id_libre_demande) {
         this.id_libre_demande = id_libre_demande;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
     public Date getDateDebut() {
