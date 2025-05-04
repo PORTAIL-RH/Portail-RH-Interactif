@@ -4,24 +4,24 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 
 @Document(collection = "Demandes_Autorisation")
-
 public class DemandeAutorisation {
 
     @Id
     private String id;
-
-
 
     private Date dateDemande;
     private String typeDemande;
 
     @DBRef
     private Personnel matPers;
+
     private String codeSoc;
     private Date dateDebut;
     private String texteDemande;
@@ -33,14 +33,15 @@ public class DemandeAutorisation {
     private Collection<Fichier_joint> files;
 
     private int heureSortie;
-    private int heureRetour;
-    private int horaireSortie;  // Fixed: Added missing field
-    private int horaireRetour;  // Fixed: Removed duplicate, corrected naming
     private int minuteSortie;
+    private int heureRetour;
     private int minuteRetour;
+    private int horaireSortie;
+    private int horaireRetour;
+
     private String codAutorisation;
 
-    // Default constructor
+    // Constructors
     public DemandeAutorisation() {
         this.dateDemande = new Date();
         this.reponseChef = Reponse.I;
@@ -48,16 +49,73 @@ public class DemandeAutorisation {
         this.files = new ArrayList<>();
     }
 
+    // Utility Method to Parse Date from Object
+    private Date parseDate(Object dateInput) {
+        if (dateInput == null) {
+            return null;
+        }
+
+        if (dateInput instanceof Date) {
+            return (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            String dateString = ((String) dateInput).trim();
+            String[] possibleFormats = {
+                    "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+                    "yyyy-MM-dd'T'HH:mm:ss.SSS",
+                    "yyyy-MM-dd'T'HH:mm:ss",
+                    "yyyy-MM-dd HH:mm:ss",
+                    "yyyy-MM-dd",
+                    "dd/MM/yyyy HH:mm:ss",
+                    "dd/MM/yyyy",
+                    "MM/dd/yyyy HH:mm:ss",
+                    "MM/dd/yyyy",
+                    "HH:mm:ss",
+                    "HH:mm"
+            };
+
+            for (String format : possibleFormats) {
+                try {
+                    return new SimpleDateFormat(format).parse(dateString);
+                } catch (ParseException e) {
+                    // Try next format
+                }
+            }
+
+            throw new IllegalArgumentException("Unsupported date format: " + dateString);
+        } else {
+            throw new IllegalArgumentException("Date input must be either Date or String");
+        }
+    }
+
+    // Helper method for setting time
+    public void setTimeFromString(String timeString, boolean isSortie) {
+        if (timeString != null && !timeString.isEmpty()) {
+            String[] parts = timeString.split(":");
+            if (parts.length >= 2) {
+                int hour = Integer.parseInt(parts[0]);
+                int minute = Integer.parseInt(parts[1]);
+
+                if (isSortie) {
+                    this.heureSortie = hour;
+                    this.minuteSortie = minute;
+                } else {
+                    this.heureRetour = hour;
+                    this.minuteRetour = minute;
+                }
+            }
+        }
+    }
+
+    // Date setters with flexible input
+    public void setDateDemande(Object dateInput) {
+        this.dateDemande = parseDate(dateInput);
+    }
+
+    public void setDateDebut(Object dateInput) {
+        this.dateDebut = parseDate(dateInput);
+    }
+
     // Getters and Setters
-
-    public String getObservation() {
-        return observation;
-    }
-
-    public void setObservation(String observation) {
-        this.observation = observation;
-    }
-
     public String getId() {
         return id;
     }
@@ -65,16 +123,6 @@ public class DemandeAutorisation {
     public void setId(String id) {
         this.id = id;
     }
-
-    public Date getDateDebut() {
-        return dateDebut;
-    }
-
-    public void setDateDebut(Date dateDebut) {
-        this.dateDebut = dateDebut;
-    }
-
-
 
     public Date getDateDemande() {
         return dateDemande;
@@ -108,12 +156,28 @@ public class DemandeAutorisation {
         this.codeSoc = codeSoc;
     }
 
+    public Date getDateDebut() {
+        return dateDebut;
+    }
+
+    public void setDateDebut(Date dateDebut) {
+        this.dateDebut = dateDebut;
+    }
+
     public String getTexteDemande() {
         return texteDemande;
     }
 
     public void setTexteDemande(String texteDemande) {
         this.texteDemande = texteDemande;
+    }
+
+    public String getObservation() {
+        return observation;
+    }
+
+    public void setObservation(String observation) {
+        this.observation = observation;
     }
 
     public Reponse getReponseChef() {

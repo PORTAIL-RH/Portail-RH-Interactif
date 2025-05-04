@@ -5,7 +5,6 @@ import com.example.PortailRH.Repository.*;
 import com.example.PortailRH.Service.DemandeFormationService;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
-import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -180,50 +179,64 @@ public class DemandeFormationController {
 
         return ResponseEntity.ok(approvedDemandes);
     }
+
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemande(
             @PathVariable String id,
-            @RequestBody(required = false) TraitementDemandeRequest request) {
+            @RequestBody(required = false) Map<String, String> request) {
 
         return demandeFormationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
+            demandeFormationRepository.save(demande);
 
-            // Set observation if provided in request body (optional for approval)
-            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
-                demande.setObservation(request.getObservation().trim());
-            } else {
-                demande.setObservation(null); // Clear observation if not provided
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
 
-            DemandeFormation updatedDemande = demandeFormationRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Formation a été validée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande validée avec succès",
-                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
-            ));
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande validée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemande(
             @PathVariable String id,
-            @RequestBody @Valid TraitementDemandeRequest request) {
+            @RequestBody Map<String, String> request) {
 
-        // Validation will be handled by @Valid annotation
+        if (!request.containsKey("observation")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Observation is required"));
+        }
+
         return demandeFormationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
-            demande.setObservation(request.getObservation().trim());
+            demande.setObservation(request.get("observation"));
 
-            DemandeFormation updatedDemande = demandeFormationRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            demandeFormationRepository.save(demande);
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande refusée avec succès",
-                    "observation", updatedDemande.getObservation()
-            ));
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Formation a été refusée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande refusée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -266,109 +279,126 @@ public class DemandeFormationController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDemandeFormation(@PathVariable String id, @RequestBody Map<String, Object> demandeData) {
+        return demandeFormationRepository.findById(id)
+                .map(existingDemande -> {
+                    try {
+                        // Preserve the DBRef fields
+                        Personnel existingMatPers = existingDemande.getMatPers();
+                        Collection<Fichier_joint> existingFiles = existingDemande.getFiles();
+                        titre existingTitre = existingDemande.getTitre();
+                        type existingType = existingDemande.getType();
+                        theme existingTheme = existingDemande.getTheme();
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateDemandeFormation(
-            @PathVariable String id,
-            @RequestParam(value = "titre", required = false) String titreId,
-            @RequestParam(value = "type", required = false) String typeId,
-            @RequestParam(value = "theme", required = false) String themeId,
-            @RequestParam(value = "texteDemande", required = false) String texteDemande,
-            @RequestParam(value = "dateDebut", required = false) String dateDebutStr,
-            @RequestParam(value = "nbrJours", required = false) String nbrJours,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+                        // Update fields from the incoming data
+                        if (demandeData.containsKey("typeDemande")) {
+                            existingDemande.setTypeDemande((String) demandeData.get("typeDemande"));
+                        }
 
-        return demandeFormationRepository.findById(id).map(existingDemande -> {
-            try {
-                boolean isModified = false;
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        // Handle date fields
+                        if (demandeData.containsKey("dateDemande")) {
+                            existingDemande.setDateDemande(demandeData.get("dateDemande"));
+                        }
+                        if (demandeData.containsKey("dateDebut")) {
+                            existingDemande.setDateDebut(demandeData.get("dateDebut"));
+                        }
 
-                // Update titre if provided
-                if (titreId != null && !titreId.isEmpty()) {
-                    titre titre = titreRepository.findById(titreId)
-                            .orElseThrow(() -> new RuntimeException("Titre non trouvé"));
-                    existingDemande.setTitre(titre);
-                    isModified = true;
-                }
+                        // Handle personnel reference
+                        if (demandeData.containsKey("matPers")) {
+                            Object matPersData = demandeData.get("matPers");
+                            if (matPersData instanceof Map) {
+                                Map<String, String> matPersMap = (Map<String, String>) matPersData;
+                                Optional<Personnel> personnel = personnelRepository.findById(matPersMap.get("id"));
+                                personnel.ifPresent(existingDemande::setMatPers);
+                            }
+                        } else {
+                            existingDemande.setMatPers(existingMatPers);
+                        }
 
-                // Update type if provided
-                if (typeId != null && !typeId.isEmpty()) {
-                    type type = typeRepository.findById(typeId)
-                            .orElseThrow(() -> new RuntimeException("Type non trouvé"));
-                    existingDemande.setType(type);
-                    isModified = true;
-                }
+                        if (demandeData.containsKey("codeSoc")) {
+                            existingDemande.setCodeSoc((String) demandeData.get("codeSoc"));
+                        }
+                        if (demandeData.containsKey("nbrJours")) {
+                            existingDemande.setNbrJours((String) demandeData.get("nbrJours"));
+                        }
+                        if (demandeData.containsKey("texteDemande")) {
+                            existingDemande.setTexteDemande((String) demandeData.get("texteDemande"));
+                        }
+                        if (demandeData.containsKey("reponseChef")) {
+                            existingDemande.setReponseChef(Reponse.valueOf((String) demandeData.get("reponseChef")));
+                        }
+                        if (demandeData.containsKey("reponseRH")) {
+                            existingDemande.setReponseRH(Reponse.valueOf((String) demandeData.get("reponseRH")));
+                        }
 
-                // Update theme if provided
-                if (themeId != null && !themeId.isEmpty()) {
-                    theme theme = themeRepository.findById(themeId)
-                            .orElseThrow(() -> new RuntimeException("Thème non trouvé"));
-                    existingDemande.setTheme(theme);
-                    isModified = true;
-                }
+                        // Handle files
+                        if (demandeData.containsKey("Files") && demandeData.get("Files") != null) {
+                            // You might need custom logic here to handle file updates
+                        } else {
+                            existingDemande.setFiles(existingFiles);
+                        }
 
-                // Update text if provided
-                if (texteDemande != null && !texteDemande.isEmpty()) {
-                    existingDemande.setTexteDemande(texteDemande);
-                    isModified = true;
-                }
+                        // Handle titre reference
+                        if (demandeData.containsKey("titre")) {
+                            Object titreData = demandeData.get("titre");
+                            if (titreData instanceof Map) {
+                                Map<String, String> titreMap = (Map<String, String>) titreData;
+                                Optional<titre> titre = titreRepository.findById(titreMap.get("id"));
+                                titre.ifPresent(existingDemande::setTitre);
+                            }
+                        } else {
+                            existingDemande.setTitre(existingTitre);
+                        }
 
-                // Update date if provided
-                if (dateDebutStr != null && !dateDebutStr.isEmpty()) {
-                    Date dateDebut = dateFormat.parse(dateDebutStr);
-                    existingDemande.setDateDebut(dateDebut);
-                    isModified = true;
-                }
+                        // Handle type reference
+                        if (demandeData.containsKey("type")) {
+                            Object typeData = demandeData.get("type");
+                            if (typeData instanceof Map) {
+                                Map<String, String> typeMap = (Map<String, String>) typeData;
+                                Optional<type> type = typeRepository.findById(typeMap.get("id"));
+                                type.ifPresent(existingDemande::setType);
+                            }
+                        } else {
+                            existingDemande.setType(existingType);
+                        }
 
-                // Update number of days if provided
-                if (nbrJours != null && !nbrJours.isEmpty()) {
-                    existingDemande.setNbrJours(nbrJours);
-                    isModified = true;
-                }
+                        // Handle theme reference
+                        if (demandeData.containsKey("theme")) {
+                            Object themeData = demandeData.get("theme");
+                            if (themeData instanceof Map) {
+                                Map<String, String> themeMap = (Map<String, String>) themeData;
+                                Optional<theme> theme = themeRepository.findById(themeMap.get("id"));
+                                theme.ifPresent(existingDemande::setTheme);
+                            }
+                        } else {
+                            existingDemande.setTheme(existingTheme);
+                        }
 
-                // Handle file upload if provided
-                if (file != null && !file.isEmpty()) {
-                    // Remove old files if needed
-                    if (existingDemande.getFiles() != null && !existingDemande.getFiles().isEmpty()) {
-                        fichierJointRepository.deleteAll(existingDemande.getFiles());
+                        if (demandeData.containsKey("annee_f")) {
+                            existingDemande.setAnnee_f((String) demandeData.get("annee_f"));
+                        }
+
+                        DemandeFormation updatedDemande = demandeFormationRepository.save(existingDemande);
+
+                        // Send notification if status changed
+                        if (demandeData.containsKey("reponseChef") || demandeData.containsKey("reponseRH")) {
+                            notificationService.createNotification(
+                                    updatedDemande.getMatPers().getId(),
+                                    "Votre demande de formation a été mise à jour",
+                                    "/demande-formation/" + updatedDemande.getId_libre_demande()
+                            );
+                        }
+
+                        return ResponseEntity.ok(updatedDemande);
+                    } catch (Exception e) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Error updating demande: " + e.getMessage());
                     }
-
-                    // Save new file
-                    Fichier_joint newFile = fichierJointService.saveFile(file);
-                    existingDemande.getFiles().add(newFile);
-                    isModified = true;
-                }
-
-                // Reset status if content was modified
-                if (isModified &&
-                        (existingDemande.getReponseChef() != Reponse.I ||
-                                existingDemande.getReponseRH() != Reponse.I)) {
-                    existingDemande.setReponseChef(Reponse.I);
-                    existingDemande.setReponseRH(Reponse.I);
-                }
-
-                // Save the updated demande
-                DemandeFormation updatedDemande = demandeFormationRepository.save(existingDemande);
-
-                return ResponseEntity.ok(Map.of(
-                        "message", "Demande de formation mise à jour avec succès",
-                        "demandeId", updatedDemande.getId_libre_demande(),
-                        "titre", updatedDemande.getTitre().getId(),
-                        "type", updatedDemande.getType().getId(),
-                        "theme", updatedDemande.getTheme().getId(),
-                        "status", isModified ? "En attente" : "Non modifié"
-                ));
-
-            } catch (ParseException e) {
-                return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
-            } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors du traitement du fichier: " + e.getMessage());
-            } catch (RuntimeException e) {
-                return ResponseEntity.badRequest().body(e.getMessage());
-            }
-        }).orElse(ResponseEntity.notFound().build());
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
+
 
 
     @DeleteMapping("/{id}")

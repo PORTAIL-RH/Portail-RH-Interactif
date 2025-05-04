@@ -165,7 +165,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/candidats/{positionId}/candidate-count") ||
 
 
-
+                requestURI.startsWith("/api/notifications/mark-all-read") ||
                 requestURI.startsWith("/api/notifications"))
 
 

@@ -9,6 +9,8 @@ import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
 import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -20,13 +22,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/demande-pre-avance")
 public class DemandePreAvanceController {
+    private static final Logger logger = LoggerFactory.getLogger(DemandePreAvanceController.class);
 
     @Autowired
     private DemandePreAvanceRepository demandePreAvanceRepository;
@@ -147,86 +149,95 @@ public class DemandePreAvanceController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Update a DemandePreAvance by ID
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updateDemande(
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDemandePreAvance(
             @PathVariable String id,
-            @RequestParam(value = "type", required = false) String type,
-            @RequestParam(value = "montant", required = false) String montantStr,
-            @RequestParam(value = "texteDemande", required = false) String texteDemande,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestBody Map<String, Object> demandeData) {
 
-        return demandePreAvanceRepository.findById(id).map(existingDemande -> {
-            try {
-                boolean isModified = false;
-
-                // Update type if provided and valid
-                if (type != null && !type.isEmpty()) {
-                    if (!DemandePreAvance.getTypesPreAvance().containsKey(type)) {
-                        return ResponseEntity.badRequest().body("Type de pré-avance non valide");
-                    }
-                    existingDemande.setType(type);
-                    isModified = true;
-                }
-
-                // Update amount if provided
-                if (montantStr != null && !montantStr.isEmpty()) {
+        return demandePreAvanceRepository.findById(id)
+                .map(existingDemande -> {
                     try {
-                        double montant = Double.parseDouble(montantStr);
-                        existingDemande.setMontant(montant); // This will validate against type's max amount
-                        isModified = true;
-                    } catch (NumberFormatException e) {
-                        return ResponseEntity.badRequest().body("Montant doit être un nombre valide");
-                    } catch (MontantDepasseException e) {
-                        return ResponseEntity.badRequest().body(e.getMessage());
+                        boolean isModified = false;
+                        // Preserve existing references
+                        Personnel existingMatPers = existingDemande.getMatPers();
+                        Collection<Fichier_joint> existingFiles = existingDemande.getFiles();
+
+                        // Update type if provided
+                        if (demandeData.containsKey("type")) {
+                            String newType = (String) demandeData.get("type");
+                            if (!DemandePreAvance.getTypesPreAvance().containsKey(newType)) {
+                                return ResponseEntity.badRequest().body("Type de pré-avance non valide");
+                            }
+                            existingDemande.setType(newType);
+                            isModified = true;
+                        }
+
+                        // Update amount if provided
+                        if (demandeData.containsKey("montant")) {
+                            try {
+                                double montant = Double.parseDouble(demandeData.get("montant").toString());
+                                existingDemande.setMontant(montant);
+                                isModified = true;
+                            } catch (NumberFormatException e) {
+                                return ResponseEntity.badRequest().body("Montant doit être un nombre valide");
+                            } catch (MontantDepasseException e) {
+                                return ResponseEntity.badRequest().body(e.getMessage());
+                            }
+                        }
+
+                        // Update text if provided
+                        if (demandeData.containsKey("texteDemande")) {
+                            existingDemande.setTexteDemande((String) demandeData.get("texteDemande"));
+                            isModified = true;
+                        }
+
+                        // Handle personnel reference
+                        if (demandeData.containsKey("matPers")) {
+                            Object matPersData = demandeData.get("matPers");
+                            if (matPersData instanceof Map) {
+                                Map<String, String> matPersMap = (Map<String, String>) matPersData;
+                                Optional<Personnel> personnel = personnelRepository.findById(matPersMap.get("id"));
+                                personnel.ifPresent(existingDemande::setMatPers);
+                                isModified = true;
+                            }
+                        } else {
+                            existingDemande.setMatPers(existingMatPers);
+                        }
+
+                        // Reset status if content was modified
+                        if (isModified &&
+                                (existingDemande.getReponseChef() != Reponse.I ||
+                                        existingDemande.getReponseRH() != Reponse.I)) {
+                            existingDemande.setReponseChef(Reponse.I);
+                            existingDemande.setReponseRH(Reponse.I);
+                        }
+
+                        DemandePreAvance updatedDemande = demandePreAvanceRepository.save(existingDemande);
+
+                        // Send notification
+                        notificationService.createNotification(
+                                updatedDemande.getMatPers().getId(),
+                                "Votre demande de pré-avance a été mise à jour",
+                                "/demande-pre-avance/" + updatedDemande.getId()
+                        );
+
+                        return ResponseEntity.ok(Map.of(
+                                "message", "Demande de pré-avance mise à jour avec succès",
+                                "demandeId", updatedDemande.getId(),
+                                "type", updatedDemande.getType(),
+                                "montant", updatedDemande.getMontant(),
+                                "texteDemande", updatedDemande.getTexteDemande(),
+                                "status", isModified ? "En attente" : "Non modifié"
+                        ));
+                    } catch (Exception e) {
+                        logger.error("Error updating demande pre-avance", e);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Error updating demande: " + e.getMessage());
                     }
-                }
-
-                // Update text if provided
-                if (texteDemande != null && !texteDemande.isEmpty()) {
-                    existingDemande.setTexteDemande(texteDemande);
-                    isModified = true;
-                }
-
-                // Handle file upload if provided
-                if (file != null && !file.isEmpty()) {
-                    // Remove old files if needed
-                    if (existingDemande.getFiles() != null && !existingDemande.getFiles().isEmpty()) {
-                        fichierJointRepository.deleteAll(existingDemande.getFiles());
-                    }
-
-                    // Save new file
-                    Fichier_joint newFile = fichierJointService.saveFile(file);
-                    existingDemande.getFiles().add(newFile);
-                    isModified = true;
-                }
-
-                // Reset status if content was modified
-                if (isModified &&
-                        (existingDemande.getReponseChef() != Reponse.I ||
-                                existingDemande.getReponseRH() != Reponse.I)) {
-                    existingDemande.setReponseChef(Reponse.I);
-                    existingDemande.setReponseRH(Reponse.I);
-                }
-
-                // Save the updated demande
-                DemandePreAvance updatedDemande = demandePreAvanceRepository.save(existingDemande);
-
-                return ResponseEntity.ok(Map.of(
-                        "message", "Demande de pré-avance mise à jour avec succès",
-                        "demandeId", updatedDemande.getId(),
-                        "type", updatedDemande.getType(),
-                        "montant", updatedDemande.getMontant(),
-                        "texteDemande", updatedDemande.getTexteDemande(),
-                        "status", isModified ? "En attente" : "Non modifié"
-                ));
-
-            } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors du traitement du fichier: " + e.getMessage());
-            }
-        }).orElse(ResponseEntity.notFound().build());
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
+
 
     // Delete a DemandePreAvance by ID
     @DeleteMapping("/{id}")
@@ -249,63 +260,60 @@ public class DemandePreAvanceController {
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemande(
             @PathVariable String id,
-            @RequestBody(required = false) TraitementDemandeRequest request) {
+            @RequestBody(required = false) Map<String, String> request) {
 
         return demandePreAvanceRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
+            demandePreAvanceRepository.save(demande);
 
-            // Set observation if provided in request body (optional for approval)
-            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
-                demande.setObservation(request.getObservation().trim());
-            } else {
-                demande.setObservation(null); // Clear observation if not provided
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
 
-            DemandePreAvance updatedDemande = demandePreAvanceRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Autorisation a été validée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande validée avec succès",
-                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
-            ));
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande validée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemande(
             @PathVariable String id,
-            @RequestBody TraitementDemandeRequest request) {
+            @RequestBody Map<String, String> request) {
 
-        if (request == null || request.getObservation() == null || request.getObservation().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("L'observation est obligatoire pour le rejet");
+        if (!request.containsKey("observation")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Observation is required"));
         }
 
         return demandePreAvanceRepository.findById(id).map(demande -> {
-            try {
-                demande.setReponseRH(Reponse.N); // Use 'R' for rejected
-                demande.setObservation(request.getObservation().trim());
+            demande.setReponseChef(Reponse.N);
+            demande.setObservation(request.get("observation"));
 
-                DemandePreAvance updatedDemande = demandePreAvanceRepository.save(demande);
-                sseController.sendUpdate("updated", updatedDemande);
+            demandePreAvanceRepository.save(demande);
 
-                // Send notification
-                String notificationMessage = "Demande de pré-avance rejetée: " + demande.getId();
-                notificationService.createNotification(
-                        notificationMessage,
-                        "RH",
-                        null
-                );
-
-                return ResponseEntity.ok(Map.of(
-                        "status", "success",
-                        "message", "Demande rejetée avec succès",
-                        "demande", updatedDemande
-                ));
-            } catch (Exception e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors du rejet de la demande: " + e.getMessage());
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
+
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Autorisation a été refusée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande refusée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
