@@ -1,6 +1,9 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.PersonnelDTO;
+import com.example.PortailRH.Model.Role;
+import com.example.PortailRH.Model.Service;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.RoleRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
@@ -9,7 +12,10 @@ import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Util.JwtUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
@@ -33,7 +38,6 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/Personnel")
 @Slf4j
-
 public class PersonnelController {
     private static final Logger logger = LoggerFactory.getLogger(PersonnelController.class);
     private static final int MAX_REGISTRATION_ATTEMPTS = 3;
@@ -375,13 +379,29 @@ public class PersonnelController {
             }
 
             String token = jwtUtil.generateToken(personnel.getMatricule());
+
+            Map<String, Object> userResponse = new HashMap<>();
+            userResponse.put("matricule", personnel.getMatricule());
+            userResponse.put("email", personnel.getEmail());
+            userResponse.put("role", personnel.getRole());
+            userResponse.put("prenom", personnel.getPrenom());
+            userResponse.put("nom", personnel.getNom());
+            userResponse.put("code_soc", personnel.getCode_soc()); // Changed to getCode_soc()
+            userResponse.put("serviceName", personnel.getServiceName()); // Using the existing getServiceName() method
+            userResponse.put("id", personnel.getId());
+            userResponse.put("telephone", personnel.getTelephone());
+            userResponse.put("sexe", personnel.getSexe());
+            userResponse.put("situation", personnel.getSituation());
+            userResponse.put("nbr_enfants", personnel.getNbr_enfants());
+            userResponse.put("date_embauche", personnel.getDate_embauche());
+            userResponse.put("cin", personnel.getCIN());
+            userResponse.put("date_naiss", personnel.getDate_naiss());
+
+
+
             return ResponseEntity.ok(Map.of(
                     "token", token,
-                    "user", Map.of(
-                            "matricule", personnel.getMatricule(),
-                            "email", personnel.getEmail(),
-                            "role", personnel.getRole()
-                    )
+                    "user", userResponse
             ));
 
         } catch (Exception e) {
@@ -486,36 +506,23 @@ public class PersonnelController {
     @GetMapping("/gender-distribution")
     public ResponseEntity<?> getGenderDistribution() {
         try {
-            // Get all active personnel
-            List<Personnel> activePersonnelList = personnelRepository.findAll()
-                    .stream()
-                    .filter(Personnel::isActive) // or p -> p.getActive() or whatever your active check is
-                    .toList();
-
-            int total = activePersonnelList.size();
+            List<Personnel> personnelList = personnelRepository.findAll();
+            int total = personnelList.size();
 
             if (total == 0) {
-                return ResponseEntity.ok(Map.of(
-                        "male", 0.0,
-                        "female", 0.0,
-                        "without_gender", 0.0
-                ));
+                return ResponseEntity.ok(Map.of("male", 0.0, "female", 0.0));
             }
 
-            long maleCount = activePersonnelList.stream()
+            long maleCount = personnelList.stream()
                     .filter(p -> "male".equalsIgnoreCase(p.getSexe()))
                     .count();
-            long femaleCount = activePersonnelList.stream()
+            long femaleCount = personnelList.stream()
                     .filter(p -> "female".equalsIgnoreCase(p.getSexe()))
-                    .count();
-            long withoutGenderCount = activePersonnelList.stream()
-                    .filter(p -> p.getSexe() == null || p.getSexe().trim().isEmpty())
                     .count();
 
             Map<String, Double> genderDistribution = new HashMap<>();
             genderDistribution.put("male", (maleCount * 100.0) / total);
             genderDistribution.put("female", (femaleCount * 100.0) / total);
-            genderDistribution.put("without_gender", (withoutGenderCount * 100.0) / total);
 
             return ResponseEntity.ok(genderDistribution);
         } catch (Exception e) {
@@ -958,6 +965,8 @@ public class PersonnelController {
             ));
         }
     }
+
+
 
 
     // Get personnel by ID

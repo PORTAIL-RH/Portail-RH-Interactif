@@ -1,11 +1,12 @@
 package com.example.PortailRH.Controller;
 
 import com.example.PortailRH.Model.*;
-import com.example.PortailRH.Repository.*;
+import com.example.PortailRH.Repository.DemandeDocumentRepository;
+import com.example.PortailRH.Repository.FichierJointRepository;
+import com.example.PortailRH.Repository.PersonnelRepository;
+import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
-import com.mongodb.client.gridfs.model.GridFSFile;
-import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,6 +194,53 @@ public class DemandeDocumentController {
         }
     }
 
+    // Mettre à jour une demande existante
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDemande(@PathVariable String id, @RequestBody DemandeDocument demandeDetails) {
+        try {
+            return demandeDocumentRepository.findById(id)
+                    .map(existingDemande -> {
+                        // Update fields with null checks
+                        if (demandeDetails.getTypeDemande() != null) {
+                            existingDemande.setTypeDemande(demandeDetails.getTypeDemande());
+                        }
+                        if (demandeDetails.getTexteDemande() != null) {
+                            existingDemande.setTexteDemande(demandeDetails.getTexteDemande());
+                        }
+                        if (demandeDetails.getReponseChef() != null) {
+                            existingDemande.setReponseChef(demandeDetails.getReponseChef());
+                        }
+                        if (demandeDetails.getReponseRH() != null) {
+                            existingDemande.setReponseRH(demandeDetails.getReponseRH());
+                        }
+                        if (demandeDetails.getTypeDocument() != null) {
+                            existingDemande.setTypeDocument(demandeDetails.getTypeDocument());
+                        }
+
+                        // ⭐ Automatically update with current date & time ⭐
+                        existingDemande.setDateDemande(new Date()); // Sets to current time
+
+                        DemandeDocument updated = demandeDocumentRepository.save(existingDemande);
+                        return ResponseEntity.ok(updated);
+                    })
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of(
+                            "error", "Invalid date format",
+                            "message", e.getMessage(),
+                            "supportedFormats", Arrays.asList(
+                                    "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+                                    "yyyy-MM-dd",
+                                    "dd/MM/yyyy",
+                                    "MM/dd/yyyy"
+                            )
+                    )
+            );
+        }
+    }
+
+
     // Approve request
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemande(
@@ -201,15 +249,23 @@ public class DemandeDocumentController {
 
         return demandeDocumentRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
+            demandeDocumentRepository.save(demande);
 
-            if (request != null && request.containsKey("observation")) {
-                demande.setObservation(request.get("observation"));
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
 
-            DemandeDocument updated = demandeDocumentRepository.save(demande);
-            sseController.sendUpdate("updated", updated);
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de document a été validée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
 
-            return ResponseEntity.ok(updated);
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande validée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
@@ -227,10 +283,23 @@ public class DemandeDocumentController {
             demande.setReponseChef(Reponse.N);
             demande.setObservation(request.get("observation"));
 
-            DemandeDocument updated = demandeDocumentRepository.save(demande);
-            sseController.sendUpdate("updated", updated);
+            demandeDocumentRepository.save(demande);
 
-            return ResponseEntity.ok(updated);
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de document a été refusée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande refusée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 

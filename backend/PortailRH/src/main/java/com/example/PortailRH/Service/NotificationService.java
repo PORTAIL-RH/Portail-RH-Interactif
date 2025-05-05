@@ -81,4 +81,19 @@ public class NotificationService {
     public List<Notification> getNotificationsByRoleAndServiceId(String role, String serviceId) {
         return notificationRepository.findByRoleAndServiceId(role, serviceId);
     }
+
+    // Marks all fetched notifications as viewed and saves them.
+    public int markAllAsRead(String role, String serviceId) {
+        // Get all unread notifications for this user
+        List<Notification> unreadNotifications = notificationRepository
+                .findByRoleAndServiceIdAndViewedFalse(role, serviceId);
+
+        // Mark them all as read
+        unreadNotifications.forEach(notification -> {
+            notification.setViewed(true);
+            notificationRepository.save(notification);
+        });
+
+        return unreadNotifications.size();
+    }
 }

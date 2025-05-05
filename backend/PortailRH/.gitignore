@@ -6,6 +6,11 @@ target/
 # Ignore Python virtual environments
 **/venv/
 **/.venv/
+# Ignore logs
+*.log
+*.log.*
+*.tmp
+*.gz
 
 ### STS ###
 .apt_generated

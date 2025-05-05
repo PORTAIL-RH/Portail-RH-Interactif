@@ -80,7 +80,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications/unreadnbr").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/notifications/nbr").permitAll()
                         .requestMatchers(HttpMethod.GET, "/ws/**").permitAll()
-
+                        .requestMatchers(HttpMethod.PUT, "/api/notifications/mark-all-read").permitAll()
 
                         //roles endpoints
 
