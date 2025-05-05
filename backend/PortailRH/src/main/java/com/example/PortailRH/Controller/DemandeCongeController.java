@@ -1,15 +1,15 @@
 package com.example.PortailRH.Controller;
-import jakarta.validation.Valid;
-import org.bson.types.ObjectId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Repository.DemandeCongeRepository;
+import com.example.PortailRH.Repository.FichierJointRepository;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
-import com.example.PortailRH.Repository.DemandeCongeRepository;
-import com.example.PortailRH.Repository.FichierJointRepository;
 import com.example.PortailRH.Service.NotificationService;
+import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,7 +29,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Year;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "http://localhost:3000")
@@ -224,68 +223,76 @@ public class DemandeCongeController {
             ));
         }
     }
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping("/{id}")
     public ResponseEntity<?> updateDemande(
             @PathVariable String id,
-            @RequestParam(value = "dateDebut", required = false) String dateDebut,
-            @RequestParam(value = "dateFin", required = false) String dateFin,
-            @RequestParam(value = "texteDemande", required = false) String texteDemande,
-            @RequestParam(value = "snjTempDep", required = false) String snjTempDep,
-            @RequestParam(value = "snjTempRetour", required = false) String snjTempRetour,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestBody Map<String, Object> requestData) {
 
         return demandeCongeRepository.findById(id).map(existingDemande -> {
             try {
-                // Only update allowed fields if they are provided
-                if (dateDebut != null) {
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                    existingDemande.setDateDebut(dateFormat.parse(dateDebut));
+                // Update common fields
+                if (requestData.containsKey("texteDemande")) {
+                    existingDemande.setTexteDemande((String) requestData.get("texteDemande"));
                 }
 
-                if (dateFin != null) {
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                    existingDemande.setDateFin(dateFormat.parse(dateFin));
-                }
-
-                if (texteDemande != null) {
-                    existingDemande.setTexteDemande(texteDemande);
-                }
-
-                if (snjTempDep != null) {
-                    existingDemande.setSnjTempDep(snjTempDep);
-                }
-
-                if (snjTempRetour != null) {
-                    existingDemande.setSnjTempRetour(snjTempRetour);
-                }
-
-                // Handle file update if provided
-                if (file != null && !file.isEmpty()) {
-                    // Remove old files if needed
-                    if (existingDemande.getFiles() != null && !existingDemande.getFiles().isEmpty()) {
-                        fichierJointRepository.deleteAll(existingDemande.getFiles());
+                // Update date fields
+                if (requestData.containsKey("dateDebut")) {
+                    Object dateDebut = requestData.get("dateDebut");
+                    if (dateDebut instanceof String) {
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        existingDemande.setDateDebut(dateFormat.parse((String) dateDebut));
+                    } else if (dateDebut instanceof Date) {
+                        existingDemande.setDateDebut((Date) dateDebut);
                     }
-
-                    // Save new file
-                    Fichier_joint fichier = fichierJointService.saveFile(file);
-                    existingDemande.setFiles(List.of(fichier));
                 }
 
-                // Save and return the updated demande
+                if (requestData.containsKey("dateFin")) {
+                    Object dateFin = requestData.get("dateFin");
+                    if (dateFin instanceof String) {
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+                        existingDemande.setDateFin(dateFormat.parse((String) dateFin));
+                    } else if (dateFin instanceof Date) {
+                        existingDemande.setDateFin((Date) dateFin);
+                    }
+                }
+
+                // Update period fields
+                if (requestData.containsKey("snjTempDep")) {
+                    existingDemande.setSnjTempDep((String) requestData.get("snjTempDep"));
+                }
+
+                if (requestData.containsKey("snjTempRetour")) {
+                    existingDemande.setSnjTempRetour((String) requestData.get("snjTempRetour"));
+                }
+
+                // Update number of days if provided
+                if (requestData.containsKey("nbrJours")) {
+                    Object nbrJours = requestData.get("nbrJours");
+                    if (nbrJours instanceof Integer) {
+                        existingDemande.setNbrJours((Integer) nbrJours);
+                    } else if (nbrJours instanceof String) {
+                        existingDemande.setNbrJours(Integer.parseInt((String) nbrJours));
+                    }
+                }
+
+                // Save the updated demande
                 DemandeConge updatedDemande = demandeCongeRepository.save(existingDemande);
+
                 return ResponseEntity.ok(Map.of(
-                        "message", "Demande mise à jour avec succès",
+                        "message", "Demande de congé mise à jour avec succès",
                         "demandeId", updatedDemande.getId()
                 ));
 
             } catch (ParseException e) {
                 return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
-            } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors du traitement du fichier: " + e.getMessage());
+            } catch (NumberFormatException e) {
+                return ResponseEntity.badRequest().body("Format numérique invalide pour le nombre de jours");
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body("Erreur serveur lors de la mise à jour");
             }
         }).orElse(ResponseEntity.notFound().build());
     }
+
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeConge>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandeConge> demandes = demandeCongeRepository.findByMatPersId(matPersId);
@@ -300,47 +307,60 @@ public class DemandeCongeController {
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemande(
             @PathVariable String id,
-            @RequestBody(required = false) TraitementDemandeRequest request) {
+            @RequestBody(required = false) Map<String, String> request) {
 
         return demandeCongeRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
+            demandeCongeRepository.save(demande);
 
-            // Set observation if provided in request body (optional for approval)
-            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
-                demande.setObservation(request.getObservation().trim());
-            } else {
-                demande.setObservation(null); // Clear observation if not provided
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
 
-            DemandeConge updatedDemande = demandeCongeRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de congé a été validée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande validée avec succès",
-                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
-            ));
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande validée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemande(
             @PathVariable String id,
-            @RequestBody @Valid TraitementDemandeRequest request) {
+            @RequestBody Map<String, String> request) {
 
-        // Validation will be handled by @Valid annotation
+        if (!request.containsKey("observation")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Observation is required"));
+        }
+
         return demandeCongeRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
-            demande.setObservation(request.getObservation().trim());
+            demande.setObservation(request.get("observation"));
 
-            DemandeConge updatedDemande = demandeCongeRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            demandeCongeRepository.save(demande);
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande refusée avec succès",
-                    "observation", updatedDemande.getObservation()
-            ));
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de congé a été refusée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande refusée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 

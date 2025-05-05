@@ -8,6 +8,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -68,5 +69,27 @@ public class NotificationController {
     public ResponseEntity<Integer> getUnviewedNotificationsnb(@RequestParam String role) {
         List<Notification> notifications = notificationService.getUnviewedNotificationsByRole(role);
         return ResponseEntity.ok(notifications.size());
+    }
+
+    // Mark all notifications as read for a specific role and serviceId
+    // Expects a role and serviceId in a PUT request body, validates them, and calls the service method.
+    @PutMapping("/mark-all-read")
+    public ResponseEntity<?> markAllAsRead(@RequestBody Map<String, String> request) {
+        String role = request.get("role");
+        String serviceId = request.get("serviceId");
+
+        if (role == null || role.isEmpty()) {
+            return ResponseEntity.badRequest().body("Role is required");
+        }
+
+        if (serviceId == null || serviceId.isEmpty()) {
+            return ResponseEntity.badRequest().body("ServiceId is required");
+        }
+
+        int updatedCount = notificationService.markAllAsRead(role, serviceId);
+        return ResponseEntity.ok(Map.of(
+                "message", "All notifications marked as read",
+                "updatedCount", updatedCount
+        ));
     }
 }

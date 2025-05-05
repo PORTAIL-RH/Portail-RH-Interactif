@@ -16,14 +16,14 @@ public class DemandeFormation {
     @Id
     private String id_libre_demande;
     private String typeDemande;
-    private Date dateDemande = new Date();
+    private Object dateDemande = new Date();
 
 
 
     @DBRef
     private Personnel matPers;
     private String codeSoc;
-    private Date dateDebut;
+    private Object dateDebut;
     private String nbrJours;
 
     private String texteDemande;
@@ -61,19 +61,19 @@ public class DemandeFormation {
         this.observation = observation;
     }
 
-    public Date getDateDebut() {
+    public Object getDateDebut() {
         return dateDebut;
     }
 
-    public void setDateDebut(Date dateDebut) {
+    public void setDateDebut(Object dateDebut) {
         this.dateDebut = dateDebut;
     }
 
-    public Date getDateDemande() {
+    public Object getDateDemande() {
         return dateDemande;
     }
 
-    public void setDateDemande(Date dateDemande) {
+    public void setDateDemande(Object dateDemande) {
         this.dateDemande = dateDemande;
     }
 

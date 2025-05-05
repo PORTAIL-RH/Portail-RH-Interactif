@@ -1,6 +1,8 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.PersonnelDTO;
+import com.example.PortailRH.Model.Role;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.RoleRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
@@ -9,14 +11,16 @@ import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Util.JwtUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -369,13 +373,29 @@ public class PersonnelController {
             }
 
             String token = jwtUtil.generateToken(personnel.getMatricule());
+
+            Map<String, Object> userResponse = new HashMap<>();
+            userResponse.put("matricule", personnel.getMatricule());
+            userResponse.put("email", personnel.getEmail());
+            userResponse.put("role", personnel.getRole());
+            userResponse.put("prenom", personnel.getPrenom());
+            userResponse.put("nom", personnel.getNom());
+            userResponse.put("code_soc", personnel.getCode_soc()); // Changed to getCode_soc()
+            userResponse.put("serviceName", personnel.getServiceName()); // Using the existing getServiceName() method
+            userResponse.put("id", personnel.getId());
+            userResponse.put("telephone", personnel.getTelephone());
+            userResponse.put("sexe", personnel.getSexe());
+            userResponse.put("situation", personnel.getSituation());
+            userResponse.put("nbr_enfants", personnel.getNbr_enfants());
+            userResponse.put("date_embauche", personnel.getDate_embauche());
+            userResponse.put("cin", personnel.getCIN());
+            userResponse.put("date_naiss", personnel.getDate_naiss());
+
+
+
             return ResponseEntity.ok(Map.of(
                     "token", token,
-                    "user", Map.of(
-                            "matricule", personnel.getMatricule(),
-                            "email", personnel.getEmail(),
-                            "role", personnel.getRole()
-                    )
+                    "user", userResponse
             ));
 
         } catch (Exception e) {

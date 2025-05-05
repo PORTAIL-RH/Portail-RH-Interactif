@@ -7,7 +7,6 @@ import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
-import jakarta.validation.Valid;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -20,7 +19,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
@@ -163,55 +161,25 @@ public class DemandeAutorisationController {
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping("/{id}")
     public ResponseEntity<?> updateDemande(
             @PathVariable String id,
-            @RequestParam(value = "dateDebut", required = false) String dateDebutStr,
-            @RequestParam(value = "texteDemande", required = false) String texteDemande,
-            @RequestParam(value = "heureSortie", required = false) String heureSortieStr,
-            @RequestParam(value = "heureRetour", required = false) String heureRetourStr,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestBody Map<String, Object> requestData) {
 
         return demandeAutorisationRepository.findById(id).map(existingDemande -> {
             try {
-                // Update date if provided
-                if (dateDebutStr != null && !dateDebutStr.isEmpty()) {
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-                    existingDemande.setDateDebut(dateFormat.parse(dateDebutStr));
+                // Update common fields
+                if (requestData.containsKey("texteDemande")) {
+                    existingDemande.setTexteDemande((String) requestData.get("texteDemande"));
                 }
 
-                // Update text if provided
-                if (texteDemande != null && !texteDemande.isEmpty()) {
-                    existingDemande.setTexteDemande(texteDemande);
+                // Update date fields
+                if (requestData.containsKey("dateDebut")) {
+                    existingDemande.setDateDebut(parseDateFromRequest(requestData.get("dateDebut")));
                 }
 
-                // Update departure time if provided
-                if (heureSortieStr != null && !heureSortieStr.isEmpty()) {
-                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-                    LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
-                    existingDemande.setHoraireSortie(heureSortie.getHour());
-                    existingDemande.setMinuteSortie(heureSortie.getMinute());
-                }
-
-                // Update return time if provided
-                if (heureRetourStr != null && !heureRetourStr.isEmpty()) {
-                    DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
-                    LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
-                    existingDemande.setHoraireRetour(heureRetour.getHour());
-                    existingDemande.setMinuteRetour(heureRetour.getMinute());
-                }
-
-                // Handle file upload if provided
-                if (file != null && !file.isEmpty()) {
-                    // Remove old files if needed
-                    if (existingDemande.getFiles() != null && !existingDemande.getFiles().isEmpty()) {
-                        fichierJointRepository.deleteAll(existingDemande.getFiles());
-                    }
-
-                    // Save new file
-                    Fichier_joint fichier = fichierJointService.saveFile(file);
-                    existingDemande.setFiles(List.of(fichier));
-                }
+                // Handle time fields conversion
+                handleTimeFields(requestData, existingDemande);
 
                 // Save the updated demande
                 DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(existingDemande);
@@ -221,16 +189,86 @@ public class DemandeAutorisationController {
                         "demandeId", updatedDemande.getId()
                 ));
 
-            } catch (ParseException e) {
-                return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
-            } catch (DateTimeParseException e) {
-                return ResponseEntity.badRequest().body("Format d'heure invalide. Utilisez le format 'HH:mm'.");
-            } catch (IOException e) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Erreur lors du traitement du fichier: " + e.getMessage());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body("Erreur serveur lors de la mise à jour");
             }
         }).orElse(ResponseEntity.notFound().build());
     }
+
+    private void handleTimeFields(Map<String, Object> requestData, DemandeAutorisation demande) {
+        // Heure de sortie
+        if (requestData.containsKey("heureSortie")) {
+            Object heureSortie = requestData.get("heureSortie");
+            if (heureSortie != null) {
+                demande.setHeureSortie(parseTimeValue(heureSortie, "heureSortie"));
+            }
+        }
+
+        // Minute de sortie
+        if (requestData.containsKey("minuteSortie")) {
+            Object minuteSortie = requestData.get("minuteSortie");
+            if (minuteSortie != null) {
+                demande.setMinuteSortie(parseTimeValue(minuteSortie, "minuteSortie"));
+            }
+        }
+
+        // Heure de retour
+        if (requestData.containsKey("heureRetour")) {
+            Object heureRetour = requestData.get("heureRetour");
+            if (heureRetour != null) {
+                demande.setHeureRetour(parseTimeValue(heureRetour, "heureRetour"));
+            }
+        }
+
+        // Minute de retour
+        if (requestData.containsKey("minuteRetour")) {
+            Object minuteRetour = requestData.get("minuteRetour");
+            if (minuteRetour != null) {
+                demande.setMinuteRetour(parseTimeValue(minuteRetour, "minuteRetour"));
+            }
+        }
+    }
+
+    private int parseTimeValue(Object value, String fieldName) {
+        try {
+            if (value instanceof Integer) {
+                return (Integer) value;
+            } else if (value instanceof String) {
+                return Integer.parseInt((String) value);
+            } else if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            throw new IllegalArgumentException("Format invalide pour " + fieldName + ": doit être un nombre");
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Format invalide pour " + fieldName + ": doit être un nombre valide");
+        }
+    }
+
+    private Date parseDateFromRequest(Object dateInput) {
+        if (dateInput == null) {
+            return null;
+        }
+
+        if (dateInput instanceof Date) {
+            return (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            try {
+                // Essayez d'abord le format ISO
+                return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX").parse((String) dateInput);
+            } catch (ParseException e1) {
+                try {
+                    // Essayez le format simple
+                    return new SimpleDateFormat("yyyy-MM-dd").parse((String) dateInput);
+                } catch (ParseException e2) {
+                    throw new IllegalArgumentException("Format de date invalide. Utilisez le format 'yyyy-MM-dd' ou 'yyyy-MM-ddTHH:mm:ss.SSSZ'");
+                }
+            }
+        }
+        throw new IllegalArgumentException("Type de date non supporté");
+    }
+
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteDemande(@PathVariable String id) {
@@ -248,50 +286,64 @@ public class DemandeAutorisationController {
         return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
     }
 
+
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemande(
             @PathVariable String id,
-            @RequestBody(required = false) TraitementDemandeRequest request) {
+            @RequestBody(required = false) Map<String, String> request) {
 
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.O);
+            demandeAutorisationRepository.save(demande);
 
-            // Set observation if provided in request body (optional for approval)
-            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
-                demande.setObservation(request.getObservation().trim());
-            } else {
-                demande.setObservation(null); // Clear observation if not provided
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
 
-            DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Autorisation a été validée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande validée avec succès",
-                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
-            ));
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande validée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemande(
             @PathVariable String id,
-            @RequestBody @Valid TraitementDemandeRequest request) {
+            @RequestBody Map<String, String> request) {
 
-        // Validation will be handled by @Valid annotation
+        if (!request.containsKey("observation")) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Observation is required"));
+        }
+
         return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseChef(Reponse.N);
-            demande.setObservation(request.getObservation().trim());
+            demande.setObservation(request.get("observation"));
 
-            DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(demande);
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            demandeAutorisationRepository.save(demande);
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande refusée avec succès",
-                    "observation", updatedDemande.getObservation()
-            ));
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Autorisation a été refusée.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
+            return ResponseEntity.ok("Demande refusée avec succès");
+
         }).orElse(ResponseEntity.notFound().build());
     }
 
