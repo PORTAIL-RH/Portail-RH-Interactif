@@ -1,4 +1,93 @@
 /* Main layout structure */
+
+@import url('../../reset.css');
+
+:root {
+  /* Light Mode Colors */
+  --bg-color-light: #f8f9fa;
+  --card-bg-light: #ffffff;
+  --text-color-light: #333333;
+  --muted-text-light: #6c757d;
+  --border-color-light: #e9ecef;
+  --input-bg-light: #ffffff;
+  --bg-gray-light: #f1f3f5;
+  --bg-hover-light: #f8f9fa;
+
+  /* Dark Mode Colors */
+  --bg-color-dark: #111827;
+  --card-bg-dark: #111827;
+  --text-color-dark: #e9ecef;
+  --muted-text-dark: #adb5bd;
+  --border-color-dark: #343a40;
+  --input-bg-dark: #2a2e35;
+  --bg-gray-dark: #343a40;
+  --bg-hover-dark: #2a2e35;
+
+  /* Shared Colors */
+  --primary-color: #4361ee;
+  --primary-light: rgba(67, 97, 238, 0.15);
+  --primary-dark: #3a56d4;
+  --primary-rgb: 67, 97, 238;
+
+  --success-color: #2ecc71;
+  --success-light: rgba(46, 204, 113, 0.15);
+  --success-dark: #27ae60;
+
+  --warning-color: #f39c12;
+  --warning-light: rgba(243, 156, 18, 0.15);
+  --warning-dark: #e67e22;
+
+  --danger-color: #e74c3c;
+  --danger-light: rgba(231, 76, 60, 0.15);
+  --danger-dark: #c0392b;
+
+  --info-color: #3498db;
+  --info-light: rgba(52, 152, 219, 0.15);
+  --info-dark: #2980b9;
+
+  /* Shadows */
+  --shadow-sm-light: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md-light: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg-light: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  --shadow-sm-dark: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md-dark: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg-dark: 0 10px 15px rgba(0, 0, 0, 0.3);
+
+  /* Layout */
+  --sidebar-width: 250px;
+  --navbar-height: 60px;
+  --transition-speed: 0.3s;
+
+  /* Set default light theme */
+  --bg-color: var(--bg-color-light);
+  --card-bg: var(--card-bg-light);
+  --text-color: var(--text-color-light);
+  --muted-text: var(--muted-text-light);
+  --border-color: var(--border-color-light);
+  --input-bg: var(--input-bg-light);
+  --bg-gray: var(--bg-gray-light);
+  --bg-hover: var(--bg-hover-light);
+  --shadow-sm: var(--shadow-sm-light);
+  --shadow-md: var(--shadow-md-light);
+  --shadow-lg: var(--shadow-lg-light);
+}
+
+/* Dark Mode */
+.dark {
+  --bg-color: var(--bg-color-dark);
+  --card-bg: var(--card-bg-dark);
+  --text-color: var(--text-color-dark);
+  --muted-text: var(--muted-text-dark);
+  --border-color: var(--border-color-dark);
+  --input-bg: var(--input-bg-dark);
+  --bg-gray: var(--bg-gray-dark);
+  --bg-hover: var(--bg-hover-dark);
+  --shadow-sm: var(--shadow-sm-dark);
+  --shadow-md: var(--shadow-md-dark);
+  --shadow-lg: var(--shadow-lg-dark);
+}
+
 .app-container {
     display: flex;
     min-height: 100vh;

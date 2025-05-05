@@ -21,4 +21,9 @@ public interface CandidatRepository extends MongoRepository<candidat, String> {
     Page<candidat> findByCandidaturesId(String candidatureId, Pageable pageable);
     Page<candidat> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCase(String nom, String prenom, Pageable pageable);
 
+    @Query("{'$or':[ {'nom': {$regex: ?0, $options: 'i'}}, {'prenom': {$regex: ?0, $options: 'i'}}, {'email': {$regex: ?0, $options: 'i'}} ]}")
+    Page<candidat> findByNomOrPrenomOrEmailContainingIgnoreCase(String searchTerm, Pageable pageable);
+    Page<candidat> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCaseOrEmailContainingIgnoreCase(
+            String nom, String prenom, String email, Pageable pageable);
+
 }

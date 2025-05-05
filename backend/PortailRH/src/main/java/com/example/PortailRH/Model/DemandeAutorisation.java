@@ -1,5 +1,6 @@
 package com.example.PortailRH.Model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -21,6 +22,7 @@ public class DemandeAutorisation {
     private String typeDemande;
 
     @DBRef
+    @JsonManagedReference
     private Personnel matPers;
     private String codeSoc;
     private Date dateDebut;

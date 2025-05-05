@@ -12,11 +12,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -28,6 +32,8 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/Personnel")
+@Slf4j
+
 public class PersonnelController {
     private static final Logger logger = LoggerFactory.getLogger(PersonnelController.class);
     private static final int MAX_REGISTRATION_ATTEMPTS = 3;
@@ -480,23 +486,36 @@ public class PersonnelController {
     @GetMapping("/gender-distribution")
     public ResponseEntity<?> getGenderDistribution() {
         try {
-            List<Personnel> personnelList = personnelRepository.findAll();
-            int total = personnelList.size();
+            // Get all active personnel
+            List<Personnel> activePersonnelList = personnelRepository.findAll()
+                    .stream()
+                    .filter(Personnel::isActive) // or p -> p.getActive() or whatever your active check is
+                    .toList();
+
+            int total = activePersonnelList.size();
 
             if (total == 0) {
-                return ResponseEntity.ok(Map.of("male", 0.0, "female", 0.0));
+                return ResponseEntity.ok(Map.of(
+                        "male", 0.0,
+                        "female", 0.0,
+                        "without_gender", 0.0
+                ));
             }
 
-            long maleCount = personnelList.stream()
+            long maleCount = activePersonnelList.stream()
                     .filter(p -> "male".equalsIgnoreCase(p.getSexe()))
                     .count();
-            long femaleCount = personnelList.stream()
+            long femaleCount = activePersonnelList.stream()
                     .filter(p -> "female".equalsIgnoreCase(p.getSexe()))
+                    .count();
+            long withoutGenderCount = activePersonnelList.stream()
+                    .filter(p -> p.getSexe() == null || p.getSexe().trim().isEmpty())
                     .count();
 
             Map<String, Double> genderDistribution = new HashMap<>();
             genderDistribution.put("male", (maleCount * 100.0) / total);
             genderDistribution.put("female", (femaleCount * 100.0) / total);
+            genderDistribution.put("without_gender", (withoutGenderCount * 100.0) / total);
 
             return ResponseEntity.ok(genderDistribution);
         } catch (Exception e) {
@@ -844,25 +863,81 @@ public class PersonnelController {
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getAllPersonnelByService(@PathVariable String chefserviceid) {
         try {
-            Personnel chef = personnelRepository.findById(chefserviceid)
-                    .orElseThrow(() -> new RuntimeException("Chef hiérarchique non trouvé"));
+            // 1. Verify chef exists and is a hierarchical chef (minimal fields)
+            Query chefQuery = new Query();
+            chefQuery.addCriteria(Criteria.where("_id").is(new ObjectId(chefserviceid))
+                    .and("role").is("Chef Hiérarchique"));
+            chefQuery.fields().include("role");
 
-            if (!"Chef Hiérarchique".equals(chef.getRole())) {
-                throw new RuntimeException("Le personnel spécifié n'est pas un chef hiérarchique");
+            Personnel chef = mongoTemplate.findOne(chefQuery, Personnel.class);
+            if (chef == null) {
+                throw new RuntimeException("Le personnel spécifié n'est pas un chef hiérarchique ou n'existe pas");
             }
 
-            com.example.PortailRH.Model.Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
+            // 2. Find service with minimal fields
+            Query serviceQuery = new Query();
+            serviceQuery.addCriteria(Criteria.where("chefHierarchique.$id").is(new ObjectId(chefserviceid)));
+            serviceQuery.fields().include("serviceName");
+            Service service = mongoTemplate.findOne(serviceQuery, Service.class);
+
             if (service == null) {
                 throw new RuntimeException("Aucun service trouvé pour ce chef hiérarchique");
             }
 
-            List<Personnel> personnelList = personnelRepository.findByService(service);
+            // 3. Get all personnel with all fields but handle references carefully
+            Query personnelQuery = new Query();
+            personnelQuery.addCriteria(Criteria.where("service.$id").is(new ObjectId(service.getId())));
 
-            List<PersonnelDTO> collaborators = personnelList.stream()
-                    .map(this::convertToPersonnelDTO)
+            List<Personnel> personnelList = mongoTemplate.find(personnelQuery, Personnel.class);
+
+            // 4. Manual conversion with complete information and cycle protection
+            List<Map<String, Object>> collaborators = personnelList.stream()
+                    .map(p -> {
+                        Map<String, Object> collaborator = new HashMap<>();
+                        // Basic information
+                        collaborator.put("id", p.getId());
+                        collaborator.put("matricule", p.getMatricule());
+                        collaborator.put("nom", p.getNom());
+                        collaborator.put("prenom", p.getPrenom());
+                        collaborator.put("email", p.getEmail());
+                        collaborator.put("code_soc", p.getCode_soc());
+                        collaborator.put("date_naiss", p.getDate_naiss());
+                        collaborator.put("telephone", p.getTelephone());
+                        collaborator.put("CIN", p.getCIN());
+                        collaborator.put("sexe", p.getSexe());
+                        collaborator.put("situation", p.getSituation());
+                        collaborator.put("nbr_enfants", p.getNbr_enfants());
+                        collaborator.put("date_embauche", p.getDate_embauche());
+                        collaborator.put("active", p.isActive());
+                        collaborator.put("role", p.getRole());
+                        collaborator.put("failedLoginAttempts", p.getFailedLoginAttempts());
+                        collaborator.put("accountLocked", p.isAccountLocked());
+                        collaborator.put("lockTime", p.getLockTime());
+                        collaborator.put("lockReason", p.getLockReason());
+
+                        // Handle service reference safely
+                        if (p.getService() != null) {
+                            Map<String, Object> serviceInfo = new HashMap<>();
+                            serviceInfo.put("id", p.getService().getId());
+                            serviceInfo.put("serviceName", p.getService().getServiceName());
+                            collaborator.put("service", serviceInfo);
+                        }
+
+                        // Handle chef hierarchique safely
+                        if (p.getChefHierarchique() != null) {
+                            Map<String, Object> chefInfo = new HashMap<>();
+                            chefInfo.put("id", p.getChefHierarchique().getId());
+                            chefInfo.put("nomComplet", p.getChefHierarchique().getNom() + " " + p.getChefHierarchique().getPrenom());
+                            chefInfo.put("matricule", p.getChefHierarchique().getMatricule());
+                            collaborator.put("chefHierarchique", chefInfo);
+                        }
+
+                        return collaborator;
+                    })
                     .collect(Collectors.toList());
 
             Map<String, Object> response = new HashMap<>();
+            response.put("status", "success");
             response.put("serviceName", service.getServiceName());
             response.put("numberOfCollaborators", collaborators.size());
             response.put("collaborators", collaborators);
@@ -870,11 +945,17 @@ public class PersonnelController {
             return ResponseEntity.ok(response);
 
         } catch (RuntimeException e) {
-            logger.error("Validation error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            log.error("Validation error: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
         } catch (Exception e) {
-            logger.error("System error: ", e);
-            return ResponseEntity.internalServerError().body(Map.of("message", "Erreur système"));
+            log.error("System error: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur système"
+            ));
         }
     }
 

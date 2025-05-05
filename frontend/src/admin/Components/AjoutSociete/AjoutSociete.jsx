@@ -222,23 +222,23 @@ const AjoutSociete = () => {
                 className={`societe-tab ${activeTab === "add" ? "active" : ""}`}
                 onClick={() => setActiveTab("add")}
               >
-                <FiPlus /> Add Company
+                <FiPlus /> Ajouter Une Société
               </button>
               <button
                 className={`societe-tab ${activeTab === "list" ? "active" : ""}`}
                 onClick={() => setActiveTab("list")}
               >
-                <FiList /> All Companies
+                <FiList /> Tout Les Sociétés
               </button>
             </div>
 
             {/* Add societe Form */}
             {activeTab === "add" && (
               <div className="ajout-societe-container">
-                <h2>Add New Company</h2>
+                <h2>Ajouter Une Société</h2>
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
-                    <label>Company Name:</label>
+                    <label>Nom:</label>
                     <input
                       type="text"
                       name="societeName"
@@ -251,7 +251,7 @@ const AjoutSociete = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Company Code:</label>
+                    <label>Code:</label>
                     <input
                       type="text"
                       name="societeCodeSoc"
@@ -263,7 +263,7 @@ const AjoutSociete = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Location:</label>
+                    <label>Emplacement:</label>
                     <input
                       type="text"
                       name="emplacement"
@@ -291,7 +291,7 @@ const AjoutSociete = () => {
               <div className="societes-list-container">
                 <div className="societes-list-header">
                   <h2>
-                    <FiServer /> Companies List
+                    <FiServer /> La Liste Des Sociétés
                   </h2>
                   <button
                     className="submit-button"
@@ -321,9 +321,9 @@ const AjoutSociete = () => {
                     <table className="societes-table">
                       <thead>
                         <tr>
-                          <th>Company Name</th>
-                          <th>Company Code</th>
-                          <th>Location</th>
+                          <th>Nom</th>
+                          <th>Code</th>
+                          <th>Emplacement</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -335,10 +335,10 @@ const AjoutSociete = () => {
                             <td>{societe.emplacement || "-"}</td>
                             <td className="actions">
                               <button className="edit-button" onClick={() => handleEdit(societe)}>
-                                <FiEdit /> Edit
+                                <FiEdit /> Modifier
                               </button>
                               <button className="delete-button" onClick={() => handleDelete(societe.societeId)}>
-                                <FiTrash2 /> Delete
+                                <FiTrash2 /> Supprimer
                               </button>
                             </td>
                           </tr>

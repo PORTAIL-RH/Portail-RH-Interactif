@@ -116,7 +116,7 @@ const Personnel = () => {
     loadInitialData();
 
     // Set up polling for personnel every 2 seconds
-    const pollingInterval = setInterval(fetchPersonnel, 2000);
+    const pollingInterval = setInterval(fetchPersonnel, 20000);
 
     // Sidebar toggle listener
     const handleSidebarToggle = (e) => {
@@ -245,7 +245,7 @@ const Personnel = () => {
     const role = e.target.value;
     setSelectedRole(role);
 
-    if (role === "Chef Hiérarchique" || role === "collaborateur") {
+    if (role === "Chef Hiérarchique" || role === "collaborateur" || role === "RH") {
       setSelectedService(selectedService || "");
     } else {
       setSelectedService("");
@@ -255,8 +255,15 @@ const Personnel = () => {
   // Handle service change
   const handleServiceChange = (e, personId) => {
     const selectedServiceId = e.target.value;
+  
+    // Prevent service change if role doesn't allow it
+    if (!["Chef Hiérarchique", "collaborateur", "RH"].includes(selectedRole)) {
+      showToast("Selected role is not allowed to assign a service", "warning");
+      return;
+    }
+  
     const selectedServiceObj = services.find((s) => s.serviceId === selectedServiceId);
-
+  
     const updatedPersonnel = personnel.map((person) =>
       person.id === personId
         ? {
@@ -265,28 +272,37 @@ const Personnel = () => {
             serviceId: selectedServiceId,
             serviceName: selectedServiceObj ? selectedServiceObj.serviceName : null,
           }
-        : person,
+        : person
     );
-
+  
     setPersonnel(updatedPersonnel);
     setSelectedService(selectedServiceId);
     saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { personnel: updatedPersonnel });
   };
+  
 
   // Update personnel
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     setUpdatingId(editingPersonnel.id);
 
+    // Find the service object if service is selected
+    const serviceObj = selectedService 
+      ? services.find(s => s.serviceId === selectedService) 
+      : null;
+
     const updatedPersonnel = {
       ...editingPersonnel,
       role: selectedRole,
-      serviceId:
-        selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique"
-          ? selectedService || editingPersonnel.serviceId
-          : null,
+      // Include serviceId if role is one of these types
+      serviceId: ["collaborateur", "Chef Hiérarchique", "RH"].includes(selectedRole)
+        ? selectedService || null
+        : null,
+      // Include the full service object if needed by your API
+      service: serviceObj
     };
 
+    // Clean up null/undefined values
     for (const key in updatedPersonnel) {
       if (updatedPersonnel[key] === null || updatedPersonnel[key] === undefined) {
         delete updatedPersonnel[key];
@@ -295,6 +311,8 @@ const Personnel = () => {
 
     try {
       showToast("Updating personnel...", "info");
+
+      console.log("Sending update payload:", updatedPersonnel); // Debug log
 
       const response = await fetch(`${API_URL}/api/Personnel/updateAllFields/${updatedPersonnel.id}`, {
         method: "PUT",
@@ -309,43 +327,37 @@ const Personnel = () => {
         throw new Error(`Failed to update personnel: ${errorMsg}`);
       }
 
-      const responseText = await response.text();
-      let updatedData;
-      try {
-        updatedData = JSON.parse(responseText);
-      } catch (error) {
-        updatedData = { message: responseText };
-      }
+      const updatedData = await response.json();
 
-      const selectedServiceObj = services.find((s) => s.serviceId === selectedService);
-
-      // Update only the specific personnel in state
+      // Update local state
       setPersonnel(prevPersonnel => 
         prevPersonnel.map(person =>
           person.id === updatedPersonnel.id
             ? {
                 ...person,
                 ...updatedPersonnel,
-                service: selectedServiceObj,
-                serviceId: selectedServiceObj?.serviceId || null,
-                serviceName: selectedServiceObj?.serviceName || null,
+                service: serviceObj,
+                serviceId: serviceObj?.serviceId || null,
+                serviceName: serviceObj?.serviceName || null,
               }
             : person
         )
       );
 
       // Update localStorage
-      saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { personnel: personnel.map(person =>
-        person.id === updatedPersonnel.id
-          ? {
-              ...person,
-              ...updatedPersonnel,
-              service: selectedServiceObj,
-              serviceId: selectedServiceObj?.serviceId || null,
-              serviceName: selectedServiceObj?.serviceName || null,
-            }
-          : person
-      )});
+      saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { 
+        personnel: personnel.map(person =>
+          person.id === updatedPersonnel.id
+            ? {
+                ...person,
+                ...updatedPersonnel,
+                service: serviceObj,
+                serviceId: serviceObj?.serviceId || null,
+                serviceName: serviceObj?.serviceName || null,
+              }
+            : person
+        )
+      });
 
       showToast("Personnel updated successfully!", "success");
       setEditingPersonnel(null);
@@ -359,7 +371,7 @@ const Personnel = () => {
     }
   };
 
-  // Handle validation (activate/deactivate)
+  // Handle validation (activate/deactivate) - FIXED VERSION
   const handleValidate = async (personnelId, action) => {
     setUpdatingId(personnelId);
     try {
@@ -369,9 +381,26 @@ const Personnel = () => {
         setUpdatingId(null);
         return;
       }
-
+  
+      // Get the personnel being activated
+      const person = personnel.find(p => p.id === personnelId);
+      if (!person) {
+        throw new Error("Personnel not found");
+      }
+  
       showToast(`${action === "activate" ? "Activating" : "Deactivating"} personnel...`, "info");
-
+  
+      // Prepare payload - use the current service if available
+      const serviceToUse = person.serviceId || selectedService;
+      const payload = action === "activate" ? {
+        role: person.role || selectedRole,
+        serviceId: ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole) 
+          ? serviceToUse 
+          : null
+      } : null;
+  
+      console.log("Sending activation payload:", payload);
+  
       const response = await fetch(
         `${API_URL}/api/admin/${action === "activate" ? "activate" : "desactivate"}-personnel/${personnelId}`,
         {
@@ -380,65 +409,66 @@ const Personnel = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body:
-            action === "activate"
-              ? JSON.stringify({
-                  role: selectedRole,
-                  serviceId: selectedService,
-                })
-              : null,
-        },
+          body: payload ? JSON.stringify(payload) : null,
+        }
       );
-
+  
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || `Failed to ${action} personnel`);
       }
-
+  
       const result = await response.json();
       showToast(result.message, "success");
-
+  
+      // Find the service object if service is selected
+      const serviceObj = serviceToUse 
+        ? services.find(s => s.serviceId === serviceToUse) 
+        : null;
+  
       // Update only the specific personnel in state
       setPersonnel(prevPersonnel =>
-        prevPersonnel.map(person =>
-          person.id === personnelId
+        prevPersonnel.map(p =>
+          p.id === personnelId
             ? {
-                ...person,
+                ...p,
                 active: action === "activate",
-                role: action === "activate" ? selectedRole : person.role,
-                service:
-                  action === "activate" && selectedService
-                    ? services.find((s) => s.serviceId === selectedService)
-                    : person.service,
-                serviceId: action === "activate" ? selectedService : person.serviceId,
-                serviceName:
-                  action === "activate" && selectedService
-                    ? services.find((s) => s.serviceId === selectedService)?.serviceName
-                    : person.serviceName,
+                role: action === "activate" ? (person.role || selectedRole) : p.role,
+                serviceId: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceToUse
+                  : p.serviceId,
+                service: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceObj
+                  : p.service,
+                serviceName: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceObj?.serviceName
+                  : p.serviceName
               }
-            : person
+            : p
         )
       );
-
+  
       // Update localStorage
-      saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { personnel: personnel.map(person =>
-        person.id === personnelId
-          ? {
-              ...person,
-              active: action === "activate",
-              role: action === "activate" ? selectedRole : person.role,
-              service:
-                action === "activate" && selectedService
-                  ? services.find((s) => s.serviceId === selectedService)
-                  : person.service,
-              serviceId: action === "activate" ? selectedService : person.serviceId,
-              serviceName:
-                action === "activate" && selectedService
-                  ? services.find((s) => s.serviceId === selectedService)?.serviceName
-                  : person.serviceName,
-            }
-          : person
-      )});
+      saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { 
+        personnel: personnel.map(p =>
+          p.id === personnelId
+            ? {
+                ...p,
+                active: action === "activate",
+                role: action === "activate" ? (person.role || selectedRole) : p.role,
+                serviceId: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceToUse
+                  : p.serviceId,
+                service: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceObj
+                  : p.service,
+                serviceName: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
+                  ? serviceObj?.serviceName
+                  : p.serviceName
+              }
+            : p
+        )
+      });
     } catch (error) {
       showToast(error.message, "error");
       console.error(`Error ${action}ing personnel:`, error);
@@ -662,6 +692,46 @@ const Personnel = () => {
 
           <div className="page-header">
             <h2 className="page-title">Personnel Management</h2>
+            <button 
+              className="toggle-filters-button" 
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              {showFilters ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                  </svg>
+                  Hide Filters
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                  </svg>
+                  Show Filters
+                </>
+              )}
+            </button>
           </div>
 
           {/* Statistics Cards */}
@@ -682,236 +752,195 @@ const Personnel = () => {
               <div className="stat-description">Pending activation</div>
             </div>
           </div>
-          <div className="page-header">
-  <h2 className="page-title">Personnel Management</h2>
-  <button 
-    className="toggle-filters-button" 
-    onClick={() => setShowFilters(!showFilters)}
-  >
-    {showFilters ? (
-      <>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-        Hide Filters
-      </>
-    ) : (
-      <>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-        Show Filters
-      </>
-    )}
-  </button>
-</div>
+
           {/* Enhanced Filtration Section */}
           {showFilters && (
-          <div className="filtration-section">
-            <div className="filtration-header">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-              </svg>
-              <h3>Filter Personnel</h3>
+            <div className="filtration-section">
+              <div className="filtration-header">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                <h3>Filter Personnel</h3>
+              </div>
+              <div className="filtration-content">
+                <div className="filtration-row">
+                  <div className="filter-group">
+                    <label htmlFor="filterName">Name</label>
+                    <div className="filter-input">
+                      <svg
+                        className="filter-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                      <input
+                        id="filterName"
+                        type="text"
+                        placeholder="Search by name..."
+                        value={filterName}
+                        onChange={(e) => setFilterName(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="filter-group">
+                    <label htmlFor="filterMatricule">Matricule</label>
+                    <div className="filter-input">
+                      <svg
+                        className="filter-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
+                      <input
+                        id="filterMatricule"
+                        type="text"
+                        placeholder="Search by matricule..."
+                        value={filterMatricule}
+                        onChange={(e) => setFilterMatricule(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="filtration-row">
+                  <div className="filter-group">
+                    <label htmlFor="filterStatus">Status</label>
+                    <div className="filter-input">
+                      <svg
+                        className="filter-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                      </svg>
+                      <select id="filterStatus" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                        <option value="">All Statuses</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="filter-group">
+                    <label htmlFor="filterRole">Role</label>
+                    <div className="filter-input">
+                      <svg
+                        className="filter-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                      </svg>
+                      <select id="filterRole" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+                        <option value="">All Roles</option>
+                        {roles.map((role) => (
+                          <option key={role.libelle} value={role.libelle}>
+                            {role.libelle}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="filter-group">
+                    <label htmlFor="filterService">Service</label>
+                    <div className="filter-input">
+                      <svg
+                        className="filter-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                      </svg>
+                      <select id="filterService" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
+                        <option value="">All Services</option>
+                        {services.map((service) => (
+                          <option key={service.serviceId} value={service.serviceId}>
+                            {service.serviceName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="filter-actions">
+                  <button className="filter-button secondary" onClick={resetFilters}>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2 12h6"></path>
+                      <path d="M22 12h-6"></path>
+                      <path d="M12 2v6"></path>
+                      <path d="M12 22v-6"></path>
+                      <path d="M20 16l-4-4 4-4"></path>
+                      <path d="M4 8l4 4-4 4"></path>
+                      <path d="M16 4l-4 4-4-4"></path>
+                      <path d="M8 20l4-4 4 4"></path>
+                    </svg>
+                    Reset Filters
+                  </button>
+                </div>
+              </div>
+              <div className="filter-results">
+                <div className="results-count">
+                  Showing <strong>{indexOfFirstItem + 1}</strong> to{" "}
+                  <strong>{Math.min(indexOfLastItem, filteredPersonnel.length)}</strong> of{" "}
+                  <strong>{filteredPersonnel.length}</strong> personnel
+                </div>
+              </div>
             </div>
-            <div className="filtration-content">
-              <div className="filtration-row">
-                <div className="filter-group">
-                  <label htmlFor="filterName">Name</label>
-                  <div className="filter-input">
-                    <svg
-                      className="filter-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <input
-                      id="filterName"
-                      type="text"
-                      placeholder="Search by name..."
-                      value={filterName}
-                      onChange={(e) => setFilterName(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="filter-group">
-                  <label htmlFor="filterMatricule">Matricule</label>
-                  <div className="filter-input">
-                    <svg
-                      className="filter-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    <input
-                      id="filterMatricule"
-                      type="text"
-                      placeholder="Search by matricule..."
-                      value={filterMatricule}
-                      onChange={(e) => setFilterMatricule(e.target.value)}
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="filtration-row">
-                <div className="filter-group">
-                  <label htmlFor="filterStatus">Status</label>
-                  <div className="filter-input">
-                    <svg
-                      className="filter-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                      <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
-                    <select id="filterStatus" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-                      <option value="">All Statuses</option>
-                      <option value="active">Active</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="filter-group">
-                  <label htmlFor="filterRole">Role</label>
-                  <div className="filter-input">
-                    <svg
-                      className="filter-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <select id="filterRole" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
-                      <option value="">All Roles</option>
-                      {roles.map((role) => (
-                        <option key={role.libelle} value={role.libelle}>
-                          {role.libelle}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="filter-group">
-                  <label htmlFor="filterService">Service</label>
-                  <div className="filter-input">
-                    <svg
-                      className="filter-icon"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                    </svg>
-                    <select id="filterService" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-                      <option value="">All Services</option>
-                      {services.map((service) => (
-                        <option key={service.serviceId} value={service.serviceId}>
-                          {service.serviceName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="filter-actions">
-                <button className="filter-button secondary" onClick={resetFilters}>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 12h6"></path>
-                    <path d="M22 12h-6"></path>
-                    <path d="M12 2v6"></path>
-                    <path d="M12 22v-6"></path>
-                    <path d="M20 16l-4-4 4-4"></path>
-                    <path d="M4 8l4 4-4 4"></path>
-                    <path d="M16 4l-4 4-4-4"></path>
-                    <path d="M8 20l4-4 4 4"></path>
-                  </svg>
-                  Reset Filters
-                </button>
-              </div>
-            </div>
-            <div className="filter-results">
-              <div className="results-count">
-                Showing <strong>{indexOfFirstItem + 1}</strong> to{" "}
-                <strong>{Math.min(indexOfLastItem, filteredPersonnel.length)}</strong> of{" "}
-                <strong>{filteredPersonnel.length}</strong> personnel
-              </div>
-            </div>
-          </div>)}
+          )}
 
           {staffError && <div className="error-message">{staffError}</div>}
 
@@ -967,27 +996,32 @@ const Personnel = () => {
                           </select>
                         )}
                       </td>
-                      <td>
-                        {person.active ? (
-                          <span>{person.serviceName || (person.service && person.service.serviceName) || "N/A"}</span>
-                        ) : (
-                          (selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique") && (
-                            <select
-                              value={selectedService || ""}
-                              onChange={(e) => handleServiceChange(e, person.id)}
-                              disabled={person.active || !person.prenom}
-                              className="scrollable-dropdown"
-                            >
-                              <option value="">Select Service</option>
-                              {services.map((service) => (
-                                <option key={service.serviceId} value={service.serviceId}>
-                                  {service.serviceName}
-                                </option>
-                              ))}
-                            </select>
-                          )
-                        )}
-                      </td>
+<td>
+  {person.active ? (
+    <span>{person.serviceName || (person.service && person.service.serviceName) || "N/A"}</span>
+  ) : (
+    (person.role === "collaborateur" || 
+     person.role === "Chef Hiérarchique" || 
+     person.role === "RH" || 
+     selectedRole === "collaborateur" || 
+     selectedRole === "Chef Hiérarchique" || 
+     selectedRole === "RH") && (
+      <select
+        value={person.serviceId || selectedService || ""}
+        onChange={(e) => handleServiceChange(e, person.id)}
+        disabled={person.active || !person.prenom}
+        className="scrollable-dropdown"
+      >
+        <option value="">Select Service</option>
+        {services.map((service) => (
+          <option key={service.serviceId} value={service.serviceId}>
+            {service.serviceName}
+          </option>
+        ))}
+      </select>
+    )
+  )}
+</td>
                       <td>
                         <div className="action-buttons">
                           <button
@@ -1310,12 +1344,12 @@ const Personnel = () => {
                       </select>
                     </div>
 
-                    {(selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique") && (
+                    {(selectedRole === "collaborateur" || selectedRole === "Chef Hiérarchique" || selectedRole === "RH") && (
                       <div className="form-group">
                         <label htmlFor="service">Service:</label>
                         <select
                           id="service"
-                          value={selectedService || ""}
+                          value={selectedService || editingPersonnel?.serviceId || ""}
                           onChange={(e) => setSelectedService(e.target.value)}
                         >
                           <option value="">Select Service</option>

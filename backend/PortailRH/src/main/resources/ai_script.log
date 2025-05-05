@@ -1,0 +1,261 @@
+2025-05-03 19:05:51,454 - INFO - [ai_script.py:434] - ai_script.py execution started directly.
+2025-05-03 19:05:51,454 - INFO - [ai_script.py:369] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\21ba80ee-ef4b-4b51-bb28-cdb6a5297e27_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_16518717009461332378.json'
+2025-05-03 19:05:51,455 - INFO - [ai_script.py:396] - Successfully loaded 4 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_16518717009461332378.json
+2025-05-03 19:05:51,455 - INFO - [ai_script.py:64] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\21ba80ee-ef4b-4b51-bb28-cdb6a5297e27_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf
+2025-05-03 19:05:51,457 - INFO - [ai_script.py:81] - Opened PDF '21ba80ee-ef4b-4b51-bb28-cdb6a5297e27_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', processing 2 pages.
+2025-05-03 19:05:51,487 - INFO - [ai_script.py:93] - Successfully extracted 3414 characters from PDF.
+2025-05-03 19:05:51,488 - INFO - [ai_script.py:420] - CV text extracted, querying LLM...
+2025-05-03 19:05:51,488 - INFO - [ai_script.py:194] - Sending request to Groq API. Prompt length (approx): 5004 chars. Required skills count: 4
+2025-05-03 19:05:53,192 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 19:05:53,199 - INFO - [ai_script.py:205] - Received response from Groq API.
+2025-05-03 19:05:53,199 - INFO - [ai_script.py:231] - Successfully parsed extracted JSON object from LLM response.
+2025-05-03 19:05:53,199 - INFO - [ai_script.py:333] - Successfully processed and sanitized LLM response.
+2025-05-03 19:05:53,199 - INFO - [ai_script.py:422] - LLM Query completed. Final status: success
+2025-05-03 19:50:54,240 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 19:50:54,240 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\05113e7e-b64b-4882-9664-33d4e1a8cbcb_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_16017138768121726414.json'
+2025-05-03 19:50:54,243 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_16017138768121726414.json
+2025-05-03 19:50:54,243 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\05113e7e-b64b-4882-9664-33d4e1a8cbcb_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf
+2025-05-03 19:50:54,244 - INFO - [ai_script.py:108] - Opened PDF '05113e7e-b64b-4882-9664-33d4e1a8cbcb_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', processing 2 pages.
+2025-05-03 19:50:54,280 - INFO - [ai_script.py:114] - Successfully extracted 3414 characters from PDF.
+2025-05-03 19:50:54,280 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 19:50:54,280 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 19:50:54,280 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 19:50:54,280 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 19:50:55,123 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 19:50:55,129 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 19:50:55,129 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 19:50:55,129 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 19:50:55,129 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:00:19,774 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:00:19,774 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\16d94ff5-6816-413f-9d66-c5ce5295383f_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_9032909812008538653.json'
+2025-05-03 20:00:19,796 - INFO - [ai_script.py:372] - Successfully loaded 4 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_9032909812008538653.json
+2025-05-03 20:00:19,796 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\16d94ff5-6816-413f-9d66-c5ce5295383f_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf
+2025-05-03 20:00:19,798 - INFO - [ai_script.py:108] - Opened PDF '16d94ff5-6816-413f-9d66-c5ce5295383f_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', processing 2 pages.
+2025-05-03 20:00:19,829 - INFO - [ai_script.py:114] - Successfully extracted 3414 characters from PDF.
+2025-05-03 20:00:19,829 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:00:19,829 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:00:19,829 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:00:19,829 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 4
+2025-05-03 20:00:21,508 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:00:21,515 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:00:21,515 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:00:21,515 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:00:21,516 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:00:47,408 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:00:47,409 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\e1fbd34d-40f3-42c4-b413-25c1bae716c7_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_11495562148893743243.json'
+2025-05-03 20:00:47,416 - INFO - [ai_script.py:372] - Successfully loaded 1 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_11495562148893743243.json
+2025-05-03 20:00:47,416 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\e1fbd34d-40f3-42c4-b413-25c1bae716c7_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf
+2025-05-03 20:00:47,417 - INFO - [ai_script.py:108] - Opened PDF 'e1fbd34d-40f3-42c4-b413-25c1bae716c7_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf', processing 2 pages.
+2025-05-03 20:00:47,447 - INFO - [ai_script.py:114] - Successfully extracted 3414 characters from PDF.
+2025-05-03 20:00:47,448 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:00:47,448 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:00:47,448 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:00:47,448 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 1
+2025-05-03 20:00:48,212 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:00:48,218 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:00:48,218 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:00:48,218 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:00:48,218 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:01:04,997 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:01:04,997 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\85355b18-51fc-49c0-8178-5921a156f8bc_1743207946300_CV_FidaSassi.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_6712536482016857910.json'
+2025-05-03 20:01:04,999 - INFO - [ai_script.py:372] - Successfully loaded 1 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_6712536482016857910.json
+2025-05-03 20:01:04,999 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\85355b18-51fc-49c0-8178-5921a156f8bc_1743207946300_CV_FidaSassi.pdf
+2025-05-03 20:01:05,004 - INFO - [ai_script.py:108] - Opened PDF '85355b18-51fc-49c0-8178-5921a156f8bc_1743207946300_CV_FidaSassi.pdf', processing 2 pages.
+2025-05-03 20:01:05,045 - INFO - [ai_script.py:114] - Successfully extracted 3954 characters from PDF.
+2025-05-03 20:01:05,045 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:01:05,045 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:01:05,045 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:01:05,045 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 1
+2025-05-03 20:01:05,867 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:01:05,874 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:01:05,875 - ERROR - [ai_script.py:240] - Failed parsing extracted JSON substring. Error: Expecting ',' delimiter: line 3 column 21 (char 53). Extracted: '{
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT, a valuable skill for front-end development.",
+  "weaknesses": "Lacking in no required skills."
+}'
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 237, in analyze_cv
+    data = json.loads(json_string_candidate)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 3 column 21 (char 53)
+2025-05-03 20:01:05,876 - ERROR - [ai_script.py:324] - Analysis function failed: LLM response substring was not valid JSON: {
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT, a valuable skill for front-end development.",
+  "weaknesses": "Lacking in no required skills."
+}
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 237, in analyze_cv
+    data = json.loads(json_string_candidate)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 3 column 21 (char 53)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 242, in analyze_cv
+    raise ValueError(f"LLM response substring was not valid JSON: {json_string_candidate}") from e_inner
+ValueError: LLM response substring was not valid JSON: {
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT, a valuable skill for front-end development.",
+  "weaknesses": "Lacking in no required skills."
+}
+2025-05-03 20:01:05,877 - INFO - [ai_script.py:384] - LLM Query completed. Result status: error
+2025-05-03 20:01:48,591 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:01:48,591 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\baaa3635-ebda-4d56-9586-a551f0c0a80e_CV_FidaSassi.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_10525418982118536352.json'
+2025-05-03 20:01:48,592 - INFO - [ai_script.py:372] - Successfully loaded 1 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_10525418982118536352.json
+2025-05-03 20:01:48,592 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\baaa3635-ebda-4d56-9586-a551f0c0a80e_CV_FidaSassi.pdf
+2025-05-03 20:01:48,594 - INFO - [ai_script.py:108] - Opened PDF 'baaa3635-ebda-4d56-9586-a551f0c0a80e_CV_FidaSassi.pdf', processing 2 pages.
+2025-05-03 20:01:48,628 - INFO - [ai_script.py:114] - Successfully extracted 3954 characters from PDF.
+2025-05-03 20:01:48,628 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:01:48,628 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:01:48,628 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:01:48,628 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 1
+2025-05-03 20:01:49,378 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:01:49,385 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:01:49,385 - ERROR - [ai_script.py:240] - Failed parsing extracted JSON substring. Error: Expecting ',' delimiter: line 3 column 21 (char 53). Extracted: '{
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT",
+  "weaknesses": "No other required skills mentioned"
+}'
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 237, in analyze_cv
+    data = json.loads(json_string_candidate)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 3 column 21 (char 53)
+2025-05-03 20:01:49,386 - ERROR - [ai_script.py:324] - Analysis function failed: LLM response substring was not valid JSON: {
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT",
+  "weaknesses": "No other required skills mentioned"
+}
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 237, in analyze_cv
+    data = json.loads(json_string_candidate)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "C:\Users\MSI\AppData\Local\Programs\Python\Python39-32\lib\json\decoder.py", line 353, in raw_decode
+    obj, end = self.scan_once(s, idx)
+json.decoder.JSONDecodeError: Expecting ',' delimiter: line 3 column 21 (char 53)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\src\main\resources\ai_script.py", line 242, in analyze_cv
+    raise ValueError(f"LLM response substring was not valid JSON: {json_string_candidate}") from e_inner
+ValueError: LLM response substring was not valid JSON: {
+  "matched_skills": ["REACT"],
+  "match_score": 100"],
+  "strengths": "Proficient in REACT",
+  "weaknesses": "No other required skills mentioned"
+}
+2025-05-03 20:01:49,386 - INFO - [ai_script.py:384] - LLM Query completed. Result status: error
+2025-05-03 20:02:22,490 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:02:22,490 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\9f7f4a80-c598-493b-a05c-7d8c2044cb8e_CV_FidaSassi.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_13438277472114214737.json'
+2025-05-03 20:02:22,492 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_13438277472114214737.json
+2025-05-03 20:02:22,492 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\9f7f4a80-c598-493b-a05c-7d8c2044cb8e_CV_FidaSassi.pdf
+2025-05-03 20:02:22,493 - INFO - [ai_script.py:108] - Opened PDF '9f7f4a80-c598-493b-a05c-7d8c2044cb8e_CV_FidaSassi.pdf', processing 2 pages.
+2025-05-03 20:02:22,527 - INFO - [ai_script.py:114] - Successfully extracted 3954 characters from PDF.
+2025-05-03 20:02:22,527 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:02:22,527 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:02:22,527 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:02:22,527 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:02:23,421 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:02:23,429 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:02:23,429 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:02:23,429 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:02:23,429 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:11:48,322 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:11:48,322 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\0ee00c8e-3afd-493f-9b26-2ecf1a8eb36c_CV__1_.txt', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_1395544099143599960.json'
+2025-05-03 20:11:48,324 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_1395544099143599960.json
+2025-05-03 20:11:48,324 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\0ee00c8e-3afd-493f-9b26-2ecf1a8eb36c_CV__1_.txt
+2025-05-03 20:11:48,325 - INFO - [ai_script.py:121] - Successfully read 1540 characters from TXT file.
+2025-05-03 20:11:48,325 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:11:48,325 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:11:48,325 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:11:48,325 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:11:49,229 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:11:49,236 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:11:49,237 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:11:49,237 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:11:49,237 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:13:00,464 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:13:00,464 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\02e90c52-26e5-4890-8886-fda6a0c72111_cv.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_11553294289181070523.json'
+2025-05-03 20:13:00,466 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_11553294289181070523.json
+2025-05-03 20:13:00,466 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\02e90c52-26e5-4890-8886-fda6a0c72111_cv.pdf
+2025-05-03 20:13:00,487 - INFO - [ai_script.py:108] - Opened PDF '02e90c52-26e5-4890-8886-fda6a0c72111_cv.pdf', processing 2 pages.
+2025-05-03 20:13:00,540 - INFO - [ai_script.py:114] - Successfully extracted 2739 characters from PDF.
+2025-05-03 20:13:00,540 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:13:00,540 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:13:00,540 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:13:00,540 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:13:01,489 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:13:01,496 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:13:01,496 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:13:01,496 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:13:01,496 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:23:57,340 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:23:57,340 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\e9b474f0-d034-40fb-962a-fa260bacbb4c_cv.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_1905009556133817633.json'
+2025-05-03 20:23:57,342 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_1905009556133817633.json
+2025-05-03 20:23:57,342 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\e9b474f0-d034-40fb-962a-fa260bacbb4c_cv.pdf
+2025-05-03 20:23:57,343 - INFO - [ai_script.py:108] - Opened PDF 'e9b474f0-d034-40fb-962a-fa260bacbb4c_cv.pdf', processing 2 pages.
+2025-05-03 20:23:57,378 - INFO - [ai_script.py:114] - Successfully extracted 2739 characters from PDF.
+2025-05-03 20:23:57,379 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:23:57,379 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:23:57,379 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:23:57,379 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:23:58,227 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:23:58,234 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:23:58,234 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:23:58,234 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:23:58,234 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:24:21,313 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:24:21,313 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\1f532005-2997-4fe4-8a48-bf264bbe3b09_cv.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_18136644808550253841.json'
+2025-05-03 20:24:21,314 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_18136644808550253841.json
+2025-05-03 20:24:21,314 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\1f532005-2997-4fe4-8a48-bf264bbe3b09_cv.pdf
+2025-05-03 20:24:21,316 - INFO - [ai_script.py:108] - Opened PDF '1f532005-2997-4fe4-8a48-bf264bbe3b09_cv.pdf', processing 2 pages.
+2025-05-03 20:24:21,350 - INFO - [ai_script.py:114] - Successfully extracted 2739 characters from PDF.
+2025-05-03 20:24:21,350 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:24:21,350 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:24:21,350 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:24:21,350 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:24:22,171 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:24:22,177 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:24:22,178 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:24:22,178 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:24:22,178 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success
+2025-05-03 20:26:54,911 - INFO - [ai_script.py:413] - ai_script.py execution started.
+2025-05-03 20:26:54,911 - INFO - [ai_script.py:350] - Script started. CV Path: 'C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\b2fe9ccb-385b-41ec-8284-3385db2be230_cv.pdf', Skills Path: 'C:\Users\MSI\AppData\Local\Temp\required_skills_7933428147909620718.json'
+2025-05-03 20:26:54,912 - INFO - [ai_script.py:372] - Successfully loaded 5 skills from C:\Users\MSI\AppData\Local\Temp\required_skills_7933428147909620718.json
+2025-05-03 20:26:54,912 - INFO - [ai_script.py:94] - Attempting to extract text from: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\b2fe9ccb-385b-41ec-8284-3385db2be230_cv.pdf
+2025-05-03 20:26:54,914 - INFO - [ai_script.py:108] - Opened PDF 'b2fe9ccb-385b-41ec-8284-3385db2be230_cv.pdf', processing 2 pages.
+2025-05-03 20:26:54,949 - INFO - [ai_script.py:114] - Successfully extracted 2739 characters from PDF.
+2025-05-03 20:26:54,949 - INFO - [ai_script.py:379] - CV text extracted successfully.
+2025-05-03 20:26:54,949 - INFO - [ai_script.py:382] - Querying LLM...
+2025-05-03 20:26:54,949 - INFO - [ai_script.py:147] - Starting CV analysis using LLM.
+2025-05-03 20:26:54,949 - INFO - [ai_script.py:204] - Sending request to Groq API. Required skills count: 5
+2025-05-03 20:26:55,769 - INFO - [_client.py:1025] - HTTP Request: POST https://api.groq.com/openai/v1/chat/completions "HTTP/1.1 200 OK"
+2025-05-03 20:26:55,776 - INFO - [ai_script.py:214] - Received response from Groq API.
+2025-05-03 20:26:55,776 - INFO - [ai_script.py:238] - Successfully parsed extracted JSON object.
+2025-05-03 20:26:55,776 - INFO - [ai_script.py:319] - Successfully processed and sanitized LLM response.
+2025-05-03 20:26:55,776 - INFO - [ai_script.py:384] - LLM Query completed. Result status: success

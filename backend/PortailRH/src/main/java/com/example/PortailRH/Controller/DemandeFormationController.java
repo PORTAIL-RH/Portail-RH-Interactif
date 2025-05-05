@@ -6,6 +6,7 @@ import com.example.PortailRH.Service.DemandeFormationService;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,8 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/demande-formation")
+@Slf4j
+
 public class DemandeFormationController {
     private static final Logger logger = LoggerFactory.getLogger(DemandeFormationController.class);
 
@@ -414,134 +417,150 @@ public class DemandeFormationController {
     public ResponseEntity<?> getDemandesFormationByCollaborateursService(
             @PathVariable String chefserviceid) {
         try {
-            // 1. Vérifier si l'ID du chef de service est valide
+            // 1. Validate chefserviceid
             if (chefserviceid == null || chefserviceid.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
                         "message", "L'ID du chef de service est invalide",
                         "serviceId", chefserviceid
                 ));
             }
 
-            // 2. Trouver le service où ce chef est le "Chef Hiérarchique"
-            Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
+            // 2. Find only service ID and name (limited fields)
+            Query serviceQuery = new Query();
+            serviceQuery.addCriteria(Criteria.where("chefHierarchique.$id").is(new ObjectId(chefserviceid)));
+            serviceQuery.fields().include("serviceName");
+            Service service = mongoTemplate.findOne(serviceQuery, Service.class);
+
             if (service == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "status", "error",
                         "message", "Aucun service trouvé pour ce chef hiérarchique",
                         "serviceId", chefserviceid
                 ));
             }
 
-            // 3. Récupérer tous les collaborateurs dans ce service (CHANGED HERE)
-            List<Personnel> collaborateurs = personnelRepository.findByRoleAndService(
-                    "collaborateur",
-                    service
-            );
+            // 3. Find collaborateur IDs only (no object graph)
+            Query collabQuery = new Query();
+            collabQuery.addCriteria(Criteria.where("service.$id").is(new ObjectId(service.getId()))
+                    .and("role").is("collaborateur"));
+            collabQuery.fields().include("id");
 
-            if (collaborateurs.isEmpty()) {
+            List<ObjectId> collaborateurIds = mongoTemplate.find(collabQuery, Personnel.class)
+                    .stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            if (collaborateurIds.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
+                        "status", "success",
                         "message", "Aucun collaborateur trouvé dans ce service",
                         "service", service.getServiceName(),
                         "demandes", Collections.emptyList()
                 ));
             }
 
-            // Rest of your code remains the same...
-            // 4. Convertir les IDs des collaborateurs en ObjectId pour MongoDB
-            List<ObjectId> collaborateurObjectIds = collaborateurs.stream()
-                    .map(p -> {
-                        try {
-                            return new ObjectId(p.getId());
-                        } catch (IllegalArgumentException e) {
-                            throw new RuntimeException("ID de collaborateur invalide : " + p.getId());
-                        }
-                    })
+            // 4. Get demandes with limited fields
+            Query demandeQuery = new Query();
+            demandeQuery.addCriteria(Criteria.where("matPers.$id").in(collaborateurIds));
+
+            // Only include necessary fields
+            demandeQuery.fields()
+                    .include("id_libre_demande")
+                    .include("typeDemande")
+                    .include("dateDemande")
+                    .include("matPers")
+                    .include("dateDebut")
+                    .include("nbrJours")
+                    .include("texteDemande")
+                    .include("reponseChef")
+                    .include("observation")
+                    .include("files")
+                    .include("titre")
+                    .include("type")
+                    .include("theme");
+
+            List<DemandeFormation> demandes = mongoTemplate.find(demandeQuery, DemandeFormation.class);
+
+            // 5. Manual conversion with cycle protection
+            List<Map<String, Object>> result = demandes.stream()
+                    .map(this::convertDemandeToSafeResponse)
                     .collect(Collectors.toList());
 
-            // 5. Construire la requête MongoDB
-            Query query = new Query();
-            query.addCriteria(Criteria.where("matPers.$id").in(collaborateurObjectIds));
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "service", service.getServiceName(),
+                    "demandes", result
+            ));
 
-            // 6. Exécuter la requête et récupérer les demandes
-            List<DemandeFormation> demandes = mongoTemplate.find(query, DemandeFormation.class);
-
-            // 7. Structurer la réponse
-            Map<String, Object> response = new HashMap<>();
-            response.put("service", service.getServiceName());
-            response.put("demandes", demandes.stream().map(this::mapDemandeToResponse).collect(Collectors.toList()));
-
-            return ResponseEntity.ok(response);
-
-        } catch (RuntimeException e) {
-            System.err.println("Erreur lors de la récupération des demandes de formation : " + e.getMessage());
-            e.printStackTrace();
+        } catch (Exception e) {
+            log.error("Error fetching training requests for chef {}: {}", chefserviceid, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "status", "error",
                     "message", "Erreur lors de la récupération des demandes de formation",
                     "error", e.getMessage()
             ));
         }
     }
-    private Map<String, Object> mapDemandeToResponse(DemandeFormation demande) {
-        Map<String, Object> demandeMap = new HashMap<>();
-        demandeMap.put("id", demande.getId_libre_demande());
-        demandeMap.put("typeDemande", demande.getTypeDemande());
-        demandeMap.put("dateDemande", demande.getDateDemande());
-        demandeMap.put("dateDebut", demande.getDateDebut());
-        demandeMap.put("nbrJours", demande.getNbrJours());
-        demandeMap.put("texteDemande", demande.getTexteDemande());
-        demandeMap.put("reponseChef", demande.getReponseChef());
-        demandeMap.put("observation", demande.getObservation());
 
-        // Informations sur le personnel
+    private Map<String, Object> convertDemandeToSafeResponse(DemandeFormation demande) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", demande.getId_libre_demande());
+        response.put("typeDemande", demande.getTypeDemande());
+        response.put("dateDemande", demande.getDateDemande());
+        response.put("dateDebut", demande.getDateDebut());
+        response.put("nbrJours", demande.getNbrJours());
+        response.put("texteDemande", demande.getTexteDemande());
+        response.put("reponseChef", demande.getReponseChef());
+        response.put("observation", demande.getObservation());
+
+        // Handle personnel safely
         if (demande.getMatPers() != null) {
-            Map<String, Object> personnelMap = new HashMap<>();
-            personnelMap.put("id", demande.getMatPers().getId());
-            personnelMap.put("nom", demande.getMatPers().getNom());
-            personnelMap.put("prenom", demande.getMatPers().getPrenom());
-            personnelMap.put("matricule", demande.getMatPers().getMatricule());
-            personnelMap.put("Email", demande.getMatPers().getEmail());
-
-            demandeMap.put("personnel", personnelMap);
+            Map<String, Object> personnel = new HashMap<>();
+            personnel.put("id", demande.getMatPers().getId());
+            personnel.put("nom", demande.getMatPers().getNom());
+            personnel.put("prenom", demande.getMatPers().getPrenom());
+            personnel.put("matricule", demande.getMatPers().getMatricule());
+            personnel.put("email", demande.getMatPers().getEmail());
+            response.put("personnel", personnel);
         }
 
-        // Fichiers joints
-        if (demande.getFiles() != null && !demande.getFiles().isEmpty()) {
-            List<Map<String, Object>> fichiersList = demande.getFiles().stream()
-                    .map(file -> {
-                        Map<String, Object> fileMap = new HashMap<>();
-                        fileMap.put("id", file.getId());
-                        fileMap.put("filename", file.getFilename());
-                        fileMap.put("fileType", file.getFileType());
-                        fileMap.put("fileId", file.getFileId());
+        // Handle files safely
+        if (demande.getFiles() != null) {
+            response.put("files", demande.getFiles().stream()
+                    .map(f -> Map.of(
+                            "id", f.getId(),
+                            "fileId", f.getFileId(),
 
-                        return fileMap;
-                    })
-                    .collect(Collectors.toList());
-            demandeMap.put("files", fichiersList);
+                            "filename", f.getFilename(),
+                            "fileType", f.getFileType()
+                    ))
+                    .collect(Collectors.toList()));
         }
 
-        // Détails de la formation
+        // Handle formation details safely
         if (demande.getTitre() != null) {
-            demandeMap.put("titre", Map.of(
+            response.put("titre", Map.of(
                     "id", demande.getTitre().getId(),
                     "name", demande.getTitre().getTitre()
             ));
         }
 
         if (demande.getType() != null) {
-            demandeMap.put("type", Map.of(
+            response.put("type", Map.of(
                     "id", demande.getType().getId(),
                     "name", demande.getType().getType()
             ));
         }
 
         if (demande.getTheme() != null) {
-            demandeMap.put("theme", Map.of(
+            response.put("theme", Map.of(
                     "id", demande.getTheme().getId(),
                     "name", demande.getTheme().getTheme()
             ));
         }
 
-        return demandeMap;
+        return response;
     }
 
 

@@ -52,7 +52,8 @@ const DemandesDocument = () => {
   const [theme, setTheme] = useState("light");
   const [processingId, setProcessingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
-
+  const [previewFileId, setPreviewFileId] = useState(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState(null);
   // Theme management
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
@@ -544,6 +545,57 @@ const DemandesDocument = () => {
     }
   };
 
+  const fetchFileBlobUrl = async (fileId) => {
+    if (!fileId) throw new Error("File ID is missing");
+    const token = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return await response.blob();
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      throw error;
+    }
+  };
+
+  const handlePreview = async (fileId, filename) => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      toast.error(`Erreur d'aperçu: ${err.message}`);
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "document_formation.pdf") => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      toast.error(`Échec du téléchargement: ${err.message}`);
+    }
+  };
+
   // Show loading only when we have no cached data and are loading
   const showLoading = loading && demandes.length === 0;
 
@@ -725,6 +777,7 @@ const DemandesDocument = () => {
                     <th>Date Demande</th>
                     <th>Employé</th>
                     <th>Texte Demande</th>
+                    <th>Piéce Jointe</th>
                     <th>Statut</th>
                     <th>Document Réponse</th>
                     <th>Actions</th>
@@ -755,6 +808,34 @@ const DemandesDocument = () => {
                           {demande.texteDemande || <span className="no-content">Aucun texte</span>}
                         </div>
                       </td>
+                      <td className="file-actions">
+  {demande.files?.length > 0 ? (
+    <div className="file-buttons">
+      {demande.files.map((file, index) => (
+        <React.Fragment key={file.id}>
+          <button
+            className="btn-preview"
+            onClick={() => handlePreview(file.fileId)}
+            title={`Aperçu: ${file.filename}`}
+          >
+            <FiEye />
+          </button>
+          <button
+            className="btn-download"
+            onClick={() => handleDownload(file.fileId, file.filename)}
+            title={`Télécharger: ${file.filename}`}
+          >
+            <FiDownload />
+          </button>
+          {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+        </React.Fragment>
+      ))}
+    </div>
+  ) : (
+    <div>
+    <span className="no-content">Aucun fichier</span></div>
+  )}
+</td>
                       <td>
                         <span className={`status-badge ${
                           demande.reponseRH === "I" ? "pending" :
@@ -860,6 +941,48 @@ const DemandesDocument = () => {
               <button className="clear-filters-button" onClick={clearFilters}>
                 Réinitialiser les filtres
               </button>
+            </div>
+          )}
+
+          {previewFileUrl && (
+            <div className="file-preview-modal">
+              <div className="file-preview-content">
+                <div className="file-preview-header">
+                  <h3>Aperçu du fichier</h3>
+                  <button 
+                    className="close-preview"
+                    onClick={() => {
+                      setPreviewFileId(null);
+                      setPreviewFileUrl(null);
+                      URL.revokeObjectURL(previewFileUrl);
+                    }}
+                  >
+                    <FiX />
+                  </button>
+                </div>
+                <div className="file-preview-container">
+                  <iframe 
+                    src={previewFileUrl} 
+                    title="File Preview"
+                    className="file-iframe"
+                  />
+                </div>
+                <div className="file-preview-footer">
+                  <button 
+                    className="btn-download"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = previewFileUrl;
+                      link.download = `formation_${previewFileId}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    <FiDownload /> Télécharger
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

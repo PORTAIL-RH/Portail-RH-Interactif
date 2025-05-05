@@ -1,0 +1,2 @@
+2025-05-03 19:18:45,875 - INFO - Processing CV: C:\Users\MSI\Desktop\Portail-RH-Interactif\backend\PortailRH\uploads\cvs\aeea776b-32de-419f-8893-89bb502dc65d_uploads_cvs_17ed6e40-f5be-4c26-817c-944a70553ced_1744294543340_cv_zahra_eloula_bouaffoura__5_.pdf, Skills: C:\Users\MSI\AppData\Local\Temp\required_skills_12443478769390687939.json
+2025-05-03 19:18:46,655 - ERROR - Error querying LLM: The api_key client option must be set either by passing api_key to the client or by setting the GROQ_API_KEY environment variable

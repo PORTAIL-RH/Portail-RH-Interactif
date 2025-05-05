@@ -1,10 +1,13 @@
 package com.example.PortailRH.Model;
 
+import com.example.PortailRH.Model.Candidature;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 @Document(collection = "candidats")
 public class candidat {
@@ -17,10 +20,14 @@ public class candidat {
     private String numTel;
     private String cvFilePath;
     private Date dateCandidature = new Date();
-    private Map<String, Double> technicalSkills = new HashMap<>();
-    private Map<String, Double> languageSkills = new HashMap<>();
-    private List<String> strengths = new ArrayList<>();
-    private List<String> weaknesses = new ArrayList<>();
+    private String aiResponse;
+    private List<String> matchedSkills;
+    private List<String> missingSkills ;
+    private Double matchScore;
+    private String strengths;
+    private String weaknesses;
+// + their getters and setters
+
     private Double score;
     private Double matchPercentage;
     private Boolean accepted;
@@ -29,76 +36,94 @@ public class candidat {
     private List<Candidature> candidatures = new ArrayList<>();
 
     // Getters and Setters
+
+
+    public Double getMatchScore() {
+        return matchScore;
+    }
+
+    public void setMatchScore(Double matchScore) {
+        this.matchScore = matchScore;
+    }
+
+    public String getStrengths() {
+        return strengths;
+    }
+
+    public void setStrengths(String strengths) {
+        this.strengths = strengths;
+    }
+
+    public String getWeaknesses() {
+        return weaknesses;
+    }
+
+    public void setWeaknesses(String weaknesses) {
+        this.weaknesses = weaknesses;
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    public String getAiResponse() {
+        return aiResponse;
+    }
+
+    public void setAiResponse(String aiResponse) {
+        this.aiResponse = aiResponse;
+    }
+
     public String getNom() { return nom; }
     public void setNom(String nom) { this.nom = nom; }
+
     public String getPrenom() { return prenom; }
     public void setPrenom(String prenom) { this.prenom = prenom; }
+
     public Integer getAge() { return age; }
     public void setAge(Integer age) { this.age = age; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
     public String getNumTel() { return numTel; }
     public void setNumTel(String numTel) { this.numTel = numTel; }
+
     public String getCvFilePath() { return cvFilePath; }
     public void setCvFilePath(String cvFilePath) { this.cvFilePath = cvFilePath; }
+
     public Date getDateCandidature() { return dateCandidature; }
     public void setDateCandidature(Date dateCandidature) { this.dateCandidature = dateCandidature; }
-    public Map<String, Double> getTechnicalSkills() { return technicalSkills; }
-    public Map<String, Double> getLanguageSkills() { return languageSkills; }
-    public List<String> getStrengths() { return strengths; }
-    public List<String> getWeaknesses() { return weaknesses; }
+
+    public List<String> getMatchedSkills() { return matchedSkills; }
+    public void setMatchedSkills(List<String> matchedSkills) {
+        this.matchedSkills = matchedSkills != null ? new ArrayList<>(matchedSkills) : new ArrayList<>();
+    }
+
+    public List<String> getMissingSkills() { return missingSkills; }
+    public void setMissingSkills(List<String> missingSkills) {
+        this.missingSkills = missingSkills != null ? new ArrayList<>(missingSkills) : new ArrayList<>();
+    }
+
     public Double getScore() { return score; }
     public void setScore(Double score) { this.score = score; }
+
     public Double getMatchPercentage() { return matchPercentage; }
     public void setMatchPercentage(Double matchPercentage) {
         this.matchPercentage = matchPercentage;
     }
+
     public Boolean getAccepted() { return accepted; }
     public void setAccepted(Boolean accepted) { this.accepted = accepted; }
+
     public List<Candidature> getCandidatures() { return candidatures; }
     public void setCandidatures(List<Candidature> candidatures) {
         this.candidatures = candidatures != null ? new ArrayList<>(candidatures) : new ArrayList<>();
     }
 
-    // Properly handle Number to Double conversion
-    public void setTechnicalSkills(Map<String, ? extends Number> technicalSkills) {
-        this.technicalSkills.clear();
-        if (technicalSkills != null) {
-            technicalSkills.forEach((k, v) ->
-                    this.technicalSkills.put(k, v != null ? v.doubleValue() : 0.0)
-            );
-        }
-    }
-
-    public void setLanguageSkills(Map<String, ? extends Number> languageSkills) {
-        this.languageSkills.clear();
-        if (languageSkills != null) {
-            languageSkills.forEach((k, v) ->
-                    this.languageSkills.put(k, v != null ? v.doubleValue() : 0.0)
-            );
-        }
-    }
-
-    public void setStrengths(List<String> strengths) {
-        this.strengths = strengths != null ? new ArrayList<>(strengths) : new ArrayList<>();
-    }
-
-    public void setWeaknesses(List<String> weaknesses) {
-        this.weaknesses = weaknesses != null ? new ArrayList<>(weaknesses) : new ArrayList<>();
-    }
-
     public void addCandidature(Candidature candidature) {
-        if (candidature == null) return;
-        if (this.candidatures == null) {
-            this.candidatures = new ArrayList<>();
+        if (candidature != null) {
+            if (this.candidatures == null) this.candidatures = new ArrayList<>();
+            this.candidatures.add(candidature);
         }
-        this.candidatures.add(candidature);
-    }
-
-    // Helper method to safely set matchPercentage from Number
-    public void setMatchPercentage(Number matchPercentage) {
-        this.matchPercentage = matchPercentage != null ? matchPercentage.doubleValue() : null;
     }
 }

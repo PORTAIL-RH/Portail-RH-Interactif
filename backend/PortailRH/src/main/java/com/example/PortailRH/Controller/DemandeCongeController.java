@@ -1,5 +1,6 @@
 package com.example.PortailRH.Controller;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +36,8 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:3000")
 @RestController
 @RequestMapping("/api/demande-conge")
+@Slf4j
+
 public class DemandeCongeController {
     private static final Logger logger = LoggerFactory.getLogger(DemandeCongeController.class);
     @Autowired
@@ -438,76 +441,106 @@ public class DemandeCongeController {
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getDemandesCongeByCollaborateursService(@PathVariable String chefserviceid) {
         try {
-            // 1. Find the service where this chef is the "Chef Hiérarchique"
-            Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
+            // 1. Find service with minimal fields
+            Query serviceQuery = new Query();
+            serviceQuery.addCriteria(Criteria.where("chefHierarchique.$id").is(new ObjectId(chefserviceid)));
+            serviceQuery.fields().include("serviceName");
+            Service service = mongoTemplate.findOne(serviceQuery, Service.class);
 
             if (service == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(Map.of(
+                                "status", "error",
                                 "message", "Aucun service trouvé pour ce chef hiérarchique",
                                 "serviceId", chefserviceid
                         ));
             }
 
-            // 2. Get all personnel with role "collaborateur" in this service
-            List<Personnel> collaborateurs = personnelRepository.findByRoleAndService("collaborateur", service);
+            // 2. Find collaborateur IDs only
+            Query collabQuery = new Query();
+            collabQuery.addCriteria(Criteria.where("service.$id").is(new ObjectId(service.getId()))
+                    .and("role").is("collaborateur"));
+            collabQuery.fields().include("id");
 
-            if (collaborateurs.isEmpty()) {
+            List<ObjectId> collaborateurIds = mongoTemplate.find(collabQuery, Personnel.class)
+                    .stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            if (collaborateurIds.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
+                        "status", "success",
                         "message", "Aucun collaborateur trouvé dans ce service",
                         "service", service.getServiceName(),
                         "demandes", Collections.emptyList()
                 ));
             }
 
-            // 3. Get leave requests for these collaborators using MongoTemplate
-            List<ObjectId> collaborateurObjectIds = collaborateurs.stream()
-                    .map(p -> new ObjectId(p.getId()))
-                    .collect(Collectors.toList());
+            // 3. Get complete demandes with all fields
+            Query demandeQuery = new Query();
+            demandeQuery.addCriteria(Criteria.where("matPers.$id").in(collaborateurIds));
 
-            Query query = new Query();
-            query.addCriteria(Criteria.where("matPers.$id").in(collaborateurObjectIds));
+            List<DemandeConge> demandes = mongoTemplate.find(demandeQuery, DemandeConge.class);
 
-            List<DemandeConge> demandes = mongoTemplate.find(query, DemandeConge.class);
-
-            // 4. Simplify the demandes response to include only necessary personnel info
-            List<Map<String, Object>> simplifiedDemandes = demandes.stream()
+            // 4. Manual conversion with all attributes
+            List<Map<String, Object>> result = demandes.stream()
                     .map(d -> {
-                        Map<String, Object> demandeMap = new HashMap<>();
-                        demandeMap.put("id", d.getId());
-                        demandeMap.put("dateDemande", d.getDateDemande());
-                        demandeMap.put("typeDemande", d.getTypeDemande());
-                        demandeMap.put("dateDebut", d.getDateDebut());
-                        demandeMap.put("dateFin", d.getDateFin());
-                        demandeMap.put("nbrJours", d.getNbrJours());
-                        demandeMap.put("texteDemande", d.getTexteDemande());
-                        demandeMap.put("reponseChef", d.getReponseChef());
-                        demandeMap.put("reponseRH", d.getReponseRH());
-                        demandeMap.put("files", d.getFiles());
+                        Map<String, Object> map = new HashMap<>();
+                        // Basic fields
+                        map.put("id_libre_demande", d.getId_libre_demande());
+                        map.put("dateDemande", d.getDateDemande());
+                        map.put("typeDemande", d.getTypeDemande());
+                        map.put("codeSoc", d.getCodeSoc());
+                        map.put("dateDebut", d.getDateDebut());
+                        map.put("dateFin", d.getDateFin());
+                        map.put("snjTempDep", d.getSnjTempDep());
+                        map.put("snjTempRetour", d.getSnjTempRetour());
+                        map.put("nbrJours", d.getNbrJours());
+                        map.put("year", d.getYear());
+                        map.put("texteDemande", d.getTexteDemande());
+                        map.put("reponseChef", d.getReponseChef());
+                        map.put("reponseRH", d.getReponseRH());
+                        map.put("observation", d.getObservation());
 
-                        // Add simplified personnel info
+                        // Handle personnel with cycle protection
                         if (d.getMatPers() != null) {
-                            Map<String, Object> personnelMap = new HashMap<>();
-                            personnelMap.put("id", d.getMatPers().getId());
-                            personnelMap.put("matricule", d.getMatPers().getMatricule());
-                            personnelMap.put("nom", d.getMatPers().getNom());
-                            personnelMap.put("prenom", d.getMatPers().getPrenom());
-                            personnelMap.put("email", d.getMatPers().getEmail());
-                            demandeMap.put("personnel", personnelMap);
+                            Map<String, Object> personnel = new HashMap<>();
+                            personnel.put("id", d.getMatPers().getId());
+                            personnel.put("matricule", d.getMatPers().getMatricule());
+                            personnel.put("nom", d.getMatPers().getNom());
+                            personnel.put("prenom", d.getMatPers().getPrenom());
+                            personnel.put("email", d.getMatPers().getEmail());
+                            map.put("matPers", personnel);
                         }
-                        return demandeMap;
+
+                        // Handle files
+                        if (d.getFiles() != null) {
+                            map.put("files", d.getFiles().stream()
+                                    .map(f -> Map.of(
+                                            "id", f.getId(),
+                                            "fileId", f.getFileId(),
+
+                                            "filename", f.getFilename(),
+                                            "fileType", f.getFileType()
+                                    ))
+                                    .collect(Collectors.toList()));
+                        }
+
+                        return map;
                     })
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(Map.of(
+                    "status", "success",
                     "service", service.getServiceName(),
-                    "demandes", simplifiedDemandes
+                    "demandes", result
             ));
+
         } catch (Exception e) {
-            System.err.println("Error fetching demandes de congé: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error fetching leave requests for chef {}: {}", chefserviceid, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
+                            "status", "error",
                             "message", "Erreur lors de la récupération des demandes de congé",
                             "error", e.getMessage()
                     ));

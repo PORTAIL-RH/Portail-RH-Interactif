@@ -46,7 +46,7 @@ public class AdminUserService {
                 .orElseThrow(() -> new IllegalArgumentException("Collaborateur non trouvé avec l'ID : " + id));
 
         Service service = null;
-        if ((role.equals("collaborateur") || role.equals("Chef Hiérarchique"))) {
+        if ((role.equals("collaborateur") || role.equals("Chef Hiérarchique")|| role.equals("RH"))) {
             if (serviceId == null || serviceId.isEmpty()) {
                 throw new IllegalArgumentException("Service ID is required.");
             }
