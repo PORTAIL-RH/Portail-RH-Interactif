@@ -4,6 +4,9 @@ import Navbar from "../Navbar/Navbar";
 import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText, FiEye, FiDownload } from "react-icons/fi";
 import "./Demandes.css";
 import DemandeDetailsModal from "./DemandeDetailsModal";
+import { toast, ToastContainer } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
+import { API_URL } from "../../../config";
 
 const DemandesConge = () => {
   // Initialize state with localStorage data if available
@@ -396,45 +399,90 @@ const DemandesConge = () => {
     setSelectedDemande(null);
   };
 
+  // File handling functions
   const fetchFileBlobUrl = async (fileId) => {
-    const token = localStorage.getItem("authToken");
-    const response = await fetch(`http://localhost:8080/api/files/download/${fileId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    if (!fileId) {
+      throw new Error("File ID is missing");
+    }
 
-    if (!response.ok) throw new Error("Erreur HTTP: " + response.status);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
+    const token = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Erreur HTTP: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      throw error;
+    }
   };
 
   const handlePreview = async (fileId) => {
+    if (!fileId) {
+      console.error("No file ID provided for preview");
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
     if (previewFileId === fileId) {
       setPreviewFileId(null);
       setPreviewFileUrl(null);
       return;
     }
+    
     try {
       const url = await fetchFileBlobUrl(fileId);
       setPreviewFileId(fileId);
       setPreviewFileUrl(url);
     } catch (err) {
       console.error("Erreur d'aperçu:", err);
-      alert("Impossible d'afficher la pièce jointe.");
+      toast.error("Impossible d'afficher la pièce jointe: " + err.message);
     }
   };
 
   const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
+    if (!fileId) {
+      console.error("No file ID provided for download");
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
+    const toastId = toast.loading("Préparation du téléchargement...");
+    
     try {
       const url = await fetchFileBlobUrl(fileId);
       const link = document.createElement("a");
       link.href = url;
-      link.download = filename;
+      link.download = filename || "document.pdf";
+      document.body.appendChild(link);
       link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
+      
+      toast.update(toastId, {
+        render: "Téléchargement en cours...",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch (err) {
       console.error("Erreur de téléchargement:", err);
-      alert("Échec du téléchargement.");
+      toast.update(toastId, {
+        render: "Échec du téléchargement: " + err.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
     }
   };
 
@@ -714,72 +762,33 @@ const DemandesConge = () => {
                         </div>
                       </td>
                       <td>
-                        <div className="file-actions-compact">
-                          {demande.files && demande.files.length > 0 ? (
-                            <>
-                              {demande.files.map((file) => (
-                                <div key={file.fileId} className="compact-action-buttons">
-                                  <button
-                                    className="icon-button view"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePreview(file.fileId);
-                                    }}
-                                    title="Aperçu"
-                                  >
-                                    <FiEye />
-                                  </button>
-                                  <button
-                                    className="icon-button download"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDownload(file.fileId, file.filename);
-                                    }}
-                                    title="Télécharger"
-                                  >
-                                    <FiDownload />
-                                  </button>
-                                </div>
-                              ))}
-                              
-                              {previewFileId && (
-                                <div className="preview-modal-overlay" onClick={() => setPreviewFileId(null)}>
-                                  <div className="preview-modal-content" onClick={(e) => e.stopPropagation()}>
-                                    <div className="preview-header">
-                                      <h4>Aperçu du fichier: {demande.files.find(f => f.fileId === previewFileId)?.filename || 'Document'}</h4>
-                                      <div className="preview-actions">
-                                        <button 
-                                          className="download-in-preview"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDownload(previewFileId, demande.files.find(f => f.fileId === previewFileId)?.filename);
-                                          }}
-                                        >
-                                          <FiDownload /> Télécharger
-                                        </button>
-                                        <button 
-                                          className="close-preview" 
-                                          onClick={() => setPreviewFileId(null)}
-                                        >
-                                          <FiX />
-                                        </button>
-                                      </div>
-                                    </div>
-                                    <div className="preview-iframe-container">
-                                      <iframe
-                                        src={previewFileUrl}
-                                        title="File Preview"
-                                        className="preview-iframe"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <span className="empty-icon">-</span>
-                          )}
-                        </div>
+ <td className="file-actions">
+  {demande.files?.length > 0 ? (
+    <div className="file-buttons">
+      {demande.files.map((file, index) => (
+        <React.Fragment key={file.id}>
+          <button
+            className="btn-preview"
+            onClick={() => handlePreview(file.fileId)}
+            title={`Aperçu: ${file.filename}`}
+          >
+            <FiEye />
+          </button>
+          <button
+            className="btn-download"
+            onClick={() => handleDownload(file.fileId, file.filename)}
+            title={`Télécharger: ${file.filename}`}
+          >
+            <FiDownload />
+          </button>
+          {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+        </React.Fragment>
+      ))}
+    </div>
+  ) : (
+    <span className="file-actions">Aucun fichier</span>
+  )}
+</td>
                       </td>
                       <td>
                         <span className={`status-badge ${
@@ -878,7 +887,47 @@ const DemandesConge = () => {
               </div>
             </div>
           )}
-
+          {/* File Preview Modal */}
+          {previewFileUrl && (
+            <div className="file-preview-modal">
+              <div className="file-preview-content">
+                <div className="file-preview-header">
+                  <h3>Aperçu du fichier</h3>
+                  <button 
+                    className="close-preview"
+                    onClick={() => {
+                      setPreviewFileId(null);
+                      setPreviewFileUrl(null);
+                    }}
+                  >
+                    <FiX />
+                  </button>
+                </div>
+                <div className="file-preview-container">
+                  <iframe 
+                    src={previewFileUrl} 
+                    title="File Preview"
+                    className="file-iframe"
+                  />
+                </div>
+                <div className="file-preview-footer">
+                  <button 
+                    className="btn-download"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = previewFileUrl;
+                      link.download = "document.pdf";
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    <FiDownload /> Télécharger
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
               demande={selectedDemande}

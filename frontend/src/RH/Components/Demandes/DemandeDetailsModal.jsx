@@ -1,82 +1,133 @@
 import React from "react";
-import { FiX, FiCheck, FiFileText, FiDownload } from "react-icons/fi";
+import { FiX, FiCheck, FiFileText, FiDownload, FiEye } from "react-icons/fi";
+import "./DemandeDetailsModal.css";
 
-const DemandeDetailsModal = ({ demande, onClose, onDownload }) => {
+const DemandeDetailsModal = ({ demande, onClose, onDownload, onPreview }) => {
+  const getStatusClass = (status) => {
+    switch (status) {
+      case "I":
+        return { class: "pending", text: "Pending" };
+      case "T":
+        return { class: "approved", text: "Approved" };
+      case "R":
+        return { class: "rejected", text: "Rejected" };
+      default:
+        return { class: "", text: "Unknown" };
+    }
+  };
+
+  const statusInfo = getStatusClass(demande.reponseRH);
+
   return (
     <div className="modal-overlay">
       <div className="modal-container">
         <div className="modal-header">
-          <h2>Request Details</h2>
-          <button className="close-button" onClick={onClose}>
+          <h2 className="modal-title">Request Details</h2>
+          <button className="modal-close" onClick={onClose}>
             <FiX />
           </button>
         </div>
 
-        <div className="modal-content">
-          <div className="detail-row">
-            <span className="detail-label">Employee:</span>
-            <span className="detail-value">
-              {demande.matPers?.nom || "Unknown"} {demande.matPers?.prenom || ""}
-            </span>
+        <div className="modal-body">
+          <div className="demande-details-grid">
+            <div className="detail-group">
+              <span className="detail-label">Employee</span>
+              <span className="detail-value">
+                {demande.matPers?.nom || "Unknown"} {demande.matPers?.prenom || ""}
+              </span>
+            </div>
+
+            <div className="detail-group">
+              <span className="detail-label">Employee ID</span>
+              <span className="detail-value">
+                {demande.matPers?.matPers || "N/A"}
+              </span>
+            </div>
+
+            <div className="detail-group">
+              <span className="detail-label">Request Date</span>
+              <span className="detail-value">
+                {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString() : "N/A"}
+              </span>
+            </div>
+
+            <div className="detail-group">
+              <span className="detail-label">Status</span>
+              <div className="status-text">
+                <span className={`status-badge ${statusInfo.class}`}>
+                  {statusInfo.text}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="detail-row">
-            <span className="detail-label">Request Date:</span>
-            <span className="detail-value">
-              {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString() : "N/A"}
-            </span>
-          </div>
-
-          <div className="detail-row">
-            <span className="detail-label">Status:</span>
-            <span className={`status-badge ${
-              demande.reponseRH === "I" ? "pending" :
-              demande.reponseRH === "T" ? "processed" : "rejected"
-            }`}>
-              {demande.reponseRH === "I" ? "Pending" :
-               demande.reponseRH === "T" ? "Processed" : "Rejected"}
-            </span>
-          </div>
-
-          <div className="detail-row full-width">
-            <span className="detail-label">Request Text:</span>
-            <div className="detail-value text-content">
-              {demande.texteDemande || <span className="no-content">No content</span>}
+          <div className="detail-group">
+            <span className="detail-label">Request Text</span>
+            <div className="detail-value">
+              {demande.texteDemande || <span className="empty">No content</span>}
             </div>
           </div>
 
           {demande.observation && (
-            <div className="detail-row full-width">
-              <span className="detail-label">Observation:</span>
-              <div className="detail-value text-content">
+            <div className="detail-group">
+              <span className="detail-label">Observation</span>
+              <div className="detail-value">
                 {demande.observation}
               </div>
             </div>
           )}
 
           {demande.filesReponse && demande.filesReponse.length > 0 && (
-            <div className="detail-row full-width">
-              <span className="detail-label">Response Documents:</span>
-              <div className="response-files">
+            <div className="detail-group">
+              <span className="detail-label">Response Documents</span>
+              <ul className="attachment-list">
                 {demande.filesReponse.map((file, index) => (
-                  <div key={index} className="response-file-item">
-                    <FiFileText className="file-icon" />
-                    <span className="file-name">{file.filename}</span>
-                    <button 
-                      onClick={() => onDownload(file.filename)}
-                      className="download-button"
-                    >
-                      <FiDownload /> Download
-                    </button>
-                  </div>
+                  <li key={index} className="attachment-item">
+                    <div className="file-info">
+                      <FiFileText className="file-icon" size={18} />
+                      <span className="file-name">{file.filename}</span>
+                      <span className="file-size">{file.size ? formatFileSize(file.size) : ""}</span>
+                    </div>
+                    <div className="file-actions">
+                      <button 
+                        className="attachment-preview-btn"
+                        onClick={() => onPreview(file)}
+                      >
+                        <FiEye size={14} />
+                        Preview
+                      </button>
+                      <button 
+                        className="attachment-download-btn"
+                        onClick={() => onDownload(file)}
+                      >
+                        <FiDownload size={14} />
+                        Download
+                      </button>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
+        </div>
+
+        <div className="modal-footer">
+          <button className="modal-btn modal-btn-secondary" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
+};
+
+// Helper function to format file size
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
 export default DemandeDetailsModal;

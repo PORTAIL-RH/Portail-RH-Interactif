@@ -315,22 +315,22 @@ const AjoutService = () => {
 
             {activeTab === "add" && (
               <div className="ajout-service-container">
-                <h2>Add New Service</h2>
+                <h2>Ajouter Un Service</h2>
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
-                    <label>Service Name:</label>
+                    <label>Nom Du Service:</label>
                     <input
                       type="text"
                       name="serviceName"
                       value={formData.serviceName}
                       onChange={handleInputChange}
                       required
-                      placeholder="Service name"
+                      placeholder="nom du Service"
                     />
                   </div>
 
                   <div className="form-group">
-                    <label>Chef Matricule:</label>
+                    <label>Matricule Du Chef:</label>
                     <div className="matricule-dropdown-container">
                       <input
                         ref={inputRef}
@@ -417,8 +417,8 @@ const AjoutService = () => {
                     <table className="services-table">
                       <thead>
                         <tr>
-                          <th>Service Name</th>
-                          <th>Chef Matricule</th>
+                          <th>nom du Service </th>
+                          <th>Matricule du Chef </th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -445,8 +445,8 @@ const AjoutService = () => {
                 ) : (
                   <div className="empty-state">
                     <FiInfo />
-                    <h3>No Services</h3>
-                    <p>Create your first service using the Add Service tab</p>
+                    <h3>Aucun Services</h3>
+                    <p>Ajoute un service</p>
                   </div>
                 )}
               </div>
@@ -456,7 +456,7 @@ const AjoutService = () => {
               <div className="modal-overlay">
                 <div className="modal-container">
                   <div className="modal-header">
-                    <h3>Edit Service</h3>
+                    <h3>Modifier Un Service</h3>
                     <button className="modal-close" onClick={() => setShowEditModal(false)}>
                       <FiX />
                     </button>

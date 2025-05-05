@@ -236,13 +236,13 @@ const CandidatsPostulation = () => {
                   </div>
 
                   <div className="skills-section">
-                    <h4>Technical Skills</h4>
-                    {renderSkills(candidat.technicalSkills, "tech", candidat.id)}
+                    <h4>matched Skills</h4>
+                    {renderSkills(candidat.matchedSkills, "tech", candidat.id)}
                   </div>
 
                   <div className="skills-section">
-                    <h4>Language Skills</h4>
-                    {renderSkills(candidat.languageSkills, "lang", candidat.id)}
+                    <h4>missing Skills </h4>
+                    {renderSkills(candidat.missingSkills, "lang", candidat.id)}
                   </div>
 
                   <div className="detail-item">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiX } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiX, FiEye, FiDownload } from "react-icons/fi";
 import "./Demandes.css";
 import DemandeDetailsModal from "./DemandeDetailsModal";
 import { API_URL } from "../../../config";
@@ -9,7 +9,6 @@ import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
 const DemandesFormation = () => {
-  // Load initial data from localStorage with proper structure
   const [demandes, setDemandes] = useState(() => {
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem('demandes');
@@ -50,8 +49,9 @@ const DemandesFormation = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [theme, setTheme] = useState("light");
   const [processingId, setProcessingId] = useState(null);
+  const [previewFileId, setPreviewFileId] = useState(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState(null);
 
-  // Theme management
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
@@ -65,40 +65,79 @@ const DemandesFormation = () => {
     document.documentElement.className = newTheme;
   };
 
-  // Fetch demandes with proper storage structure
+  const fetchFileBlobUrl = async (fileId) => {
+    if (!fileId) throw new Error("File ID is missing");
+    const token = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return await response.blob();
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      throw error;
+    }
+  };
+
+  const handlePreview = async (fileId, filename) => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      toast.error(`Erreur d'aperçu: ${err.message}`);
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "document_formation.pdf") => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      toast.error(`Échec du téléchargement: ${err.message}`);
+    }
+  };
+
   const fetchDemandes = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(`${API_URL}/api/demande-formation/approved`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (!response.ok) throw new Error(await response.text());
       
       const formationData = await response.json();
-      
-      // Update both the specific formation state and the complete demandes structure
       setDemandes(formationData);
-      
-      // Update the complete demandes structure in localStorage
       const updatedAllDemandes = {
         ...allDemandes,
         formation: formationData
       };
       setAllDemandes(updatedAllDemandes);
       localStorage.setItem("demandes", JSON.stringify(updatedAllDemandes));
-      
       setError(null);
     } catch (error) {
       setError(error.message);
       console.error("Error fetching demandes:", error);
-      
-      // If we have cached data, don't show error to user
-      const cached = localStorage.getItem('demandes');
-      if (!cached) {
+      if (!localStorage.getItem('demandes')) {
         toast.error("Erreur de chargement des demandes");
       }
     } finally {
@@ -106,22 +145,14 @@ const DemandesFormation = () => {
     }
   }, [allDemandes]);
 
-  // Initial data fetch and setup polling
   useEffect(() => {
-    // First try to load from localStorage
     const cachedDemandes = localStorage.getItem('demandes');
     if (!cachedDemandes) {
       toast.info("Chargement des demandes...", { autoClose: false, toastId: 'demandes-loading' });
     }
-    
-    fetchDemandes().then(() => {
-      toast.dismiss('demandes-loading');
-    });
+    fetchDemandes().then(() => toast.dismiss('demandes-loading'));
 
-    // Set up polling every 10 seconds
     const intervalId = setInterval(fetchDemandes, 10000);
-
-    // SSE for real-time updates
     const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
     eventSource.onmessage = () => fetchDemandes();
 
@@ -131,10 +162,8 @@ const DemandesFormation = () => {
     };
   }, [fetchDemandes]);
 
-  // Filter demandes
   useEffect(() => {
     let filtered = demandes;
-
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(d => 
@@ -144,40 +173,24 @@ const DemandesFormation = () => {
         (d.texteDemande?.toLowerCase().includes(query))
       );
     }
-
     if (selectedStatus !== "all") {
       filtered = filtered.filter(d => 
-        selectedStatus === "T" 
-          ? d.reponseRH === "T"
-          : d.reponseRH === selectedStatus
+        selectedStatus === "T" ? d.reponseRH === "T" : d.reponseRH === selectedStatus
       );
     }
-
     if (startDate && endDate) {
       filtered = filtered.filter(d => {
         const demandeDate = new Date(d.dateDemande);
         return demandeDate >= new Date(startDate) && demandeDate <= new Date(endDate);
       });
     }
-
     setFilteredDemandes(filtered);
   }, [demandes, searchQuery, selectedStatus, startDate, endDate]);
 
-  // Process demande with proper storage updates
   const traiterDemande = async (demandeId) => {
-    if (!demandeId) {
-      toast.error("ID de demande invalide");
-      return;
-    }
-
+    if (!demandeId) return toast.error("ID de demande invalide");
     setProcessingId(demandeId);
-    const toastId = toast.loading(
-      "Traitement de la demande en cours...",
-      {
-        position: "top-center",
-        theme: theme
-      }
-    );
+    const toastId = toast.loading("Traitement de la demande en cours...", { theme });
 
     try {
       const token = localStorage.getItem("authToken");
@@ -188,35 +201,12 @@ const DemandesFormation = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      const responseClone = response.clone();
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
+      if (!response.ok) throw new Error(await response.text());
 
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (e) {
-        const textResponse = await responseClone.text();
-        if (textResponse.includes("Demande traitée")) {
-          responseData = { 
-            id_libre_demande: demandeId,
-            reponseRH: "T",
-            message: textResponse
-          };
-        } else {
-          throw new Error(textResponse);
-        }
-      }
-
-      // Update both the specific formation state and the complete demandes structure
       const updatedFormation = demandes.map(d => 
         d.id_libre_demande === demandeId ? { ...d, reponseRH: "T" } : d
       );
       setDemandes(updatedFormation);
-      
       const updatedAllDemandes = {
         ...allDemandes,
         formation: updatedFormation
@@ -229,7 +219,6 @@ const DemandesFormation = () => {
         type: "success",
         isLoading: false,
         autoClose: 3000,
-        closeButton: true,
       });
     } catch (error) {
       console.error("Error processing demande:", error);
@@ -238,14 +227,12 @@ const DemandesFormation = () => {
         type: "error",
         isLoading: false,
         autoClose: 5000,
-        closeButton: true,
       });
     } finally {
       setProcessingId(null);
     }
   };
 
-  // Show loading only when we have no cached data and are loading
   const showLoading = loading && demandes.length === 0;
 
   if (showLoading) {
@@ -284,19 +271,7 @@ const DemandesFormation = () => {
 
   return (
     <div className={`app-container ${theme}`}>
-      <ToastContainer
-        position="top-center"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme={theme}
-      />
-      
+      <ToastContainer position="top-center" autoClose={5000} theme={theme} />
       <Sidebar theme={theme} />
       <div className="demandes-container">
         <Navbar theme={theme} toggleTheme={toggleTheme} />
@@ -306,7 +281,6 @@ const DemandesFormation = () => {
             <p>Gérez les demandes de formation de vos collaborateurs</p>
           </div>
 
-          {/* Filters */}
           <div className="filter-tabs-container">
             <div className="filter-tabs">
               {["all", "I", "T"].map(status => (
@@ -315,15 +289,10 @@ const DemandesFormation = () => {
                   className={`filter-tab ${selectedStatus === status ? "active" : ""}`}
                   onClick={() => setSelectedStatus(status)}
                 >
-                  {{
-                    all: "Tous",
-                    I: "En Attente",
-                    T: "Traitées"
-                  }[status]}
+                  {{ all: "Tous", I: "En Attente", T: "Traitées" }[status]}
                 </button>
               ))}
             </div>
-            
             <div className="search-filter-container">
               <div className="search-bar">
                 <FiSearch />
@@ -334,7 +303,6 @@ const DemandesFormation = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
               <button 
                 className="filter-toggle" 
                 onClick={() => setIsFilterExpanded(!isFilterExpanded)}
@@ -359,7 +327,6 @@ const DemandesFormation = () => {
                     />
                   </div>
                 </div>
-                
                 <div className="date-input-group">
                   <label>Au</label>
                   <div className="date-input">
@@ -373,7 +340,6 @@ const DemandesFormation = () => {
                   </div>
                 </div>
               </div>
-              
               <button 
                 className="clear-filters"
                 onClick={() => {
@@ -386,27 +352,11 @@ const DemandesFormation = () => {
             </div>
           )}
 
-          {/* Stats Cards */}
           <div className="stats-cards">
             {[
-              { 
-                type: "total", 
-                label: "Total", 
-                value: demandes.length, 
-                icon: <FiFileText /> 
-              },
-              { 
-                type: "pending", 
-                label: "En Attente", 
-                value: demandes.filter(d => d.reponseRH === "I").length, 
-                icon: <FiClock /> 
-              },
-              { 
-                type: "approved", 
-                label: "Traitées", 
-                value: demandes.filter(d => d.reponseRH === "T").length, 
-                icon: <FiCheck /> 
-              }
+              { type: "total", label: "Total", value: demandes.length, icon: <FiFileText /> },
+              { type: "pending", label: "En Attente", value: demandes.filter(d => d.reponseRH === "I").length, icon: <FiClock /> },
+              { type: "approved", label: "Traitées", value: demandes.filter(d => d.reponseRH === "T").length, icon: <FiCheck /> }
             ].map(card => (
               <div key={card.type} className={`stat-card ${card.type}`}>
                 <div className="stat-icon">{card.icon}</div>
@@ -418,7 +368,6 @@ const DemandesFormation = () => {
             ))}
           </div>
 
-          {/* Results count */}
           <div className="results-summary">
             <p>
               <span className="results-count">{filteredDemandes.length}</span> 
@@ -426,7 +375,6 @@ const DemandesFormation = () => {
             </p>
           </div>
 
-          {/* Demandes Table */}
           <div className="table-responsive">
             <table className="demandes-table">
               <thead>
@@ -438,6 +386,7 @@ const DemandesFormation = () => {
                   <th>Titre</th>
                   <th>Type</th>
                   <th>Thème</th>
+                  <th>Fichiers</th>
                   <th>Statut</th>
                   <th>Action</th>
                 </tr>
@@ -463,9 +412,7 @@ const DemandesFormation = () => {
                       </td>
                       <td>
                         {demande.dateDebut ? (
-                          <>
-                            {new Date(demande.dateDebut).toLocaleDateString()} 
-                          </>
+                          new Date(demande.dateDebut).toLocaleDateString()
                         ) : "Non spécifiée"}
                       </td>
                       <td>
@@ -476,6 +423,35 @@ const DemandesFormation = () => {
                       </td>
                       <td>
                         {demande.theme?.theme || "Aucun thème spécifié"}
+                      </td>
+                      <td className="file-actions">
+                        {demande.files?.length > 0 ? (
+                          <div className="file-buttons">
+                            {demande.files.map((file, index) => (
+                              <React.Fragment key={file.id}>
+                                <button
+                                  className="btn-preview"
+                                  onClick={() => handlePreview(file.fileId, file.filename)}
+                                  title={`Aperçu: ${file.filename}`}
+                                >
+                                  <FiEye />
+                                </button>
+                                <button
+                                  className="btn-download"
+                                  onClick={() => handleDownload(file.fileId, file.filename)}
+                                  title={`Télécharger: ${file.filename}`}
+                                >
+                                  <FiDownload />
+                                </button>
+                                {index < demande.files.length - 1 && (
+                                  <span className="file-separator">|</span>
+                                )}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="file-actions">Aucun fichier</span>
+                        )}
                       </td>
                       <td>
                         <span className={`status-badge ${demande.reponseRH.toLowerCase()}`}>
@@ -517,7 +493,7 @@ const DemandesFormation = () => {
                   ))
                 ) : (
                   <tr className="no-results">
-                    <td colSpan="9">
+                    <td colSpan="10">
                       <div className="no-results-content">
                         <FiFilter size={48} />
                         <h3>Aucune demande trouvée</h3>
@@ -541,13 +517,56 @@ const DemandesFormation = () => {
             </table>
           </div>
 
-          {/* Demande Details Modal */}
+          {previewFileUrl && (
+            <div className="file-preview-modal">
+              <div className="file-preview-content">
+                <div className="file-preview-header">
+                  <h3>Aperçu du fichier</h3>
+                  <button 
+                    className="close-preview"
+                    onClick={() => {
+                      setPreviewFileId(null);
+                      setPreviewFileUrl(null);
+                      URL.revokeObjectURL(previewFileUrl);
+                    }}
+                  >
+                    <FiX />
+                  </button>
+                </div>
+                <div className="file-preview-container">
+                  <iframe 
+                    src={previewFileUrl} 
+                    title="File Preview"
+                    className="file-iframe"
+                  />
+                </div>
+                <div className="file-preview-footer">
+                  <button 
+                    className="btn-download"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = previewFileUrl;
+                      link.download = `formation_${previewFileId}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    <FiDownload /> Télécharger
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={() => setIsModalOpen(false)}
               onApprove={() => selectedDemande.id_libre_demande && traiterDemande(selectedDemande.id_libre_demande)}
               isProcessing={processingId === selectedDemande.id_libre_demande}
+              onPreviewFile={handlePreview}
+              onDownloadFile={handleDownload}
             />
           )}
         </div>

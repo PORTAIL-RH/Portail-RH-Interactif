@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 @Document(collection = "Demandes_Conge")
 
 public class DemandeConge {
-    public static final int MAX_DAYS_PER_YEAR = 80;
+    public static final int MAX_DAYS_PER_YEAR = 30;
 
     @Id
     private String id_libre_demande;

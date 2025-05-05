@@ -605,7 +605,7 @@
 }
 
 .toggle-filters-button:hover {
-  background-color: var(--primary-dark-color);
+  background-color: #0b225493;
 }
 
 .toggle-filters-button svg {

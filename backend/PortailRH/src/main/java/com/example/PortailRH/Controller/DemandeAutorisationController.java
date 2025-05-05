@@ -7,6 +7,8 @@ import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/demande-autorisation")
+@Slf4j
 public class DemandeAutorisationController {
 
     @Autowired
@@ -364,88 +367,170 @@ public class DemandeAutorisationController {
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getDemandesByCollaborateursService(@PathVariable String chefserviceid) {
         try {
-            // 1. Trouver le service par ID du chef
-            Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
-            if (service == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of(
-                                "status", "error",
-                                "message", "Aucun service trouvé pour ce chef hiérarchique",
-                                "serviceId", chefserviceid
-                        ));
+            // Validate the input ID
+            if (!ObjectId.isValid(chefserviceid)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("status", "error", "message", "Invalid chef service ID"));
             }
 
-            // 2. Obtenir les collaborateurs de ce service
-            List<Personnel> collaborateurs = personnelRepository.findByRoleAndService("collaborateur", service);
+            ObjectId chefObjectId = new ObjectId(chefserviceid);
 
-            if (collaborateurs.isEmpty()) {
+            // 1. Find the service by chef ID
+            Query serviceQuery = new Query(Criteria.where("chefHierarchique.$id").is(chefObjectId));
+            serviceQuery.fields().include("serviceName", "_id");
+            Service service = mongoTemplate.findOne(serviceQuery, Service.class);
+
+            if (service == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("status", "error", "message", "Service not found for this chef"));
+            }
+
+            // Debug log the service found
+            log.debug("Found service: {} with ID: {}", service.getServiceName(), service.getId());
+
+            // 2. Find collaborators in this service
+            Query collabQuery = new Query(
+                    Criteria.where("service.$id").is(new ObjectId(service.getId()))
+                            .and("role").is("collaborateur")
+            );
+            collabQuery.fields().include("_id", "nom", "prenom", "matricule"); // Include more fields for verification
+
+            List<Personnel> collaborators = mongoTemplate.find(collabQuery, Personnel.class);
+
+            // Debug log the collaborators found
+            log.debug("Found {} collaborators for service {}: {}",
+                    collaborators.size(),
+                    service.getId(),
+                    collaborators.stream()
+                            .map(c -> c.getId() + " " + c.getNom() + " " + c.getPrenom())
+                            .collect(Collectors.joining(", "))
+            );
+
+            if (collaborators.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "message", "Aucun collaborateur trouvé dans ce service",
                         "service", service.getServiceName(),
-                        "demandes", Collections.emptyList()
+                        "demandes", Collections.emptyList(),
+                        "debug_info", "No collaborators found despite service existing"
                 ));
             }
 
-            // 3. Obtenir les demandes pour ces collaborateurs
-            List<ObjectId> collaborateurObjectIds = collaborateurs.stream()
+            // Convert to ObjectId list
+            List<ObjectId> collaborateurIds = collaborators.stream()
                     .map(p -> new ObjectId(p.getId()))
                     .collect(Collectors.toList());
 
-            Query query = new Query();
-            query.addCriteria(Criteria.where("matPers.$id").in(collaborateurObjectIds));
+            // 3. Get demandes for these collaborators
+            Query demandeQuery = new Query(Criteria.where("matPers.$id").in(collaborateurIds));
+            List<DemandeAutorisation> demandes = mongoTemplate.find(demandeQuery, DemandeAutorisation.class);
 
-            List<DemandeAutorisation> demandes = mongoTemplate.find(query, DemandeAutorisation.class);
+            // Debug log the demandes found
+            log.debug("Found {} demandes for {} collaborators", demandes.size(), collaborateurIds.size());
 
-            // Conversion en DTOs avec tous les détails, sans inclure les fichiers complets
-            List<Map<String, Object>> demandeResponses = demandes.stream()
-                    .map(demande -> {
-                        Map<String, Object> response = new HashMap<>();
-                        response.put("id", demande.getId());
-                        response.put("dateDemande", demande.getDateDemande());
-                        response.put("matPers", Map.of(
-                                "id", demande.getMatPers().getId(),
-                                "matricule", demande.getMatPers().getMatricule(),
-                                "nomComplet", demande.getMatPers().getNom() + " " + demande.getMatPers().getPrenom()
-                        ));
-                        response.put("dateDebut", demande.getDateDebut());
-                        response.put("texteDemande", demande.getTexteDemande());
-                        response.put("observation", demande.getObservation());
-                        response.put("reponseChef", demande.getReponseChef());
+            // 4. Convert to response format
+            List<Map<String, Object>> result = demandes.stream()
+                    .map(d -> {
+                        Map<String, Object> map = new LinkedHashMap<>(); // Maintain field order
 
-                        // Only return file metadata (ID, filename, etc.) without the content
-                        response.put("files", demande.getFiles().stream()
-                                .map(f -> Map.of(
-                                        "id", f.getId(),
-                                        "filename", f.getFilename(),
-                                        "fileId", f.getFileId() // This can be used to fetch file content later
-                                ))
-                                .collect(Collectors.toList()));
+                        // Basic fields
+                        map.put("id", d.getId());
+                        map.put("dateDemande", d.getDateDemande());
+                        map.put("typeDemande", d.getTypeDemande());
+                        map.put("codeSoc", d.getCodeSoc());
+                        map.put("dateDebut", d.getDateDebut());
+                        map.put("texteDemande", d.getTexteDemande());
+                        map.put("observation", d.getObservation());
+                        map.put("reponseChef", d.getReponseChef());
+                        map.put("reponseRH", d.getReponseRH());
+                        map.put("heureSortie", d.getHeureSortie());
+                        map.put("heureRetour", d.getHeureRetour());
+                        map.put("horaireSortie", d.getHoraireSortie());
+                        map.put("horaireRetour", d.getHoraireRetour());
+                        map.put("minuteSortie", d.getMinuteSortie());
+                        map.put("minuteRetour", d.getMinuteRetour());
+                        map.put("codAutorisation", d.getCodAutorisation());
 
-                        response.put("heureSortie", demande.getHeureSortie());
-                        response.put("minuteSortie", demande.getMinuteSortie());
-                        response.put("heureRetour", demande.getHeureRetour());
-                        response.put("minuteRetour", demande.getMinuteRetour());
-                        response.put("horaireSortie", demande.getHoraireSortie());
-                        response.put("horaireRetour", demande.getHoraireRetour());
-                        return response;
+                        // Handle personnel
+                        if (d.getMatPers() != null) {
+                            map.put("matPers", Map.of(
+                                    "id", d.getMatPers().getId(),
+                                    "matricule", StringUtils.defaultString(d.getMatPers().getMatricule()),
+                                    "nom", StringUtils.defaultString(d.getMatPers().getNom()),
+                                    "prenom", StringUtils.defaultString(d.getMatPers().getPrenom()),
+                                    "email", StringUtils.defaultString(d.getMatPers().getEmail())
+                            ));
+                        }
+
+                        // Handle files
+                        if (d.getFiles() != null && !d.getFiles().isEmpty()) {
+                            map.put("files", d.getFiles().stream()
+                                    .filter(Objects::nonNull)
+                                    .map(f -> Map.of(
+                                            "id", f.getId() != null ? f.getId() : "",
+                                            "fileId", f.getFileId() != null ? f.getFileId() : "",
+                                            "filename", f.getFilename() != null ? f.getFilename() : "",
+                                            "fileType", f.getFileType() != null ? f.getFileType() : ""
+                                    ))
+                                    .collect(Collectors.toList()));
+                        } else {
+                            map.put("files", Collections.emptyList());
+                        }
+
+                        return map;
                     })
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "service", service.getServiceName(),
-                    "demandes", demandeResponses
+                    "collaborateurs_count", collaborators.size(),
+                    "demandes_count", result.size(),
+                    "demandes", result
             ));
 
         } catch (Exception e) {
+            log.error("Error fetching demandes for chef {}: {}", chefserviceid, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of(
                             "status", "error",
-                            "message", "Erreur lors de la récupération des demandes",
+                            "message", "Error processing request",
                             "error", e.getMessage()
                     ));
         }
+    }
+
+    private PersonnelDTO convertPersonnelToSafeDto(Personnel personnel) {
+        System.out.println("27. [DEBUG] Converting personnel to safe DTO: " + personnel.getId());
+
+        PersonnelDTO dto = new PersonnelDTO();
+        try {
+            // Set basic fields
+            dto.setId(personnel.getId());
+            dto.setMatricule(personnel.getMatricule());
+            dto.setNom(personnel.getNom());
+            dto.setPrenom(personnel.getPrenom());
+            dto.setEmail(personnel.getEmail());
+
+            // Handle service reference safely
+            if (personnel.getService() != null) {
+                System.out.println("28. [DEBUG] Adding service reference");
+                dto.setServiceId(personnel.getService().getId());
+                dto.setServiceName(personnel.getService().getServiceName());
+            }
+
+            // Handle chef reference safely
+            if (personnel.getChefHierarchique() != null) {
+                System.out.println("29. [DEBUG] Adding chef reference");
+                Personnel chef = personnel.getChefHierarchique();
+                dto.setChefHierarchiqueId(chef.getId());
+                dto.setChefHierarchiqueNom(chef.getNom());
+                dto.setChefHierarchiquePrenom(chef.getPrenom());
+            }
+        } catch (Exception e) {
+            System.out.println("30. [ERROR] Error converting personnel to DTO: " + e.getMessage());
+        }
+
+        return dto;
     }
 
 

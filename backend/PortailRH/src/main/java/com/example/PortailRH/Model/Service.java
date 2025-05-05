@@ -1,6 +1,7 @@
 package com.example.PortailRH.Model;
 
 import com.example.PortailRH.Config.PersonnelReferenceSerializer;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.Data;
@@ -26,6 +27,7 @@ public class Service {
 
     @DBRef
     @JsonSerialize(using = PersonnelReferenceSerializer.class) // Custom serializer
+    @JsonIgnore
     private Personnel chefHierarchique; // Reference to the hierarchical chief
 
     public Personnel getChefHierarchique() {

@@ -4,9 +4,11 @@ import Sidebar from "./Components/Sidebar/Sidebar";
 import Navbar from "./Components/Navbar/Navbar";
 import { FiUsers, FiClock, FiMapPin, FiRefreshCw, FiBell } from "react-icons/fi";
 import { FaFemale, FaMale } from "react-icons/fa";
+import { toast } from "react-toastify";
 import "./Acceuil.css";
 
-// Error boundary wrapper component
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -34,20 +36,17 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Helper function for safe JSON parsing
 const safeParse = (key, defaultValue) => {
   try {
     const stored = localStorage.getItem(key);
     if (stored === null || stored === 'undefined') return defaultValue;
-    const parsed = JSON.parse(stored);
-    return parsed !== null ? parsed : defaultValue;
+    return JSON.parse(stored);
   } catch (e) {
     console.error(`Error parsing ${key} from localStorage:`, e);
     return defaultValue;
   }
 };
 
-// Deep comparison function
 const deepEqual = (x, y) => {
   if (x === y) return true;
   if (typeof x !== 'object' || x === null || typeof y !== 'object' || y === null) return false;
@@ -65,11 +64,27 @@ const deepEqual = (x, y) => {
   return true;
 };
 
-// Rate-limited fetch with retry logic
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
   try {
-    const response = await fetch(url, options);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     if (retries <= 0) throw error;
@@ -78,14 +93,37 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
   }
 };
 
+const validateServiceResponse = (response) => {
+  if (!response) return { isValid: false, error: "Empty response" };
+  
+  // Handle error responses
+  if (response.status === "error") {
+    return { 
+      isValid: false, 
+      error: response.message || "Error from server" 
+    };
+  }
+
+  // Handle success responses
+  if (response.status === "success") {
+    return {
+      isValid: true,
+      collaborators: Array.isArray(response.collaborators) ? response.collaborators : [],
+      serviceName: response.serviceName || "Service",
+      numberOfCollaborateurs: response.numberOfCollaborators || 0
+    };
+  }
+
+  // Fallback for other cases
+  return { isValid: false, error: "Invalid response structure" };
+};
+
 const Accueil = () => {
-  // User data with safe parsing
   const userId = localStorage.getItem("userId");
   const userData = safeParse("userData", {});
   const userFirstName = userData.prenom || "";
   const userLastName = userData.nom || "";
 
-  // State initialization with proper localStorage handling
   const [serviceInfo, setServiceInfo] = useState(() => 
     safeParse("serviceInfo", {
       name: "",
@@ -96,29 +134,24 @@ const Accueil = () => {
       femaleCount: 0,
       malePercentage: 0,
       femalePercentage: 0,
+      error: null
     })
   );
 
   const [personnels, setPersonnels] = useState(() => safeParse("personnels", []));
   const [previousPersonnels, setPreviousPersonnels] = useState([]);
 
-  const [demandes, setDemandes] = useState(() => {
-    const defaultDemandes = {
-      conge: { data: [], total: 0, approved: 0, pending: 0 },
-      formation: { data: [], total: 0, approved: 0, pending: 0 },
-      autorisation: { data: [], total: 0, approved: 0, pending: 0 }
-    };
-    return safeParse("demandes", defaultDemandes);
-  });
+  const [demandes, setDemandes] = useState(() => ({
+    conge: { data: [], total: 0, approved: 0, pending: 0 },
+    formation: { data: [], total: 0, approved: 0, pending: 0 },
+    autorisation: { data: [], total: 0, approved: 0, pending: 0 }
+  }));
 
-  const [previousDemandes, setPreviousDemandes] = useState(() => {
-    const defaultDemandes = {
-      conge: { data: [], total: 0, approved: 0, pending: 0 },
-      formation: { data: [], total: 0, approved: 0, pending: 0 },
-      autorisation: { data: [], total: 0, approved: 0, pending: 0 }
-    };
-    return safeParse("demandes", defaultDemandes);
-  });
+  const [previousDemandes, setPreviousDemandes] = useState(() => ({
+    conge: { data: [], total: 0, approved: 0, pending: 0 },
+    formation: { data: [], total: 0, approved: 0, pending: 0 },
+    autorisation: { data: [], total: 0, approved: 0, pending: 0 }
+  }));
 
   const [upcomingFormations, setUpcomingFormations] = useState(() => safeParse("upcomingFormations", []));
   const [loading, setLoading] = useState(false);
@@ -130,13 +163,11 @@ const Accueil = () => {
   const [newUpdates, setNewUpdates] = useState([]);
   const [showUpdatesPanel, setShowUpdatesPanel] = useState(false);
 
-  // Refs for values that shouldn't trigger effects
   const personnelsRef = useRef(personnels);
   const serviceInfoRef = useRef(serviceInfo);
   const demandesRef = useRef(demandes);
   const upcomingFormationsRef = useRef(upcomingFormations);
 
-  // Update refs when state changes
   useEffect(() => {
     personnelsRef.current = personnels;
   }, [personnels]);
@@ -153,7 +184,6 @@ const Accueil = () => {
     upcomingFormationsRef.current = upcomingFormations;
   }, [upcomingFormations]);
 
-  // Theme management
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || 
                      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
@@ -168,13 +198,9 @@ const Accueil = () => {
     localStorage.setItem("theme", newTheme);
   };
 
-  // Safe save to localStorage with timestamp
   const saveToLocalStorage = useCallback((key, data) => {
     try {
-      if (data && (key !== "demandes" || 
-          (data.conge.data.length > 0 || 
-           data.formation.data.length > 0 || 
-           data.autorisation.data.length > 0))) {
+      if (data) {
         localStorage.setItem(key, JSON.stringify(data));
         const now = new Date().toISOString();
         localStorage.setItem("lastUpdated", now);
@@ -182,25 +208,20 @@ const Accueil = () => {
       }
     } catch (e) {
       console.error("LocalStorage save error:", e);
-      if (e.name === 'QuotaExceededError') {
-        const criticalData = {
-          demandes: safeParse("demandes", null),
-          personnels: safeParse("personnels", []),
-          serviceInfo: safeParse("serviceInfo", null)
-        };
-        localStorage.clear();
-        Object.entries(criticalData).forEach(([key, value]) => {
-          if (value) localStorage.setItem(key, JSON.stringify(value));
-        });
-      }
     }
   }, []);
 
-  // Process demandes data with validation
   const processDemandes = useCallback((data, type) => {
     try {
-      const demandesArray = Array.isArray(data?.demandes) ? data.demandes : 
-                          Array.isArray(data) ? data : [];
+      let demandesArray = [];
+      
+      if (Array.isArray(data)) {
+        demandesArray = data;
+      } else if (data && Array.isArray(data.demandes)) {
+        demandesArray = data.demandes;
+      } else if (data && data.demandeAutorisations) {
+        demandesArray = data.demandeAutorisations;
+      }
       
       return {
         data: demandesArray,
@@ -219,11 +240,9 @@ const Accueil = () => {
     }
   }, []);
 
-  // Detect personnel changes between updates
   const detectPersonnelChanges = useCallback((oldPersonnels, newPersonnels) => {
     const updates = [];
 
-    // Check for new additions
     newPersonnels.forEach(newPerson => {
       const exists = oldPersonnels.some(oldPerson => oldPerson.id === newPerson.id);
       if (!exists) {
@@ -236,7 +255,6 @@ const Accueil = () => {
       }
     });
 
-    // Check for updates (modified fields)
     oldPersonnels.forEach(oldPerson => {
       const newPerson = newPersonnels.find(p => p.id === oldPerson.id);
       if (newPerson && !deepEqual(oldPerson, newPerson)) {
@@ -254,7 +272,6 @@ const Accueil = () => {
       }
     });
 
-    // Check for removals
     oldPersonnels.forEach(oldPerson => {
       const exists = newPersonnels.some(newPerson => newPerson.id === oldPerson.id);
       if (!exists) {
@@ -270,22 +287,18 @@ const Accueil = () => {
     return updates;
   }, []);
 
-  // Detect demandes changes between updates
   const detectDemandesChanges = useCallback((oldDemandes, newDemandes) => {
     const updates = [];
 
-    // Helper function to get requester name
     const getRequesterName = (demande) => {
       if (!demande.personnel) return "Unknown";
       return `${demande.personnel.nom} ${demande.personnel.prenom}`;
     };
 
-    // Check each demande type
     Object.keys(newDemandes).forEach(type => {
       const oldData = oldDemandes[type]?.data || [];
       const newData = newDemandes[type]?.data || [];
 
-      // Check for new demandes
       newData.forEach(newDemande => {
         const exists = oldData.some(oldDemande => oldDemande.id === newDemande.id);
         if (!exists) {
@@ -298,7 +311,6 @@ const Accueil = () => {
         }
       });
 
-      // Check for status changes
       oldData.forEach(oldDemande => {
         const newDemande = newData.find(d => d.id === oldDemande.id);
         if (newDemande && oldDemande.reponseChef !== newDemande.reponseChef) {
@@ -320,58 +332,69 @@ const Accueil = () => {
     return updates;
   }, []);
 
-  // Fetch service data with error handling and change detection
   const fetchServiceData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const data = await fetchWithRetry(
-        `http://localhost:8080/api/Personnel/collaborateurs-by-service/${userId}`
-      );
-      
-      const collaborators = Array.isArray(data?.collaborators) ? data.collaborators : [];
-
-      // Only proceed with updates if we got valid data
-      if (collaborators.length > 0) {
-        // Detect and store changes
-        if (previousPersonnels.length > 0) {
-          const personnelUpdates = detectPersonnelChanges(previousPersonnels, collaborators);
-          if (personnelUpdates.length > 0) {
-            setNewUpdates(prev => [...prev.slice(-9), ...personnelUpdates]);
-          }
-        }
-
-        // Update previous data
-        setPreviousPersonnels(collaborators);
-
-        const stats = collaborators.reduce(
-          (acc, person) => {
-            if (person?.sexe === "male") acc.maleCount++;
-            if (person?.sexe === "female") acc.femaleCount++;
-            if (person?.active) acc.activatedCount++;
-            else acc.nonActivatedCount++;
-            return acc;
-          },
-          { maleCount: 0, femaleCount: 0, activatedCount: 0, nonActivatedCount: 0 }
-        );
-
-        const total = data?.numberOfCollaborators || collaborators.length;
-        const serviceData = {
-          name: data?.serviceName || "Unknown service",
-          ...stats,
-          total,
-          malePercentage: total > 0 ? Math.round((stats.maleCount / total) * 100) : 0,
-          femalePercentage: total > 0 ? Math.round((stats.femaleCount / total) * 100) : 0,
-        };
-
-        setServiceInfo(serviceData);
-        setPersonnels(collaborators);
-        saveToLocalStorage("serviceInfo", serviceData);
-        saveToLocalStorage("personnels", collaborators);
+      if (!userId) {
+        throw new Error("User ID not available");
       }
 
-      return { serviceData: serviceInfoRef.current, collaborators };
+      const response = await fetchWithRetry(
+        `${API_URL}/api/Personnel/collaborateurs-by-service/${userId}`
+      );
+      
+      const { 
+        isValid, 
+        collaborators, 
+        serviceName, 
+        numberOfCollaborateurs,
+        error 
+      } = validateServiceResponse(response);
+      
+      if (!isValid) {
+        throw new Error(error || "Invalid service data format");
+      }
+
+      if (collaborators.length > 0 || previousPersonnels.length > 0) {
+        const personnelUpdates = detectPersonnelChanges(previousPersonnels, collaborators);
+        if (personnelUpdates.length > 0) {
+          setNewUpdates(prev => [...prev.slice(-9), ...personnelUpdates]);
+        }
+      }
+
+      setPreviousPersonnels(collaborators);
+
+      const stats = collaborators.reduce(
+        (acc, person) => {
+          if (person?.sexe === "male") acc.maleCount++;
+          if (person?.sexe === "female") acc.femaleCount++;
+          if (person?.active) acc.activatedCount++;
+          else acc.nonActivatedCount++;
+          return acc;
+        },
+        { maleCount: 0, femaleCount: 0, activatedCount: 0, nonActivatedCount: 0 }
+      );
+
+      const total = numberOfCollaborateurs || collaborators.length;
+      const serviceData = {
+        name: serviceName || "Unknown service",
+        ...stats,
+        total,
+        malePercentage: total > 0 ? Math.round((stats.maleCount / total) * 100) : 0,
+        femalePercentage: total > 0 ? Math.round((stats.femaleCount / total) * 100) : 0,
+        error: null
+      };
+
+      setServiceInfo(serviceData);
+      setPersonnels(collaborators);
+      saveToLocalStorage("serviceInfo", serviceData);
+      saveToLocalStorage("personnels", collaborators);
+
+      return { serviceData, collaborators };
     } catch (error) {
       console.error("Service data error:", error);
+      toast.error(`Failed to load service data: ${error.message}`);
+      setServiceInfo(prev => ({ ...prev, error: error.message }));
       return {
         serviceData: serviceInfoRef.current,
         collaborators: personnelsRef.current
@@ -381,26 +404,31 @@ const Accueil = () => {
     }
   }, [userId, saveToLocalStorage, detectPersonnelChanges]);
 
-  // Fetch all demandes with error handling and change detection
   const fetchAllDemandes = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const endpoints = [
-        { key: "conge", path: "demande-conge" },
-        { key: "formation", path: "demande-formation" },
-        { key: "autorisation", path: "demande-autorisation" }
+        { key: "conge", path: `demande-conge/collaborateurs-by-service/${userId}` },
+        { key: "formation", path: `demande-formation/collaborateurs-by-service/${userId}` },
+        { key: "autorisation", path: `demande-autorisation/collaborateurs-by-service/${userId}` }
       ];
 
       const results = await Promise.all(
         endpoints.map(async ({ key, path }) => {
           try {
-            const data = await fetchWithRetry(
-              `http://localhost:8080/api/${path}/collaborateurs-by-service/${userId}`
-            );
+            const data = await fetchWithRetry(`${API_URL}/api/${path}`);
             return { key, data: processDemandes(data, key) };
           } catch (err) {
             console.error(`${key} error:`, err);
-            return { key, data: demandesRef.current[key] };
+            return { 
+              key, 
+              data: demandesRef.current[key] || { 
+                data: [], 
+                total: 0, 
+                approved: 0, 
+                pending: 0 
+              }
+            };
           }
         })
       );
@@ -410,13 +438,11 @@ const Accueil = () => {
         return acc;
       }, {});
 
-      // Only update if we got valid data (not just falling back to existing)
       const hasNewData = results.some(result => 
         !deepEqual(result.data.data, demandesRef.current[result.key].data)
       );
 
       if (hasNewData) {
-        // Detect and store changes
         if (previousDemandes.conge.data.length > 0 || 
             previousDemandes.formation.data.length > 0 || 
             previousDemandes.autorisation.data.length > 0) {
@@ -434,18 +460,18 @@ const Accueil = () => {
       return newDemandes;
     } catch (error) {
       console.error("Demandes fetch error:", error);
+      toast.error("Failed to load requests data");
       return demandesRef.current;
     } finally {
       if (!silent) setLoading(false);
     }
   }, [userId, processDemandes, saveToLocalStorage, detectDemandesChanges]);
 
-  // Fetch upcoming formations with error handling
   const fetchFormations = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const data = await fetchWithRetry(
-        `http://localhost:8080/api/demande-formation/personnel/${userId}/approved`
+        `${API_URL}/api/demande-formation/personnel/${userId}/approved`
       );
       
       const now = new Date();
@@ -458,16 +484,15 @@ const Accueil = () => {
       saveToLocalStorage("upcomingFormations", upcoming);
       
       return upcoming;
-
     } catch (error) {
       console.error("Formations error:", error);
+      toast.error("Failed to load training data");
       return upcomingFormationsRef.current;
     } finally {
       if (!silent) setLoading(false);
     }
   }, [userId, saveToLocalStorage]);
 
-  // Date formatting with error handling
   const formatDate = useCallback((dateString) => {
     try {
       const options = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
@@ -477,7 +502,6 @@ const Accueil = () => {
     }
   }, []);
 
-  // Manual refresh with error handling
   const handleRefresh = useCallback(async () => {
     setLoading(true);
     try {
@@ -497,9 +521,7 @@ const Accueil = () => {
     setShowUpdatesPanel(!showUpdatesPanel);
   };
 
-  // Initial data loading
   useEffect(() => {
-    // First load from localStorage
     const storedServiceInfo = safeParse("serviceInfo", null);
     const storedPersonnels = safeParse("personnels", []);
     const storedDemandes = safeParse("demandes", {
@@ -509,13 +531,11 @@ const Accueil = () => {
     });
     const storedFormations = safeParse("upcomingFormations", []);
 
-    // Set initial state from localStorage
     if (storedServiceInfo) setServiceInfo(storedServiceInfo);
     if (storedPersonnels) setPersonnels(storedPersonnels);
     if (storedDemandes) setDemandes(storedDemandes);
     if (storedFormations) setUpcomingFormations(storedFormations);
 
-    // Then try to fetch fresh data in background
     const fetchInitialData = async () => {
       await fetchServiceData(true);
       await fetchAllDemandes(true);
@@ -525,7 +545,6 @@ const Accueil = () => {
     fetchInitialData();
   }, [fetchServiceData, fetchAllDemandes, fetchFormations]);
 
-  // Polling effect - fetch data every 10 seconds
   useEffect(() => {
     let isMounted = true;
     const abortController = new AbortController();
@@ -534,29 +553,17 @@ const Accueil = () => {
       if (!isMounted) return;
       
       try {
-        console.log("Polling for updates...");
-        const [serviceResult, demandesResult, formationsResult] = await Promise.all([
+        await Promise.all([
           fetchServiceData(true),
           fetchAllDemandes(true),
           fetchFormations(true)
         ]);
-        
-        // Only update state if component is still mounted
-        if (isMounted) {
-          if (serviceResult.collaborators) {
-            setPreviousPersonnels(serviceResult.collaborators);
-          }
-          if (demandesResult) {
-            setPreviousDemandes(demandesResult);
-          }
-        }
       } catch (e) {
         console.error("Error during polling:", e);
       }
     };
 
     const pollingInterval = setInterval(loadData, 10 * 1000);
-    // Initial load
     loadData();
     
     return () => {
@@ -608,199 +615,211 @@ const Accueil = () => {
                 </p>
               )}
             </div>
-          <div className="dashboard-grid">
-            {/* Personnel Overview Card */}
-            <div className="dashboard-card personnel-overview">
-              <div className="card-header">
-                <h2>Personnel Overview</h2>
-              </div>
-              <div className="card-content">
-                <div className="stat-cards">
-                  <div className="stat-card">
-                    <div className="stat-icon total">
-                      <FiUsers />
-                    </div>
-                    <div className="stat-details">
-                      <h3>Total</h3>
-                      <p className="stat-value">{serviceInfo.total}</p>
-                    </div>
+          
+            <div className="dashboard-grid">
+              {serviceInfo.error ? (
+                <div className="dashboard-card error-card">
+                  <div className="card-header">
+                    <h2>Data Loading Error</h2>
+                  </div>
+                  <div className="card-content">
+                    <p>{serviceInfo.error}</p>
+                    <button onClick={handleRefresh} className="retry-btn">
+                      <FiRefreshCw /> Retry
+                    </button>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Gender Distribution Card */}
-            <div className="dashboard-card gender-distribution">
-              <div className="card-header">
-                <h2>Gender Distribution</h2>
-              </div>
-              <div className="card-content">
-                <div className="gender-bars">
-                  <div className="gender-bar-container">
-                    <div className="gender-label">
-                      <FaMale className="male-icon" /> Male
+              ) : (
+                <>
+                  <div className="dashboard-card personnel-overview">
+                    <div className="card-header">
+                      <h2>Personnel Overview</h2>
                     </div>
-                    <div className="gender-bar-wrapper">
-                      <div
-                        className="gender-bar male-bar"
-                        style={{ width: `${serviceInfo.malePercentage}%` }}
-                      ></div>
-                      <span className="gender-percentage">
-                        {serviceInfo.malePercentage}% ({serviceInfo.maleCount})
-                      </span>
-                    </div>
-                  </div>
-                  <div className="gender-bar-container">
-                    <div className="gender-label">
-                      <FaFemale className="female-icon" /> Female
-                    </div>
-                    <div className="gender-bar-wrapper">
-                      <div
-                        className="gender-bar female-bar"
-                        style={{ width: `${serviceInfo.femalePercentage}%` }}
-                      ></div>
-                      <span className="gender-percentage">
-                        {serviceInfo.femalePercentage}% ({serviceInfo.femaleCount})
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Requests Card */}
-            <div className="dashboard-card recent-requests">
-              <div className="card-header">
-                <h2>Recent Requests</h2>
-              </div>
-              <div className="card-content">
-                <div className="requests-summary">
-                  <div className="request-type conge">
-                    <div className="request-icon">
-                      <FiClock />
-                    </div>
-                    <h3>Leave</h3>
-                    <p className="request-total">{demandes.conge.total}</p>
-                    <div className="status-breakdown">
-                      <div className="status-item">
-                        <span className="status-dot approved"></span>
-                        <span className="status-text">
-                          {demandes.conge.approved} approved
-                        </span>
-                      </div>
-                      <div className="status-item">
-                        <span className="status-dot pending"></span>
-                        <span className="status-text">
-                          {demandes.conge.pending} pending
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="request-type formation">
-                    <div className="request-icon">
-                      <FiUsers />
-                    </div>
-                    <h3>Training</h3>
-                    <p className="request-total">{demandes.formation.total}</p>
-                    <div className="status-breakdown">
-                      <div className="status-item">
-                        <span className="status-dot approved"></span>
-                        <span className="status-text">
-                          {demandes.formation.approved} approved
-                        </span>
-                      </div>
-                      <div className="status-item">
-                        <span className="status-dot pending"></span>
-                        <span className="status-text">
-                          {demandes.formation.pending} pending
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="request-type autorisation">
-                    <div className="request-icon">
-                      <FiMapPin />
-                    </div>
-                    <h3>Authorization</h3>
-                    <p className="request-total">{demandes.autorisation.total}</p>
-                    <div className="status-breakdown">
-                      <div className="status-item">
-                        <span className="status-dot approved"></span>
-                        <span className="status-text">
-                          {demandes.autorisation.approved} approved
-                        </span>
-                      </div>
-                      <div className="status-item">
-                        <span className="status-dot pending"></span>
-                        <span className="status-text">
-                          {demandes.autorisation.pending} pending
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Upcoming Training Card */}
-            <div className="dashboard-card upcoming-formations">
-              <div className="card-header">
-                <h2>Upcoming Training</h2>
-              </div>
-              <div className="card-content">
-                {upcomingFormations.length > 0 ? (
-                  <div className="formations-list">
-                    {upcomingFormations.map((formation, index) => {
-                      const startDate = new Date(formation.dateDebut);
-                      const endDate = formation.dateFin ? new Date(formation.dateFin) : null;
-                      
-                      return (
-                        <div key={index} className="formation-event">
-                          <div className="calendar-badge">
-                            <div className="calendar-month">
-                              {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
-                            </div>
-                            <div className="calendar-day">{startDate.getDate()}</div>
-                            <div className="calendar-weekday">
-                              {startDate.toLocaleString("fr-FR", { weekday: "short" })}
-                            </div>
+                    <div className="card-content">
+                      <div className="stat-cards">
+                        <div className="stat-card">
+                          <div className="stat-icon total">
+                            <FiUsers />
                           </div>
-                          <div className="formation-info">
-                            <h3 className="formation-title">
-                              {formation.theme?.name || formation.titre?.name || "Training"}
-                            </h3>
-                            <div className="formation-meta">
-                              <span className="meta-item">
-                                <FiClock /> 
-                                {endDate 
-                                  ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} days`
-                                  : "1 day"}
-                              </span>
-                              {formation.lieu && (
-                                <span className="meta-item">
-                                  <FiMapPin /> {formation.lieu}
-                                </span>
-                              )}
-                            </div>
+                          <div className="stat-details">
+                            <h3>Total</h3>
+                            <p className="stat-value">{serviceInfo.total}</p>
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="no-formations">
-                    <FiClock className="no-data-icon" />
-                    <p>No upcoming training</p>
+
+                  <div className="dashboard-card gender-distribution">
+                    <div className="card-header">
+                      <h2>Gender Distribution</h2>
+                    </div>
+                    <div className="card-content">
+                      <div className="gender-bars">
+                        <div className="gender-bar-container">
+                          <div className="gender-label">
+                            <FaMale className="male-icon" /> Male
+                          </div>
+                          <div className="gender-bar-wrapper">
+                            <div
+                              className="gender-bar male-bar"
+                              style={{ width: `${serviceInfo.malePercentage}%` }}
+                            ></div>
+                            <span className="gender-percentage">
+                              {serviceInfo.malePercentage}% ({serviceInfo.maleCount})
+                            </span>
+                          </div>
+                        </div>
+                        <div className="gender-bar-container">
+                          <div className="gender-label">
+                            <FaFemale className="female-icon" /> Female
+                          </div>
+                          <div className="gender-bar-wrapper">
+                            <div
+                              className="gender-bar female-bar"
+                              style={{ width: `${serviceInfo.femalePercentage}%` }}
+                            ></div>
+                            <span className="gender-percentage">
+                              {serviceInfo.femalePercentage}% ({serviceInfo.femaleCount})
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </>
+              )}
+
+              <div className="dashboard-card recent-requests">
+                <div className="card-header">
+                  <h2>Recent Requests</h2>
+                </div>
+                <div className="card-content">
+                  <div className="requests-summary">
+                    <div className="request-type conge">
+                      <div className="request-icon">
+                        <FiClock />
+                      </div>
+                      <h3>Leave</h3>
+                      <p className="request-total">{demandes.conge.total}</p>
+                      <div className="status-breakdown">
+                        <div className="status-item">
+                          <span className="status-dot approved"></span>
+                          <span className="status-text">
+                            {demandes.conge.approved} approved
+                          </span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-dot pending"></span>
+                          <span className="status-text">
+                            {demandes.conge.pending} pending
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="request-type formation">
+                      <div className="request-icon">
+                        <FiUsers />
+                      </div>
+                      <h3>Training</h3>
+                      <p className="request-total">{demandes.formation.total}</p>
+                      <div className="status-breakdown">
+                        <div className="status-item">
+                          <span className="status-dot approved"></span>
+                          <span className="status-text">
+                            {demandes.formation.approved} approved
+                          </span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-dot pending"></span>
+                          <span className="status-text">
+                            {demandes.formation.pending} pending
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="request-type autorisation">
+                      <div className="request-icon">
+                        <FiMapPin />
+                      </div>
+                      <h3>Authorization</h3>
+                      <p className="request-total">{demandes.autorisation.total}</p>
+                      <div className="status-breakdown">
+                        <div className="status-item">
+                          <span className="status-dot approved"></span>
+                          <span className="status-text">
+                            {demandes.autorisation.approved} approved
+                          </span>
+                        </div>
+                        <div className="status-item">
+                          <span className="status-dot pending"></span>
+                          <span className="status-text">
+                            {demandes.autorisation.pending} pending
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dashboard-card upcoming-formations">
+                <div className="card-header">
+                  <h2>Upcoming Training</h2>
+                </div>
+                <div className="card-content">
+                  {upcomingFormations.length > 0 ? (
+                    <div className="formations-list">
+                      {upcomingFormations.map((formation, index) => {
+                        const startDate = new Date(formation.dateDebut);
+                        const endDate = formation.dateFin ? new Date(formation.dateFin) : null;
+                        
+                        return (
+                          <div key={index} className="formation-event">
+                            <div className="calendar-badge">
+                              <div className="calendar-month">
+                                {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
+                              </div>
+                              <div className="calendar-day">{startDate.getDate()}</div>
+                              <div className="calendar-weekday">
+                                {startDate.toLocaleString("fr-FR", { weekday: "short" })}
+                              </div>
+                            </div>
+                            <div className="formation-info">
+                              <h3 className="formation-title">
+                                {formation.theme?.name || formation.titre?.name || "Training"}
+                              </h3>
+                              <div className="formation-meta">
+                                <span className="meta-item">
+                                  <FiClock /> 
+                                  {endDate 
+                                    ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} days`
+                                    : "1 day"}
+                                </span>
+                                {formation.lieu && (
+                                  <span className="meta-item">
+                                    <FiMapPin /> {formation.lieu}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="no-formations">
+                      <FiClock className="no-data-icon" />
+                      <p>No upcoming training</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Real-time Updates Panel */}
-      {showUpdatesPanel && (
+        {showUpdatesPanel && (
           <div className="real-time-updates-panel">
             <div className="panel-header">
               <h3>Recent Updates</h3>
