@@ -10,22 +10,48 @@ export const AuthProvider = ({ children }) => {
   });
 
  // In your AuthContext.js
-const login = (token, userData) => {
+ const login = (token, userData) => {
   localStorage.setItem('authToken', token);
   localStorage.setItem('userData', JSON.stringify(userData));
-  localStorage.setItem('userId', userData.id);
+  localStorage.setItem('userId', userData._id || userData.id);
   localStorage.setItem('userRole', userData.role);
   localStorage.setItem('usermatricule', userData.matricule);
-  
+
   if (userData.code_soc) {
     localStorage.setItem('userCodeSoc', userData.code_soc);
   }
-  if (userData.serviceId) {
-    localStorage.setItem('userServiceId', userData.serviceId);
-  }
-  if (userData.serviceName) {
-    localStorage.setItem('userServiceName', userData.serviceName);
-  }
+  
+ // Nouvelle méthode pour extraire le serviceId
+ let serviceId = null;
+  
+ // Cas 1: service est une DBRef avec $id (format MongoDB)
+ if (userData.service && userData.service.$id) {
+   serviceId = userData.service.$id.$oid || userData.service.$id;
+ }
+ // Cas 2: service est une DBRef avec id direct
+ else if (userData.service && userData.service.id) {
+   serviceId = userData.service.id.$oid || userData.service.id;
+ }
+ // Cas 3: service est un string (ID direct)
+ else if (typeof userData.service === 'string') {
+   serviceId = userData.service;
+ }
+ // Cas 4: serviceId est au niveau racine
+ else if (userData.serviceId) {
+   serviceId = userData.serviceId;
+ }
+
+ if (serviceId) {
+   localStorage.setItem('userServiceId', serviceId);
+ } else {
+   console.warn('Service ID not found in user data:', userData);
+ }
+
+ // Extraction du chef hiérarchique si nécessaire
+ if (userData.chefHierarchique && userData.chefHierarchique.$id) {
+   const chefId = userData.chefHierarchique.$id.$oid || userData.chefHierarchique.$id;
+   localStorage.setItem('chefHierarchiqueId', chefId);
+ }
   
   setIsAuthenticated(true);
 };

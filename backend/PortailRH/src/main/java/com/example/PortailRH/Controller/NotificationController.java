@@ -82,8 +82,11 @@ public class NotificationController {
             return ResponseEntity.badRequest().body("Role is required");
         }
 
-        if (serviceId == null || serviceId.isEmpty()) {
-            return ResponseEntity.badRequest().body("ServiceId is required");
+        // If role is not admin, serviceId is required
+        if (!"Admin".equalsIgnoreCase(role)){
+            if (serviceId == null || serviceId.isEmpty()) {
+                return ResponseEntity.badRequest().body("ServiceId is required for non-admin roles");
+            }
         }
 
         int updatedCount = notificationService.markAllAsRead(role, serviceId);

@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,6 +57,14 @@ public class AdminUserController {
                         .body(Map.of("message", "Role is required"));
             }
 
+            // Validate that service is provided for roles that require it
+            if (Arrays.asList("collaborateur", "Chef Hiérarchique", "RH").contains(role)) {
+                if (serviceId == null || serviceId.isEmpty()) {
+                    return ResponseEntity.badRequest()
+                            .body(Map.of("message", "Service is required for " + role + " role"));
+                }
+            }
+
             adminUserService.activateCollaborateur(id, role, serviceId);
 
             return ResponseEntity.ok()
@@ -71,7 +80,6 @@ public class AdminUserController {
                     .body(Map.of("message", "An error occurred while processing your request"));
         }
     }
-
     /**
      * Deactivate a collaborator by ID.
      */

@@ -2,8 +2,6 @@ package com.example.PortailRH.Model;
 
 import lombok.Data;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.CompoundIndex;
-import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -12,15 +10,15 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
-
 @Data
 @Document(collection = "Demandes_Conge")
 
 public class DemandeConge {
-    public static final int MAX_DAYS_PER_YEAR = 80;
+    public static final int MAX_DAYS_PER_YEAR = 30;
 
     @Id
-    private String id_libre_demande;
+    private String id;
+
     private Date dateDemande = new Date();
     private String typeDemande;
 
@@ -33,9 +31,12 @@ public class DemandeConge {
     private String snjTempRetour;
     private int nbrJours;
 
-
+    @DBRef
+    private Response_chefs_dem_conge responseChefs;
     private int year;
     private String texteDemande;
+
+
 
     private Reponse reponseChef = Reponse.I;
     private Reponse reponseRH = Reponse.I;
@@ -73,11 +74,28 @@ public class DemandeConge {
     }
 
 
+    public Response_chefs_dem_conge getResponseChefs() {
+        return responseChefs;
+    }
 
+    public void setResponseChefs(Response_chefs_dem_conge responseChefs) {
+        this.responseChefs = responseChefs;
+    }
 
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
 
     public String getId() {
-        return id_libre_demande;
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getObservation() {
@@ -88,9 +106,6 @@ public class DemandeConge {
         this.observation = observation;
     }
 
-    public void setId(String id) {
-        this.id_libre_demande = id;
-    }
 
     public Date getDateDebut() {
         return dateDebut;
@@ -125,13 +140,7 @@ public class DemandeConge {
         return matPers != null ? matPers.getCode_soc() : null;
     }
 
-    public String getId_libre_demande() {
-        return id_libre_demande;
-    }
 
-    public void setId_libre_demande(String id_libre_demande) {
-        this.id_libre_demande = id_libre_demande;
-    }
 
     public String getTexteDemande() {
         return texteDemande;

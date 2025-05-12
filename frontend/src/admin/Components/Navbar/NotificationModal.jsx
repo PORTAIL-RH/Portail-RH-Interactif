@@ -1,60 +1,63 @@
-import React from "react";
-import { format } from "date-fns";
-import { useNavigate } from "react-router-dom";
-import bellIcon from "../../../assets/bell.png";
-import "./NotificationModal.css";
-import useNotifications from "./useNotifications";
+"use client"
+import { format } from "date-fns"
+import { useNavigate } from "react-router-dom"
+import "./NotificationModal.css"
+import { FiBell, FiCheckCircle } from "react-icons/fi"
 
-const NotificationModal = ({ setUnviewedCount }) => {
-  const role = "Admin"; 
-  const { notifications, unviewedCount, fetchNotifications, error } = useNotifications(role);
-  const navigate = useNavigate();
+const NotificationModal = ({ onClose, notifications = [], unviewedCount = 0 }) => {
+  const role = "Admin"
+  const navigate = useNavigate()
 
   const formatTimestamp = (timestamp) => {
-    if (!timestamp) return "Date inconnue";
-
-    const date = new Date(timestamp);
-    return isNaN(date.getTime()) ? "Date inconnue" : format(date, "yyyy-MM-dd HH:mm");
-  };
+    if (!timestamp) return "Date inconnue"
+    const date = new Date(timestamp)
+    return isNaN(date.getTime()) ? "Date inconnue" : format(date, "dd/MM/yyyy HH:mm")
+  }
 
   const handleViewMore = () => {
-    navigate("/Notifications");
-  };
+    navigate("/Notifications")
+    if (onClose) onClose()
+  }
+
 
   const sortedNotifications = [...notifications]
-    .filter((notification) => !notification.viewed && notification.role === role) // Filtrer par rôle et non lues
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Trier par date décroissante
+    .filter((n) => n.role === role)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 5) // Limit to 5 notifications in the dropdown
 
   return (
-    <div className="notification-popover">
-      <div className="notification-header">
+    <div className="notification-modal">
+      <div className="notification-modal-header">
         <h2>Notifications</h2>
-        {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+        
       </div>
 
-      {error && <p className="error-message">{error}</p>}
-
       {sortedNotifications.length > 0 ? (
-        <div className="notification-list">
+        <div className="notification-modal-list">
           {sortedNotifications.map((notification) => (
-            <div key={notification.id} className={`notification unread`}>
-              <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
-              <p>{notification.message}</p>
-              <span className="notification-timestamp">
-                {formatTimestamp(notification.timestamp)}
-              </span>
+            <div
+              key={notification.id}
+              className={`notification-modal-item ${!notification.viewed ? "unread" : ""}`}
+            >
+              <div className="notification-modal-icon">
+                <FiBell size={18} />
+              </div>
+              <div className="notification-modal-content">
+                <p className="notification-modal-message">{notification.message}</p>
+                <span className="notification-modal-time">{formatTimestamp(notification.timestamp)}</span>
+              </div>
             </div>
           ))}
         </div>
       ) : (
-        <p className="no-notifications">No new notifications.</p>
+        <p className="notification-modal-empty">Aucune notification.</p>
       )}
 
-      <button onClick={handleViewMore} className="view-more-button">
-        View More
+      <button onClick={handleViewMore} className="view-all-button">
+        Voir toutes les notifications
       </button>
     </div>
-  );
-};
+  )
+}
 
-export default NotificationModal;
+export default NotificationModal

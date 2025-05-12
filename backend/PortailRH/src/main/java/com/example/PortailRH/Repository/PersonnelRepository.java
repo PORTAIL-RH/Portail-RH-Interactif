@@ -2,9 +2,6 @@ package com.example.PortailRH.Repository;
 
 import com.example.PortailRH.Model.Personnel;
 import com.example.PortailRH.Model.Service;
-import org.bson.types.ObjectId;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -24,6 +21,8 @@ public interface PersonnelRepository extends MongoRepository<Personnel, String> 
     List<Personnel> findByService(Service service);
 
     List<Personnel> findByAccountLocked(boolean locked);
+    @Query("{ 'service.$id': { '$in': ?0 } }")
+    List<Personnel> findByServiceIdIn(List<String> serviceIds);
 
     List<Personnel> findByActive(boolean active);
     List<Personnel> findByRole(String role);

@@ -1,11 +1,14 @@
 package com.example.PortailRH.Controller;
 
+import com.example.PortailRH.DTO.PersonnelDTO;
 import com.example.PortailRH.Model.Personnel;
-import com.example.PortailRH.Model.PersonnelDTO;
 import com.example.PortailRH.Model.Role;
+import com.example.PortailRH.Model.Service;
+import com.example.PortailRH.Model.Validator;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.RoleRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
+import com.example.PortailRH.Repository.ValidatorRepository;
 import com.example.PortailRH.Service.EmailService;
 import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Util.JwtUtil;
@@ -17,10 +20,15 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.BasicQuery;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -32,6 +40,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/Personnel")
+@Slf4j
 public class PersonnelController {
     private static final Logger logger = LoggerFactory.getLogger(PersonnelController.class);
     private static final int MAX_REGISTRATION_ATTEMPTS = 3;
@@ -53,6 +62,9 @@ public class PersonnelController {
 
     @Autowired
     private RoleRepository roleRepository;
+    @Autowired
+    private ValidatorRepository validatorRepository;
+
 
     // DTO classes for request/response
     public static class LoginRequest {
@@ -861,46 +873,110 @@ public class PersonnelController {
     }
 
     // Get collaborators by service
-    @GetMapping("/collaborateurs-by-service/{chefserviceid}")
-    public ResponseEntity<?> getAllPersonnelByService(@PathVariable String chefserviceid) {
+    @GetMapping("/collaborateurs-by-chef/{chefId}")
+    public ResponseEntity<?> getPersonnelWithSameServiceAsChef(@PathVariable String chefId) {
         try {
-            Personnel chef = personnelRepository.findById(chefserviceid)
-                    .orElseThrow(() -> new RuntimeException("Chef hiérarchique non trouvé"));
-
-            if (!"Chef Hiérarchique".equals(chef.getRole())) {
-                throw new RuntimeException("Le personnel spécifié n'est pas un chef hiérarchique");
+            // 1. Try both query patterns
+            List<Validator> chefValidators = validatorRepository.findByChefId(chefId);
+            if (chefValidators.isEmpty()) {
+                chefValidators = validatorRepository.findByChefIdWithFullDBRef(chefId);
             }
 
-            com.example.PortailRH.Model.Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
-            if (service == null) {
-                throw new RuntimeException("Aucun service trouvé pour ce chef hiérarchique");
+            if (chefValidators.isEmpty()) {
+                log.warn("No validator entries found for chef {} using either query pattern", chefId);
+                // Direct MongoDB query as last resort
+                BasicQuery nativeQuery = new BasicQuery(
+                        "{ $or: [ " +
+                                "{ 'chef.$id': ObjectId('" + chefId + "') }, " +
+                                "{ 'chef.$id': '" + chefId + "' } " +
+                                "] }"
+                );
+                chefValidators = mongoTemplate.find(nativeQuery, Validator.class);
+
+                if (chefValidators.isEmpty()) {
+                    return ResponseEntity.ok(Map.of(
+                            "status", "success",
+                            "message", "Ce chef n'est validateur d'aucun service",
+                            "collaborators", Collections.emptyList()
+                    ));
+                }
             }
 
-            List<Personnel> personnelList = personnelRepository.findByService(service);
-
-            List<PersonnelDTO> collaborators = personnelList.stream()
-                    .map(this::convertToPersonnelDTO)
+            // 2. Extract service IDs
+            List<String> serviceIds = chefValidators.stream()
+                    .map(v -> {
+                        String serviceId = v.getService().getId();
+                        log.debug("📌 Validator entry - Service ID: {}", serviceId);
+                        return serviceId;
+                    })
                     .collect(Collectors.toList());
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("serviceName", service.getServiceName());
-            response.put("numberOfCollaborators", collaborators.size());
-            response.put("collaborators", collaborators);
+            // 3. Build query
+            List<ObjectId> objectIds = serviceIds.stream()
+                    .map(ObjectId::new)
+                    .collect(Collectors.toList());
 
-            return ResponseEntity.ok(response);
+            log.debug("🛠️ Converting to ObjectIds: {}", objectIds);
 
-        } catch (RuntimeException e) {
-            logger.error("Validation error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            Query query = new Query(Criteria.where("service.$id").in(objectIds));
+            log.debug("🔎 Final query: {}", query);
+
+            // 4. Execute query
+            List<Personnel> personnelList = mongoTemplate.find(query, Personnel.class);
+            log.debug("👥 Found {} personnel records", personnelList.size());
+
+            // 5. Format response
+            List<Map<String, Object>> collaborators = personnelList.stream()
+                    .peek(p -> log.debug("Processing personnel: {}", p.getMatricule()))
+                    .filter(p -> {
+                        boolean hasService = p.getService() != null;
+                        if (!hasService) {
+                            log.warn("Personnel {} has no service reference", p.getMatricule());
+                        }
+                        return hasService;
+                    })
+                    .map(p -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", p.getId());
+                        map.put("matricule", p.getMatricule());
+                        map.put("nomComplet", p.getNom() + " " + p.getPrenom());
+                        map.put("email", p.getEmail());
+                        map.put("role", p.getRole());
+
+                        Service service = p.getService();
+                        map.put("serviceId", service.getId());
+                        map.put("serviceName", service.getServiceName());
+
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            log.debug("✅ Successfully processed {} collaborators", collaborators.size());
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "chefServices", chefValidators.stream()
+                            .map(v -> Map.of(
+                                    "id", v.getService().getId(),
+                                    "name", v.getService().getServiceName(),
+                                    "poid", v.getPoid()
+                            ))
+                            .collect(Collectors.toList()),
+                    "numberOfCollaborators", collaborators.size(),
+                    "collaborators", collaborators
+            ));
+
         } catch (Exception e) {
-            logger.error("System error: ", e);
-            return ResponseEntity.internalServerError().body(Map.of("message", "Erreur système"));
+            log.error("🔥 Error in getPersonnelWithSameServiceAsChef: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique: " + e.getMessage()
+            ));
         }
     }
 
-
     // Get personnel by ID
-    @GetMapping("/byId/{id}")
+ /*   @GetMapping("/byId/{id}")
     public ResponseEntity<?> getPersonnelById(@PathVariable String id) {
         try {
             Personnel personnel = personnelRepository.findById(id)
@@ -916,7 +992,7 @@ public class PersonnelController {
             logger.error("Error in getPersonnelById", e);
             return ResponseEntity.internalServerError().body(Map.of("message", "Error retrieving personnel"));
         }
-    }
+    }*/
 
     // Get all active personnel
     @GetMapping("/active")
@@ -1295,7 +1371,7 @@ public class PersonnelController {
                     .body(Map.of("error", "Failed to change password", "message", e.getMessage(), "status", "error"));
         }
     }
-    
+
     private void createSystemNotification(Personnel personnel) {
         notificationService.createNotification(
                 "New personnel registered: " + personnel.getMatricule(),

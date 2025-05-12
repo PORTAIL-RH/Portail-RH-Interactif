@@ -1,5 +1,6 @@
 package com.example.PortailRH.Model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -10,8 +11,10 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -78,7 +81,8 @@ public class Personnel {
     private String lockReason;
 
     @DBRef
-    @JsonIgnore
+    @JsonBackReference
+
     private Service service;
 
 
@@ -98,13 +102,19 @@ public class Personnel {
         this.role = role;
         this.service = service;
 
+        // Enregistrer la date d'embauche si elle n'est pas déjà définie
+        if (this.date_embauche == null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            this.date_embauche = LocalDate.now().format(formatter);
+        }
+
         if (service != null) {
-            this.chefHierarchique = service.getChefHierarchique();
+            this.chefHierarchique = service.getChef3();
         } else {
             this.chefHierarchique = null;
-            System.err.println("Service is null for role: " + role);
-        }
-    }
+            if (Arrays.asList("collaborateur", "Chef Hiérarchique", "RH").contains(role)) {
+                System.err.println("Warning: Service is null for role that requires it: " + role);
+            }}}
 
     public void incrementFailedAttempts() {
         this.failedLoginAttempts++;

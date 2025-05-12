@@ -1,0 +1,53 @@
+Name: John Doe
+Email: john.doe@example.com
+Phone: +1 234 567 8901
+
+Summary:
+Experienced software developer with expertise in front-end development using React and back-end development with SQL databases. Passionate about building scalable and user-friendly web applications.
+
+Skills:
+- figma
+- Spring Boot
+- Java
+- AI
+- React
+- JavaScript (ES6+)
+- HTML5
+- CSS3
+- SQL (MySQL, PostgreSQL)
+- Node.js
+- RESTful APIs
+- Git
+- Docker
+- Agile Development
+
+Experience:
+1. Front-End Developer | XYZ Tech | Jan 2022 – Present
+   - Developed responsive user interfaces using React and Redux.
+   - Collaborated with back-end developers to integrate RESTful APIs.
+   - Optimized SQL queries for better performance in PostgreSQL.
+
+2. Full-Stack Developer | ABC Solutions | Jun 2019 – Dec 2021
+   - Built and maintained web applications using React for the front end and Node.js for the back end.
+   - Designed and managed SQL databases (MySQL) for storing application data.
+   - Implemented CI/CD pipelines using Docker and Jenkins.
+
+Education:
+Bachelor of Science in Computer Science | University of Example | 2015 – 2019
+
+Certifications:
+- React Certification (Udemy)
+- SQL for Data Science (Coursera)
+
+Projects:
+1. E-Commerce Website
+   - Developed a full-stack e-commerce platform using React, Node.js, and MySQL.
+   - Implemented user authentication, product search, and payment integration.
+
+2. Task Management App
+   - Built a task management application with React and PostgreSQL.
+   - Features include task creation, assignment, and progress tracking.
+
+Languages:
+- English (Fluent)
+- French (Intermediate)

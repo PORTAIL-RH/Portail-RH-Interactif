@@ -25,8 +25,14 @@ public class NotificationService {
         notification.setMessage(message);
         notification.setTimestamp(LocalDateTime.now());
         notification.setViewed(false);
-        notification.setRole(role); // Set the role
-        notification.setServiceId(serviceId); // Set the serviceId
+        notification.setRole(role);
+
+        // Only set serviceId if the role is not Admin
+        if (!"Admin".equalsIgnoreCase(role)) {
+            notification.setServiceId(serviceId);
+        } else {
+            notification.setServiceId(null); // Explicitly clear it if passed
+        }
 
         Notification savedNotification = notificationRepository.save(notification);
 
@@ -84,11 +90,16 @@ public class NotificationService {
 
     // Marks all fetched notifications as viewed and saves them.
     public int markAllAsRead(String role, String serviceId) {
-        // Get all unread notifications for this user
-        List<Notification> unreadNotifications = notificationRepository
-                .findByRoleAndServiceIdAndViewedFalse(role, serviceId);
+        List<Notification> unreadNotifications;
 
-        // Mark them all as read
+        if ("Admin".equalsIgnoreCase(role)) {
+            // Admin doesn't need a serviceId
+            unreadNotifications = notificationRepository.findByRoleAndViewedFalse(role);
+        } else {
+            // For non-admin, serviceId is required
+            unreadNotifications = notificationRepository.findByRoleAndServiceIdAndViewedFalse(role, serviceId);
+        }
+
         unreadNotifications.forEach(notification -> {
             notification.setViewed(true);
             notificationRepository.save(notification);
@@ -96,4 +107,5 @@ public class NotificationService {
 
         return unreadNotifications.size();
     }
+
 }

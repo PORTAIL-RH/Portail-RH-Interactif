@@ -4,7 +4,7 @@
   --navbar-transition: all 0.3s ease;
 
   /* Light Theme */
-  --navbar-bg-light: #F8FAFC;
+  --navbar-bg-light: #f8faff;
   --navbar-text-light: #333;
   --navbar-border-light: #e0e7ff;
   --navbar-icon-color-light: #4f46e5;
@@ -17,7 +17,7 @@
   --navbar-bg-dark: #1f2937;
   --navbar-text-dark: #e5e7eb;
   --navbar-border-dark: #374151;
-  --navbar-icon-color-dark: #fafaff;
+  --navbar-icon-color-dark: #818cf8;
   --navbar-button-hover-dark: #374151;
   --navbar-shadow-dark: 0 2px 10px rgba(0, 0, 0, 0.2);
   --navbar-badge-bg-dark: #ef4444;
@@ -166,9 +166,8 @@
 }
 
 .notification-icon-img.light {
-  filter: brightness(0); /* Makes the icon black in light mode */
+  filter: brightness(0);
 }
-
 
 .notification-badge {
   position: absolute;
@@ -272,4 +271,3 @@
     text-overflow: ellipsis;
   }
 }
-

@@ -1,5 +1,6 @@
 package com.example.PortailRH.Model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -20,12 +21,15 @@ public class DemandeAutorisation {
     private String typeDemande;
 
     @DBRef
+    @JsonManagedReference
     private Personnel matPers;
 
     private String codeSoc;
     private Date dateDebut;
     private String texteDemande;
     private String observation;
+    @DBRef
+    private Response_chefs_dem_autorisation responseChefs;
     private Reponse reponseChef;
     private Reponse reponseRH;
 
@@ -109,6 +113,14 @@ public class DemandeAutorisation {
     // Date setters with flexible input
     public void setDateDemande(Object dateInput) {
         this.dateDemande = parseDate(dateInput);
+    }
+
+    public Response_chefs_dem_autorisation getResponseChefs() {
+        return responseChefs;
+    }
+
+    public void setResponseChefs(Response_chefs_dem_autorisation responseChefs) {
+        this.responseChefs = responseChefs;
     }
 
     public void setDateDebut(Object dateInput) {
