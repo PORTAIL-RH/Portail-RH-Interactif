@@ -8,13 +8,10 @@ import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
-import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -104,7 +101,7 @@ public class DemandePreAvanceController {
 
                 // Check if the personnel has a service and if the chef hiérarchique is in the same service
                 if (servicePersonnel != null) {
-                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+                    Personnel chefHierarchique = servicePersonnel.getChef1();
 
                     if (chefHierarchique != null) {
                         // Send a notification to the chef hiérarchique
@@ -340,79 +337,7 @@ public class DemandePreAvanceController {
     @Autowired
     private MongoTemplate mongoTemplate;
 
-    @GetMapping("/collaborateurs-by-service/{chefserviceid}")
-    public ResponseEntity<?> getDemandesPreAvanceByCollaborateursService(
-            @PathVariable String chefserviceid) {
-        try {
-            // 1. Find service by chef ID
-            Service service = serviceRepository.findByChefHierarchiqueId(chefserviceid);
-            if (service == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of(
-                                "status", "error",
-                                "message", "Aucun service trouvé pour ce chef hiérarchique",
-                                "serviceId", chefserviceid
-                        ));
-            }
 
-            // 2. Get collaborators in this service
-            List<Personnel> collaborateurs = personnelRepository.findByRoleAndService(
-                    "collaborateur",
-                    service
-            );
-
-            if (collaborateurs.isEmpty()) {
-                return ResponseEntity.ok(Map.of(
-                        "status", "success",
-                        "message", "Aucun collaborateur trouvé dans ce service",
-                        "service", service.getServiceName(),
-                        "totalCollaborateurs", 0,
-                        "totalDemandes", 0,
-                        "demandes", Collections.emptyList()
-                ));
-            }
-
-            // 3. Get demandes for these collaborators
-            List<ObjectId> collaborateurObjectIds = collaborateurs.stream()
-                    .map(p -> new ObjectId(p.getId()))
-                    .collect(Collectors.toList());
-
-            Query query = new Query();
-            query.addCriteria(Criteria.where("matPers.$id").in(collaborateurObjectIds));
-
-            List<DemandePreAvance> demandes = mongoTemplate.find(query, DemandePreAvance.class);
-
-            // Convert to DTOs
-            List<Map<String, Object>> demandeResponses = demandes.stream()
-                    .map(demande -> {
-                        Map<String, Object> response = new HashMap<>();
-                        response.put("id", demande.getId());
-                        response.put("type", demande.getType());
-                        response.put("montant", demande.getMontant());
-                        response.put("status", demande.getReponseChef());
-                        // Add other fields as needed
-                        return response;
-                    })
-                    .collect(Collectors.toList());
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "service", service.getServiceName(),
-                    "totalCollaborateurs", collaborateurs.size(),
-                    "totalDemandes", demandes.size(),
-                    "demandes", demandeResponses
-            ));
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "status", "error",
-                            "message", "Erreur lors de la récupération des demandes de pré-avance",
-                            "error", e.getMessage()
-                    ));
-        }
-    }
-    // Add these endpoints to DemandePreAvanceController
 
     @GetMapping("/approved")
     public ResponseEntity<List<DemandePreAvance>> getApprovedDemandes() {

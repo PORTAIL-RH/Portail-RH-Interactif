@@ -1,4 +1,4 @@
-package com.example.PortailRH.Model;
+package com.example.PortailRH.DTO;
 
 public class PersonnelDTO {
     private String id;

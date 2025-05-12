@@ -1,6 +1,6 @@
-package com.example.PortailRH.Model;
+package com.example.PortailRH.DTO;
 
-import com.example.PortailRH.Model.PersonnelDTO;
+import com.example.PortailRH.Model.Fichier_joint;
 import com.example.PortailRH.Model.Reponse;
 import java.util.Date;
 import java.util.List;

@@ -1,25 +1,23 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import useNotifications from "../Navbar/useNotifications"
-import bellIcon from "../../../assets/bell.png"
 import "./Notifications.css"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
-import { API_URL } from "../../../config"
+import { FiBell, FiCheckCircle, FiEye, FiFilter } from "react-icons/fi"
 
 const Notifications = () => {
-  const userData = JSON.parse(localStorage.getItem("userData") || {})
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}")
   const role = userData.role || "Admin"
   const userId = localStorage.getItem("userId")
-  
-  const { 
-    notifications = [], 
-    unviewedCount, 
-    setUnviewedCount, 
-    fetchNotifications, 
-    error 
+
+  const {
+    notifications = [],
+    unviewedCount,
+    fetchNotifications,
+    error,
   } = useNotifications(role, userId)
-  
+
   const [activeFilter, setActiveFilter] = useState("all")
   const [theme, setTheme] = useState("light")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -28,8 +26,8 @@ const Notifications = () => {
     const handleSidebarToggle = (e) => {
       setSidebarCollapsed(e.detail)
     }
-    window.addEventListener('sidebarToggled', handleSidebarToggle)
-    return () => window.removeEventListener('sidebarToggled', handleSidebarToggle)
+    window.addEventListener("sidebarToggled", handleSidebarToggle)
+    return () => window.removeEventListener("sidebarToggled", handleSidebarToggle)
   }, [])
 
   useEffect(() => {
@@ -45,22 +43,7 @@ const Notifications = () => {
     localStorage.setItem("theme", newTheme)
   }
 
-  const markAsRead = async (id) => {
-    try {
-      const token = localStorage.getItem("authToken")
-      await fetch(`${API_URL}/api/notifications/${id}/view`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      setUnviewedCount((prev) => Math.max(prev - 1, 0))
-      await fetchNotifications()
-    } catch (error) {
-      console.error("Erreur lors de la mise à jour:", error)
-    }
-  }
+
 
   const filteredNotifications = notifications
     .filter((notification) => {
@@ -71,67 +54,75 @@ const Notifications = () => {
     })
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 
-  const readCount = notifications.filter(n => n.viewed).length
-  const unreadCount = notifications.filter(n => !n.viewed).length
-  const totalCount = notifications.length
+  const readCount = notifications.filter((n) => n.viewed && n.role === role).length
+  const unreadCount = notifications.filter((n) => !n.viewed && n.role === role).length
+  const totalCount = notifications.filter((n) => n.role === role).length
 
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar theme={theme} />
-      <div className={`notifications-chef-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <div className={`notifications-page-container ${sidebarCollapsed ? "collapsed" : ""}`}>
         <Navbar theme={theme} toggleTheme={toggleTheme} hideNotificationBadge />
-        <div className="notifications-chef-content">
-          <div className="notification-section">
-            <div className="notification-header">
-              <h2>Notifications</h2>
-              <span className="notification-badge-page">{unviewedCount}</span>
-            </div>
+        <div className="notifications-page-content">
+          <div className="notifications-page-header">
+            <h1>Notifications</h1>
+            
+          </div>
 
-            <div className="notification-filters">
-              <button
-                className={`filter-tab ${activeFilter === "all" ? "active" : ""}`}
-                onClick={() => setActiveFilter("all")}
-              >
-                Toutes <span className="count">{totalCount}</span>
-              </button>
-              <button
-                className={`filter-tab ${activeFilter === "unread" ? "active" : ""}`}
-                onClick={() => setActiveFilter("unread")}
-              >
-                Non lues <span className="count">{unreadCount}</span>
-              </button>
-              <button
-                className={`filter-tab ${activeFilter === "read" ? "active" : ""}`}
-                onClick={() => setActiveFilter("read")}
-              >
-                Lues <span className="count">{readCount}</span>
-              </button>
-            </div>
+          <div className="notifications-page-filters">
+            <button
+              className={`filter-btn ${activeFilter === "all" ? "active" : ""}`}
+              onClick={() => setActiveFilter("all")}
+            >
+              <FiFilter />
+              <span>Toutes</span>
+              <span className="filter-count">{totalCount}</span>
+            </button>
+            <button
+              className={`filter-btn ${activeFilter === "unread" ? "active" : ""}`}
+              onClick={() => setActiveFilter("unread")}
+            >
+              <FiBell />
+              <span>Non lues</span>
+              <span className="filter-count">{unreadCount}</span>
+            </button>
+            <button
+              className={`filter-btn ${activeFilter === "read" ? "active" : ""}`}
+              onClick={() => setActiveFilter("read")}
+            >
+              <FiEye />
+              <span>Lues</span>
+              <span className="filter-count">{readCount}</span>
+            </button>
+          </div>
 
-            {error && <p className="error-message">{error}</p>}
+          <div className="notifications-page-list-container">
+            {error && <p className="notifications-page-error">{error}</p>}
 
             {filteredNotifications.length > 0 ? (
-              <div className="notification-list">
+              <div className="notifications-page-list">
                 {filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`notification ${notification.viewed ? "read" : "unread"}`}
-                    onClick={() => !notification.viewed && markAsRead(notification.id)}
+                    className={`notification-page-item ${notification.viewed ? "read" : "unread"}`}
+                    
                   >
-                    <img src={bellIcon} alt="Bell Icon" className="bell-icon" />
-                    <div className="notification-content">
-                      <p>{notification.message}</p>
-                      <span className="notification-timestamp">
-                        {format(new Date(notification.timestamp), "yyyy-MM-dd HH:mm")}
+                    <div className="notification-page-icon">
+                      <FiBell size={20} />
+                    </div>
+                    <div className="notification-page-content">
+                      <p className="notification-page-message">{notification.message}</p>
+                      <span className="notification-page-time">
+                        {format(new Date(notification.timestamp), "dd/MM/yyyy à HH:mm")}
                       </span>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="empty-state">
-                <div className="empty-icon">🔔</div>
-                <p className="empty-text">
+              <div className="notifications-page-empty">
+                <FiBell size={48} />
+                <p>
                   {activeFilter === "all" && "Vous n'avez aucune notification."}
                   {activeFilter === "unread" && "Vous n'avez aucune notification non lue."}
                   {activeFilter === "read" && "Vous n'avez aucune notification lue."}

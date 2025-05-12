@@ -1,4 +1,3 @@
-"use client"
 import { useState, useEffect } from "react"
 import useNotifications from "./useNotifications"
 import NotificationModal from "./NotificationModal"
@@ -6,143 +5,131 @@ import "./Navbar.css"
 import bellIcon from "../../../assets/bell1.png"
 import { FiSun, FiMoon, FiLogOut, FiUser } from "react-icons/fi"
 
-const Navbar = ({ theme, toggleTheme }) => {
-  const [userData, setUserData] = useState({
-    id: "",
-    firstName: "",
-    lastName: "",
-    role: ""
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [notifications, setNotifications] = useState([])
+const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
+  const [currentTheme, setCurrentTheme] = useState(theme || "light")
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  
-  const {
-    notifications: hookNotifications,
-    unviewedCount,
-    fetchNotifications,
-    markAsRead,
-  } = useNotifications()
 
-  // Load user data from localStorage
+  // Get user data from localStorage
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}")
+  const role = userData.role || "RH" // Défaut à "RH" pour cette version
+  const serviceId = userData.service?.$id?.$oid || 
+  localStorage.getItem('userServiceId') || 
+  userData.serviceId;
+
+  const { 
+    notifications, 
+    unviewedCount, 
+    fetchNotifications, 
+    markAsRead, 
+    markAllAsRead,
+    setUnviewedCount
+  } = useNotifications(role, serviceId)
+
   useEffect(() => {
-    try {
-      setLoading(true)
-      const storedUserData = localStorage.getItem("userData")
-      
-      if (storedUserData) {
-        const parsedData = JSON.parse(storedUserData)
-        setUserData({
-          id: parsedData.id || localStorage.getItem("userId") || "",
-          firstName: parsedData.nom || parsedData.firstName || "",
-          lastName: parsedData.prenom || parsedData.lastName || "",
-          role: parsedData.role || localStorage.getItem("userRole") || ""
-        })
-      } else {
-        // Fallback to individual localStorage items if userData doesn't exist
-        setUserData({
-          id: localStorage.getItem("userId") || "",
-          firstName: localStorage.getItem("userFirstName") || "",
-          lastName: localStorage.getItem("userLastName") || "",
-          role: localStorage.getItem("userRole") || ""
-        })
-      }
-    } catch (error) {
-      setError("Failed to load user data")
-      console.error("Error loading user data:", error)
-    } finally {
-      setLoading(false)
-    }
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setCurrentTheme(savedTheme)
   }, [])
 
-  // Notification handling
   useEffect(() => {
-    const savedNotifications = localStorage.getItem("notifications")
-    if (savedNotifications) {
-      try {
-        setNotifications(JSON.parse(savedNotifications))
-      } catch (e) {
-        console.error("Error parsing notifications:", e)
-      }
-    }
-  }, [])
+    if (theme) setCurrentTheme(theme)
+  }, [theme])
+
+  const toggleNotifications = () => {
+    setIsNotificationsOpen((prev) => !prev)
+  }
 
   const handleMarkAsRead = async (id) => {
-    try {
-      await markAsRead(id)
+    await markAsRead(id)
+    fetchNotifications()
+    if (unviewedCount > 0) {
+      setUnviewedCount(prev => prev - 1)
+    }
+  }
+
+  const handleMarkAllAsRead = async () => {
+    const success = await markAllAsRead()
+    if (success) {
+      setUnviewedCount(0)
       fetchNotifications()
-    } catch (error) {
-      console.error("Error marking notification as read:", error)
+    }
+  }
+
+  const handleToggleTheme = () => {
+    if (toggleTheme) {
+      toggleTheme()
+    } else {
+      const newTheme = currentTheme === "light" ? "dark" : "light"
+      setCurrentTheme(newTheme)
+      document.documentElement.classList.toggle("dark", newTheme === "dark")
+      localStorage.setItem("theme", newTheme)
+      window.dispatchEvent(new Event("storage"))
     }
   }
 
   const handleLogout = () => {
-    // Clear all relevant localStorage items
-    const itemsToRemove = [
-      "userId", "authToken", "usermatricule", "userCodeSoc", "userRole", 
-      "userServiceName", "userData", "demandesOther", "demandesPreAvance", 
-      "demandesAutorisation", "demandesConge", "demandesDocument", 
-      "demandesFormation", "notifications","dashboardStats","demandes","personnel","personnelData"
-    ]
-    
-    itemsToRemove.forEach(item => localStorage.removeItem(item))
+    localStorage.removeItem("userId")
+    localStorage.removeItem("userRole")
+    localStorage.removeItem("usermatricule")
+    localStorage.removeItem("dashboardStats")
+    localStorage.removeItem("personnelData")
+    localStorage.removeItem("rolesData")
+    localStorage.removeItem("servicesData")
+    localStorage.removeItem("roleDistribution")
+    localStorage.removeItem("authToken")
+    localStorage.removeItem("userData")
     window.location.href = "/"
   }
 
-  if (loading) return <div className={`navbar loading ${theme}`}>Loading...</div>
-  if (error) return <div className={`navbar error ${theme}`}>Error: {error}</div>
-
   return (
-    <nav className={`navbar ${theme}`}>
+    <nav className={`navbar ${currentTheme}`}>
       <div className="navbar-welcome">
         <div className="user-info">
           <div className="user-avatar">
             <FiUser />
           </div>
           <span className="welcome-text">
-            {userData.role ? `${userData.role}. ` : ''}
-            Welcome, {userData.firstName} {userData.lastName}
+            {role}. Bienvenue, {userData.nom} {userData.prenom}
           </span>
         </div>
       </div>
-      
       <div className="navbar-actions">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme} 
-          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+        <button
+          className="theme-toggle"
+          onClick={handleToggleTheme}
+          aria-label={currentTheme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
         >
-          {theme === "light" ? <FiMoon /> : <FiSun />}
+          {currentTheme === "light" ? <FiMoon /> : <FiSun />}
         </button>
-        
         <div className="notification-container">
-          {unviewedCount > 0 && (
+          {!hideNotificationBadge && unviewedCount > 0 && (
             <span className="notification-badge">{unviewedCount}</span>
           )}
-          <button 
-            className="notification-button" 
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+          <button
+            className="notification-button"
+            onClick={() => {
+              toggleNotifications()
+              if (unviewedCount > 0) {
+                handleMarkAllAsRead()
+              }
+            }}
+            aria-label="Notifications"
           >
-            {theme === "light" ? (
-              <img src={bellIcon} alt="Notifications" className="notification-icon-img light" />
-            ) : (
-              <img src={bellIcon} alt="Notifications" className="notification-icon-img dark" />
-            )}
+            <img
+              src={bellIcon || "/placeholder.svg"}
+              alt="Notifications"
+              className={`notification-icon-img ${currentTheme === "light" ? "notification-icon-light" : ""}`}
+            />
           </button>
-          
           {isNotificationsOpen && (
             <NotificationModal
+              onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
               unviewedCount={unviewedCount}
               markAsRead={handleMarkAsRead}
-              userServiceId={userData.id}
-              onClose={() => setIsNotificationsOpen(false)}
-              theme={theme}
+              markAllAsRead={handleMarkAllAsRead}
             />
           )}
         </div>
-
         <button className="logout-button" onClick={handleLogout}>
           <FiLogOut className="logout-icon" />
           <span className="logout-text">Déconnexion</span>

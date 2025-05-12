@@ -4,11 +4,9 @@ import NotificationModal from "./NotificationModal"
 import "./Navbar.css"
 import bellIcon from "../../../assets/bell1.png"
 import { FiSun, FiMoon, FiLogOut, FiUser } from "react-icons/fi"
-import { API_URL } from "../../../config"
 
 const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
   const [currentTheme, setCurrentTheme] = useState(theme || "light")
-  const [notifications, setNotifications] = useState([])
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
   // Get user data from localStorage
@@ -16,14 +14,7 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
   const role = userData.role || localStorage.getItem("userRole") || "Admin"
   const userId = localStorage.getItem("userId")
 
-  const {
-    notifications: hookNotifications,
-    unviewedCount,
-    fetchNotifications,
-    markAsRead,
-  } = useNotifications(role, userId)
-
-
+  const { notifications, unviewedCount, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(role, userId)
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light"
@@ -40,6 +31,11 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
 
   const handleMarkAsRead = async (id) => {
     await markAsRead(id)
+    fetchNotifications()
+  }
+
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead()
     fetchNotifications()
   }
 
@@ -90,24 +86,30 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
           {currentTheme === "light" ? <FiMoon /> : <FiSun />}
         </button>
         <div className="notification-container">
-          {!hideNotificationBadge && unviewedCount > 0 && (
-            <span className="notification-badge">{unviewedCount}</span>
-          )}
-          <button className="notification-button" onClick={toggleNotifications} aria-label="Notifications">
+          {!hideNotificationBadge && unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
+          <button
+            className="notification-button"
+            onClick={() => {
+              toggleNotifications()
+              if (unviewedCount > 0) {
+                handleMarkAllAsRead()
+              }
+            }}
+            aria-label="Notifications"
+          >
             <img
-              src={bellIcon}
+              src={bellIcon || "/placeholder.svg"}
               alt="Notifications"
               className={`notification-icon-img ${currentTheme === "light" ? "notification-icon-light" : ""}`}
             />
           </button>
           {isNotificationsOpen && (
             <NotificationModal
+              onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
               unviewedCount={unviewedCount}
               markAsRead={handleMarkAsRead}
-              userServiceId={userId}
-              onClose={() => setIsNotificationsOpen(false)}
-              theme={currentTheme}
+              markAllAsRead={handleMarkAllAsRead}
             />
           )}
         </div>

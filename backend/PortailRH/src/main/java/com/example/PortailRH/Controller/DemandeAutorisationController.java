@@ -1,16 +1,14 @@
 package com.example.PortailRH.Controller;
 
+import com.example.PortailRH.DTO.PersonnelDTO;
 import com.example.PortailRH.Model.*;
-import com.example.PortailRH.Repository.DemandeAutorisationRepository;
-import com.example.PortailRH.Repository.FichierJointRepository;
-import com.example.PortailRH.Repository.PersonnelRepository;
-import com.example.PortailRH.Repository.ServiceRepository;
+import com.example.PortailRH.Repository.*;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -21,8 +19,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -36,6 +36,11 @@ public class DemandeAutorisationController {
 
     @Autowired
     private DemandeAutorisationRepository demandeAutorisationRepository;
+    @Autowired
+    private ValidatorRepository validatorRepository;
+
+    @Autowired
+    private ResponseChefsAutorisationRepository responseChefsDemAutorisationRepository;
 
     @Autowired
     private FichierJointService fichierJointService;
@@ -54,8 +59,8 @@ public class DemandeAutorisationController {
     private FichierJointRepository fichierJointRepository;
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> createDemande(
-            @RequestParam("dateDebut") String dateDebut,
+    public ResponseEntity<Map<String, Object>> createDemandeAutorisation(
+            @RequestParam("dateDebut") String dateDebutStr,
             @RequestParam("texteDemande") String texteDemande,
             @RequestParam("heureSortie") String heureSortieStr,
             @RequestParam("heureRetour") String heureRetourStr,
@@ -65,88 +70,130 @@ public class DemandeAutorisationController {
             @RequestParam("matPersId") String matPersId) {
 
         try {
-            // Validate required fields
-            if (dateDebut == null || texteDemande == null || heureSortieStr == null || heureRetourStr == null ||
-                    codAutorisation == null || codeSoc == null || matPersId == null) {
-                return ResponseEntity.badRequest().body("Tous les champs obligatoires doivent être remplis.");
+            // 1. Validate user exists
+            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
+            if (personnelOptional.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "status", "error",
+                        "message", "User not found with ID: " + matPersId
+                ));
             }
+            Personnel personnel = personnelOptional.get();
 
-            // Convert date to Date object
+            // 2. Validate and parse date and times
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            Date startDate = dateFormat.parse(dateDebut);
+            Date dateDebut = dateFormat.parse(dateDebutStr);
 
-            // Convert time to LocalTime
             DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
             LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
             LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
 
-            // Create a new authorization request
+            if (heureSortie.isAfter(heureRetour)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Exit time must be before return time"
+                ));
+            }
+
+            // 3. Handle file upload
+            Fichier_joint fichierJoint = null;
+            if (file != null && !file.isEmpty()) {
+                try {
+                    fichierJoint = fichierJointService.saveFile(file);
+                } catch (IOException e) {
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                            "status", "error",
+                            "message", "Failed to process uploaded file"
+                    ));
+                }
+            }
+
+            // 4. Create and save chefs' responses first
+            Response_chefs_dem_autorisation responseChefs = new Response_chefs_dem_autorisation();
+            responseChefs.setResponseChef1("I");
+            responseChefs.setResponseChef2("I");
+            responseChefs.setResponseChef3("I");
+            responseChefs.setObservationChef1("");
+            responseChefs.setObservationChef2("");
+            responseChefs.setObservationChef3("");
+            responseChefs.setDateChef1("");
+            responseChefs.setDateChef2("");
+            responseChefs.setDateChef3("");
+
+            Response_chefs_dem_autorisation savedResponse = responseChefsDemAutorisationRepository.save(responseChefs);
+
+            // 5. Create and save authorization request
             DemandeAutorisation demande = new DemandeAutorisation();
-            demande.setDateDebut(startDate);
-            demande.setTypeDemande("autorisation");
+            demande.setDateDebut(dateDebut);
             demande.setTexteDemande(texteDemande);
             demande.setHoraireSortie(heureSortie.getHour());
             demande.setMinuteSortie(heureSortie.getMinute());
             demande.setHoraireRetour(heureRetour.getHour());
             demande.setMinuteRetour(heureRetour.getMinute());
             demande.setCodAutorisation(codAutorisation);
-            demande.setCodeSoc(codeSoc);
-
-            // Associate personnel
-            Personnel personnel = new Personnel();
-            personnel.setId(matPersId);
+            demande.setTypeDemande("autorisation");
             demande.setMatPers(personnel);
+            demande.setCodeSoc(codeSoc);
+            demande.setReponseChef(Reponse.I);
+            demande.setReponseRH(Reponse.I);
+            demande.setResponseChefs(savedResponse); // Set the response reference
 
-            // Handle file upload if present
-            if (file != null && !file.isEmpty()) {
-                Fichier_joint fichier = fichierJointService.saveFile(file);
-                demande.setFiles(List.of(fichier));
+            if (fichierJoint != null) {
+                demande.setFiles(List.of(fichierJoint));
             }
 
-            // Save the request
-            DemandeAutorisation savedDemande=demandeAutorisationRepository.save(demande);
+            DemandeAutorisation savedDemande = demandeAutorisationRepository.save(demande);
 
-            // Fetch the personnel details to get the service and chef hiérarchique
-            Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
-            if (personnelOptional.isPresent()) {
-                Personnel personnelDetails = personnelOptional.get();
-                Service servicePersonnel = personnelDetails.getService();
+            // 6. Update response with demande ID
+            savedResponse.setDemandeId(savedDemande.getId());
+            responseChefsDemAutorisationRepository.save(savedResponse);
 
-                // Send a notification to RH
-                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
-                notificationService.createNotification(notificationMessageRH, "RH", null);
+            // 7. Send notifications
+            Service service = personnel.getService();
+            String notificationMessage = String.format(
+                    "Nouvelle demande d'autorisation de %s %s (Sortie: %s, Retour: %s)",
+                    personnel.getNom(), personnel.getPrenom(), heureSortieStr, heureRetourStr
+            );
 
-                // Check if the personnel has a service and if the chef hiérarchique is in the same service
-                if (servicePersonnel != null) {
-                    Personnel chefHierarchique = servicePersonnel.getChefHierarchique();
+            notificationService.createNotification(notificationMessage, "RH", null);
 
-                    if (chefHierarchique != null) {
-                        // Send a notification to the chef hiérarchique
-                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
-
-                        // Create a notification with role and serviceId
-                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getId());
-                    } else {
-                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
-                    }
-                } else {
-                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
-                }
+            if (service != null && service.getChef1() != null) {
+                notificationService.createNotification(
+                        notificationMessage + " - Service: " + service.getServiceName(),
+                        "Chef Hiérarchique",
+                        service.getId()
+                );
             }
 
+            // 8. Send SSE update
             sseController.sendUpdate("created", savedDemande);
 
+            // 9. Return response
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "message", "Demande de AUTORISATION créée avec succès",
-                    "demandeId", savedDemande.getId()
+                    "status", "success",
+                    "message", "Demande d'autorisation créée avec succès",
+                    "data", Map.of(
+                            "demandeId", savedDemande.getId(),
+                            "responseId", savedResponse.getId()
+                    )
             ));
+
         } catch (ParseException e) {
-            return ResponseEntity.badRequest().body("Format de date invalide. Utilisez le format 'yyyy-MM-dd'.");
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Format de date invalide. Utilisez YYYY-MM-DD"
+            ));
         } catch (DateTimeParseException e) {
-            return ResponseEntity.badRequest().body("Format d'heure invalide. Utilisez le format 'HH:mm'.");
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Format d'heure invalide. Utilisez HH:mm"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Une erreur est survenue : " + e.getMessage());
+            log.error("Error creating demande autorisation: ", e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur interne du serveur"
+            ));
         }
     }
 
@@ -291,63 +338,280 @@ public class DemandeAutorisationController {
 
 
     @PutMapping("/valider/{id}")
-    public ResponseEntity<?> validerDemande(
+    public ResponseEntity<?> validerDemandeAutorisation(
             @PathVariable String id,
-            @RequestBody(required = false) Map<String, String> request) {
+            @RequestParam String chefId,
+            @RequestBody Map<String, String> request) {
 
-        return demandeAutorisationRepository.findById(id).map(demande -> {
-            demande.setReponseChef(Reponse.O);
-            demandeAutorisationRepository.save(demande);
-
-            // Get the collaborateur ID from the associated Personnel object
-            Personnel collaborateur = demande.getMatPers();
-            if (collaborateur == null) {
-                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+        try {
+            // 1. Validate inputs
+            if (!ObjectId.isValid(chefId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "ID du chef invalide"
+                ));
             }
 
-            String collaborateurId = collaborateur.getId();
-            String message = "Votre demande de Autorisation a été validée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+            if (request == null || request.get("observation") == null || request.get("observation").isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Une observation est obligatoire"
+                ));
+            }
 
-            // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            // 2. Find authorization request and its response
+            DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
-            return ResponseEntity.ok("Demande validée avec succès");
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
 
-        }).orElse(ResponseEntity.notFound().build());
+            // 3. Check if request is already approved or rejected
+            if (demande.getReponseChef() == Reponse.N) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Cette demande a déjà été refusée et ne peut plus être modifiée"
+                ));
+            }
+
+            if (demande.getReponseChef() == Reponse.O) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Cette demande a déjà été approuvée et ne peut plus être modifiée"
+                ));
+            }
+
+            // 4. Verify validator
+            Validator validationInfo = validatorRepository.findByChefId(chefId)
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+
+            // 5. Update based on validator's weight
+            int poidChef = validationInfo.getPoid();
+            String observation = request.get("observation");
+            String dateValidation = LocalDateTime.now().toString();
+
+            switch (poidChef) {
+                case 1:
+                    if (!"I".equals(response.getResponseChef1())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef1("O");
+                    response.setObservationChef1(observation);
+                    response.setDateChef1(dateValidation);
+                    break;
+
+                case 2:
+                    if (!"I".equals(response.getResponseChef2())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef2("O");
+                    response.setObservationChef2(observation);
+                    response.setDateChef2(dateValidation);
+                    break;
+
+                case 3:
+                    if (!"I".equals(response.getResponseChef3())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef3("O");
+                    response.setObservationChef3(observation);
+                    response.setDateChef3(dateValidation);
+                    break;
+            }
+
+            // 6. Save validation response
+            responseChefsDemAutorisationRepository.save(response);
+
+            // 7. Check if all validations are complete
+            boolean tousValides = "O".equals(response.getResponseChef1())
+                    && "O".equals(response.getResponseChef2())
+                    && "O".equals(response.getResponseChef3());
+
+            // 8. Update main request status
+            demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
+            demande.setResponseChefs(response); // Ensure the link is maintained
+            demandeAutorisationRepository.save(demande);
+
+            // 9. Notify employee
+            if (demande.getMatPers() != null) {
+                String message = tousValides
+                        ? "Votre demande d'autorisation a été approuvée"
+                        : "Votre demande a reçu une validation (en attente d'autres validations)";
+
+                notificationService.createNotification(
+                        message,
+                        "collaborateur",
+                        demande.getMatPers().getId()
+                );
+            }
+
+            // 10. Send SSE update
+            sseController.sendUpdate("updated", demande);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", tousValides ? "Demande approuvée" : "Validation partielle enregistrée",
+                    "validationComplete", tousValides,
+                    "poidValidateur", poidChef
+            ));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "details", e.getMessage()
+            ));
+        }
     }
 
     @PutMapping("/refuser/{id}")
-    public ResponseEntity<?> refuserDemande(
+    public ResponseEntity<?> refuserDemandeAutorisation(
             @PathVariable String id,
+            @RequestParam String chefId,
             @RequestBody Map<String, String> request) {
 
-        if (!request.containsKey("observation")) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Observation is required"));
-        }
-
-        return demandeAutorisationRepository.findById(id).map(demande -> {
-            demande.setReponseChef(Reponse.N);
-            demande.setObservation(request.get("observation"));
-
-            demandeAutorisationRepository.save(demande);
-
-            // Get the collaborateur ID from the associated Personnel object
-            Personnel collaborateur = demande.getMatPers();
-            if (collaborateur == null) {
-                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+        try {
+            // 1. Validate inputs
+            if (!ObjectId.isValid(chefId)) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "ID du chef invalide"
+                ));
             }
 
-            String collaborateurId = collaborateur.getId();
-            String message = "Votre demande de Autorisation a été refusée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+            if (request == null || request.get("observation") == null || request.get("observation").isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Une observation est obligatoire pour le refus"
+                ));
+            }
 
-            // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            // 2. Find authorization request and its response
+            DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
-            return ResponseEntity.ok("Demande refusée avec succès");
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
 
-        }).orElse(ResponseEntity.notFound().build());
+            // 3. Check if request is already approved or rejected
+            if (demande.getReponseChef() == Reponse.N) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Cette demande a déjà été refusée et ne peut plus être modifiée"
+                ));
+            }
+
+            if (demande.getReponseChef() == Reponse.O) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Cette demande a déjà été approuvée et ne peut plus être modifiée"
+                ));
+            }
+
+            // 4. Verify validator
+            Validator validationInfo = validatorRepository.findByChefId(chefId)
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+
+            // 5. Update based on validator's weight
+            int poidChef = validationInfo.getPoid();
+            String observation = request.get("observation");
+            String dateValidation = LocalDateTime.now().toString();
+
+            switch (poidChef) {
+                case 1:
+                    if (!"I".equals(response.getResponseChef1())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef1("N");
+                    response.setObservationChef1(observation);
+                    response.setDateChef1(dateValidation);
+                    break;
+
+                case 2:
+                    if (!"I".equals(response.getResponseChef2())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef2("N");
+                    response.setObservationChef2(observation);
+                    response.setDateChef2(dateValidation);
+                    break;
+
+                case 3:
+                    if (!"I".equals(response.getResponseChef3())) {
+                        return ResponseEntity.badRequest().body(Map.of(
+                                "status", "error",
+                                "message", "Ce chef a déjà validé ou refusé cette demande"
+                        ));
+                    }
+                    response.setResponseChef3("N");
+                    response.setObservationChef3(observation);
+                    response.setDateChef3(dateValidation);
+                    break;
+            }
+
+            // 6. Save refusal response
+            responseChefsDemAutorisationRepository.save(response);
+
+            // 7. Update main request status
+            demande.setReponseChef(Reponse.N);
+            demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
+            demande.setResponseChefs(response); // Ensure the link is maintained
+            demandeAutorisationRepository.save(demande);
+
+            // 8. Notify employee
+            if (demande.getMatPers() != null) {
+                notificationService.createNotification(
+                        "Votre demande d'autorisation a été refusée",
+                        "collaborateur",
+                        demande.getMatPers().getId()
+                );
+            }
+
+            // 9. Send SSE update
+            sseController.sendUpdate("updated", demande);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "message", "Demande refusée avec succès",
+                    "poidValidateur", poidChef
+            ));
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "details", e.getMessage()
+            ));
+        }
     }
 
     @PutMapping("/traiter/{id}")
@@ -365,140 +629,206 @@ public class DemandeAutorisationController {
     private MongoTemplate mongoTemplate;
 
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
-    public ResponseEntity<?> getDemandesByCollaborateursService(@PathVariable String chefserviceid) {
+    public ResponseEntity<?> getDemandesAutorisationByService(@PathVariable String chefserviceid) {
         try {
-            // Validate the input ID
+            // 1. Validate ID format
             if (!ObjectId.isValid(chefserviceid)) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("status", "error", "message", "Invalid chef service ID"));
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "ID invalide",
+                                "providedId", chefserviceid
+                        ));
             }
 
-            ObjectId chefObjectId = new ObjectId(chefserviceid);
+            ObjectId chefId = new ObjectId(chefserviceid);
 
-            // 1. Find the service by chef ID
-            Query serviceQuery = new Query(Criteria.where("chefHierarchique.$id").is(chefObjectId));
-            serviceQuery.fields().include("serviceName", "_id");
-            Service service = mongoTemplate.findOne(serviceQuery, Service.class);
-
-            if (service == null) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("status", "error", "message", "Service not found for this chef"));
+            // 2. Get chef information
+            Personnel chef = mongoTemplate.findOne(
+                    new Query(Criteria.where("_id").is(chefId)),
+                    Personnel.class
+            );
+            if (chef == null) {
+                return ResponseEntity.notFound().build();
             }
 
-            // Debug log the service found
-            log.debug("Found service: {} with ID: {}", service.getServiceName(), service.getId());
-
-            // 2. Find collaborators in this service
-            Query collabQuery = new Query(
-                    Criteria.where("service.$id").is(new ObjectId(service.getId()))
-                            .and("role").is("collaborateur")
-            );
-            collabQuery.fields().include("_id", "nom", "prenom", "matricule"); // Include more fields for verification
-
-            List<Personnel> collaborators = mongoTemplate.find(collabQuery, Personnel.class);
-
-            // Debug log the collaborators found
-            log.debug("Found {} collaborators for service {}: {}",
-                    collaborators.size(),
-                    service.getId(),
-                    collaborators.stream()
-                            .map(c -> c.getId() + " " + c.getNom() + " " + c.getPrenom())
-                            .collect(Collectors.joining(", "))
+            // 3. Find services where chef is validator
+            List<Validator> chefValidators = mongoTemplate.find(
+                    new Query(Criteria.where("chef.$id").is(chefId)),
+                    Validator.class
             );
 
-            if (collaborators.isEmpty()) {
+            if (chefValidators.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "service", service.getServiceName(),
-                        "demandes", Collections.emptyList(),
-                        "debug_info", "No collaborators found despite service existing"
+                        "message", "Aucun service associé à ce chef",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
                 ));
             }
 
-            // Convert to ObjectId list
-            List<ObjectId> collaborateurIds = collaborators.stream()
+            // 4. Get service IDs
+            List<ObjectId> serviceIds = chefValidators.stream()
+                    .map(Validator::getService)
+                    .filter(Objects::nonNull)
+                    .map(service -> new ObjectId(service.getId()))
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 5. Get all personnel in these services (excluding current chef)
+            List<Personnel> servicePersonnel = mongoTemplate.find(
+                    new Query(Criteria.where("service.$id").in(serviceIds)
+                            .and("_id").ne(chefId)),
+                    Personnel.class
+            );
+
+            // 6. Get demandes for these personnel
+            List<ObjectId> personnelIds = servicePersonnel.stream()
                     .map(p -> new ObjectId(p.getId()))
                     .collect(Collectors.toList());
 
-            // 3. Get demandes for these collaborators
-            Query demandeQuery = new Query(Criteria.where("matPers.$id").in(collaborateurIds));
-            List<DemandeAutorisation> demandes = mongoTemplate.find(demandeQuery, DemandeAutorisation.class);
+            List<DemandeAutorisation> demandes = mongoTemplate.find(
+                    new Query(Criteria.where("matPers.$id").in(personnelIds))
+                            .with(Sort.by(Sort.Direction.DESC, "dateDemande")),
+                    DemandeAutorisation.class
+            );
 
-            // Debug log the demandes found
-            log.debug("Found {} demandes for {} collaborators", demandes.size(), collaborateurIds.size());
-
-            // 4. Convert to response format
-            List<Map<String, Object>> result = demandes.stream()
-                    .map(d -> {
-                        Map<String, Object> map = new LinkedHashMap<>(); // Maintain field order
-
-                        // Basic fields
-                        map.put("id", d.getId());
-                        map.put("dateDemande", d.getDateDemande());
-                        map.put("typeDemande", d.getTypeDemande());
-                        map.put("codeSoc", d.getCodeSoc());
-                        map.put("dateDebut", d.getDateDebut());
-                        map.put("texteDemande", d.getTexteDemande());
-                        map.put("observation", d.getObservation());
-                        map.put("reponseChef", d.getReponseChef());
-                        map.put("reponseRH", d.getReponseRH());
-                        map.put("heureSortie", d.getHeureSortie());
-                        map.put("heureRetour", d.getHeureRetour());
-                        map.put("horaireSortie", d.getHoraireSortie());
-                        map.put("horaireRetour", d.getHoraireRetour());
-                        map.put("minuteSortie", d.getMinuteSortie());
-                        map.put("minuteRetour", d.getMinuteRetour());
-                        map.put("codAutorisation", d.getCodAutorisation());
-
-                        // Handle personnel
-                        if (d.getMatPers() != null) {
-                            map.put("matPers", Map.of(
-                                    "id", d.getMatPers().getId(),
-                                    "matricule", StringUtils.defaultString(d.getMatPers().getMatricule()),
-                                    "nom", StringUtils.defaultString(d.getMatPers().getNom()),
-                                    "prenom", StringUtils.defaultString(d.getMatPers().getPrenom()),
-                                    "email", StringUtils.defaultString(d.getMatPers().getEmail())
-                            ));
-                        }
-
-                        // Handle files
-                        if (d.getFiles() != null && !d.getFiles().isEmpty()) {
-                            map.put("files", d.getFiles().stream()
-                                    .filter(Objects::nonNull)
-                                    .map(f -> Map.of(
-                                            "id", f.getId() != null ? f.getId() : "",
-                                            "fileId", f.getFileId() != null ? f.getFileId() : "",
-                                            "filename", f.getFilename() != null ? f.getFilename() : "",
-                                            "fileType", f.getFileType() != null ? f.getFileType() : ""
-                                    ))
-                                    .collect(Collectors.toList()));
-                        } else {
-                            map.put("files", Collections.emptyList());
-                        }
-
-                        return map;
-                    })
-                    .collect(Collectors.toList());
-
+            // 7. Prepare response
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "service", service.getServiceName(),
-                    "collaborateurs_count", collaborators.size(),
-                    "demandes_count", result.size(),
-                    "demandes", result
+                    "chef", buildPersonnelMap(chef),
+                    "services", buildServiceList(chefValidators),
+                    "statistics", buildAutorisationStatistics(servicePersonnel, demandes),
+                    "demandes", buildDemandeAutorisationList(demandes),
+                    "debug", buildDebugInfo(serviceIds)
             ));
 
         } catch (Exception e) {
-            log.error("Error fetching demandes for chef {}: {}", chefserviceid, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "status", "error",
-                            "message", "Error processing request",
-                            "error", e.getMessage()
-                    ));
+            log.error("Error in getDemandesAutorisationByService: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "error", e.getMessage()
+            ));
         }
     }
 
+    // Specific statistics method for DemandeAutorisation
+    private Map<String, Object> buildAutorisationStatistics(List<Personnel> personnel, List<DemandeAutorisation> demandes) {
+        return Map.of(
+                "totalPersonnel", personnel.size(),
+                "demandesAutorisation", demandes.size(),
+                "roles", personnel.stream()
+                        .collect(Collectors.groupingBy(
+                                Personnel::getRole,
+                                Collectors.counting()
+                        )),
+                "statutDemandes", Map.of(
+                        "enAttente", demandes.stream().filter(d -> "En attente".equals(d.getReponseChef())).count(),
+                        "approuvees", demandes.stream().filter(d -> "Approuvé".equals(d.getReponseChef())).count(),
+                        "refusees", demandes.stream().filter(d -> "Refusé".equals(d.getReponseChef())).count()
+                )
+        );
+    }
+
+    private List<Map<String, Object>> buildDemandeAutorisationList(List<DemandeAutorisation> demandes) {
+        return demandes.stream()
+                .map(this::convertDemandeAutorisationToMap)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> convertDemandeAutorisationToMap(DemandeAutorisation d) {
+        try {
+            Map<String, Object> map = new LinkedHashMap<>();
+
+            // Basic fields
+            map.put("id", d.getId());
+            map.put("dateDemande", d.getDateDemande());
+            map.put("typeDemande", d.getTypeDemande());
+            map.put("codeSoc", d.getCodeSoc());
+            map.put("dateDebut", d.getDateDebut());
+            map.put("reponseChef", d.getResponseChefs());
+            map.put("reponseRH", d.getReponseRH());
+            map.put("heureSortie", d.getHeureSortie());
+            map.put("heureRetour", d.getHeureRetour());
+            map.put("horaireSortie", d.getHoraireSortie());
+            map.put("horaireRetour", d.getHoraireRetour());
+            map.put("minuteSortie", d.getMinuteSortie());
+            map.put("minuteRetour", d.getMinuteRetour());
+            map.put("codAutorisation", d.getCodAutorisation());
+
+            // Optional fields
+            Optional.ofNullable(d.getTexteDemande()).ifPresent(v -> map.put("texteDemande", v));
+            Optional.ofNullable(d.getObservation()).ifPresent(v -> map.put("observation", v));
+
+            // Personnel information
+            map.put("matPers", Optional.ofNullable(d.getMatPers())
+                    .map(p -> Map.of(
+                            "id", p.getId(),
+                            "matricule", defaultIfNull(p.getMatricule(), ""),
+                            "nom", defaultIfNull(p.getNom(), ""),
+                            "prenom", defaultIfNull(p.getPrenom(), ""),
+                            "email", defaultIfNull(p.getEmail(), "")
+                    ))
+                    .orElse(null));
+
+            // Files information
+            map.put("files", Optional.ofNullable(d.getFiles())
+                    .orElse(Collections.emptyList()).stream()
+                    .filter(Objects::nonNull)
+                    .map(f -> Map.of(
+                            "id", defaultIfNull(f.getId(), ""),
+                            "fileId", defaultIfNull(f.getFileId(), ""),
+                            "filename", defaultIfNull(f.getFilename(), ""),
+                            "fileType", defaultIfNull(f.getFileType(), "")
+                    ))
+                    .collect(Collectors.toList()));
+
+            return map;
+        } catch (Exception e) {
+            log.error("Error converting demande autorisation {} to map: {}", d.getId(), e.getMessage());
+            return null;
+        }
+    }
+
+    // Shared helper methods
+    private Map<String, Object> buildPersonnelMap(Personnel personnel) {
+        return Map.of(
+                "id", personnel.getId(),
+                "nomComplet", personnel.getNom() + " " + personnel.getPrenom(),
+                "role", personnel.getRole(),
+                "email", personnel.getEmail()
+        );
+    }
+
+    private List<Map<String, Object>> buildServiceList(List<Validator> validators) {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Validator v : validators) {
+            if (v.getService() != null) {
+                Map<String, Object> serviceMap = new HashMap<>();
+                serviceMap.put("id", v.getService().getId());
+                serviceMap.put("name", v.getService().getServiceName());
+                serviceMap.put("poid", v.getPoid());
+                result.add(serviceMap);
+            }
+        }
+
+        return result;
+    }
+
+    private Map<String, Object> buildDebugInfo(List<ObjectId> serviceIds) {
+        return Map.of(
+                "serviceIds", serviceIds.stream()
+                        .map(ObjectId::toString)
+                        .collect(Collectors.toList())
+        );
+    }
+
+    private String defaultIfNull(String value, String defaultValue) {
+        return value != null ? value : defaultValue;
+    }
     private PersonnelDTO convertPersonnelToSafeDto(Personnel personnel) {
         System.out.println("27. [DEBUG] Converting personnel to safe DTO: " + personnel.getId());
 
@@ -535,9 +865,82 @@ public class DemandeAutorisationController {
 
 
     @GetMapping("/approved")
-    public ResponseEntity<List<DemandeAutorisation>> getApprovedDemandes() {
-        List<DemandeAutorisation> approvedDemandes = demandeAutorisationRepository.findByReponseChef(Reponse.O);
+    public ResponseEntity<?> getDemandesApprovedByChef1() {
+        try {
+            // 1. Récupérer toutes les réponses où le chef1 a approuvé ("O")
+            List<Response_chefs_dem_autorisation> reponsesChef1 = responseChefsDemAutorisationRepository.findByResponseChef1("O");
+
+            // 2. Extraire les IDs des demandes approuvées
+            List<String> demandeIds = reponsesChef1.stream()
+                    .map(Response_chefs_dem_autorisation::getDemandeId)
+                    .collect(Collectors.toList());
+
+            // 3. Récupérer les demandes correspondantes
+            List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByIdIn(demandeIds);
+
+            return ResponseEntity.ok(demandes);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "status", "error",
+                            "message", "Erreur lors de la récupération des demandes",
+                            "error", e.getMessage()
+                    )
+            );
+        }
+    }
+
+    @GetMapping("/personnel/{matPersId}/approved")
+    public ResponseEntity<List<DemandeAutorisation>> getApprovedDemandesAutorisationByPersonnelId(
+            @PathVariable String matPersId) {
+
+        // check that looks at all chef approvals
+        List<DemandeAutorisation> allDemandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
+
+        List<DemandeAutorisation> approvedDemandes = allDemandes.stream()
+                .filter(demande -> {
+                    // Check if any chef has approved (O)
+                    Response_chefs_dem_autorisation response = demande.getResponseChefs();
+                    if (response == null) return false;
+
+                    return "O".equals(response.getResponseChef1()) ||
+                            "O".equals(response.getResponseChef2()) ||
+                            "O".equals(response.getResponseChef3());
+                })
+                .collect(Collectors.toList());
+
+        if (approvedDemandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
         return ResponseEntity.ok(approvedDemandes);
+    }
+
+    @GetMapping("/personnel/{matPersId}/approved-by-chef1")
+    public ResponseEntity<List<DemandeAutorisation>> getDemandesApprovedByChef1(
+            @PathVariable String matPersId) {
+
+        // 1. Récupérer toutes les demandes du personnel
+        List<DemandeAutorisation> allDemandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
+
+        if (allDemandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        // 2. Filtrer celles approuvées par le chef de poids 1
+        List<DemandeAutorisation> approvedByChef1 = allDemandes.stream()
+                .filter(demande -> {
+                    Response_chefs_dem_autorisation response = demande.getResponseChefs();
+                    return response != null && "O".equals(response.getResponseChef1());
+                })
+                .collect(Collectors.toList());
+
+        if (approvedByChef1.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(approvedByChef1);
     }
 
     // Enhanced endpoint to get all information of a specific demande

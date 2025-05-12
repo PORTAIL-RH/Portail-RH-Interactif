@@ -1,20 +1,20 @@
 package com.example.PortailRH.Controller;
 
-import com.example.PortailRH.Model.*;
+import com.example.PortailRH.Model.DemandeDocument;
+import com.example.PortailRH.Model.Fichier_joint;
+import com.example.PortailRH.Model.Personnel;
+import com.example.PortailRH.Model.Reponse;
 import com.example.PortailRH.Repository.DemandeDocumentRepository;
 import com.example.PortailRH.Repository.FichierJointRepository;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
-import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -77,7 +77,7 @@ public class DemandeDocumentController {
             notificationService.createNotification(notificationMessage, "RH", null);
 
             if (personnel.getService() != null) {
-                Personnel chef = personnel.getService().getChefHierarchique();
+                Personnel chef = personnel.getService().getChef1();
                 if (chef != null) {
                     notificationService.createNotification(
                             notificationMessage + " (Service: " + personnel.getService().getServiceName() + ")",
@@ -324,7 +324,7 @@ public class DemandeDocumentController {
     }
 
     // Get requests by service (for managers)
-    @GetMapping("/collaborateurs-by-service/{chefserviceid}")
+ /*   @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getDemandesDocumentByCollaborateursService(
             @PathVariable String chefserviceid) {
         try {
@@ -399,7 +399,7 @@ public class DemandeDocumentController {
                     "error", e.getMessage()
             ));
         }
-    }
+    }*/
 
 
     // Delete request

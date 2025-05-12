@@ -11,7 +11,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.Field;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -110,7 +109,7 @@ public class Personnel {
         }
 
         if (service != null) {
-            this.chefHierarchique = service.getChefHierarchique();
+            this.chefHierarchique = service.getChef3();
         } else {
             this.chefHierarchique = null;
             if (Arrays.asList("collaborateur", "Chef Hiérarchique", "RH").contains(role)) {

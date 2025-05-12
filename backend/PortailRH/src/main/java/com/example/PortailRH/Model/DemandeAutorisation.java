@@ -28,6 +28,8 @@ public class DemandeAutorisation {
     private Date dateDebut;
     private String texteDemande;
     private String observation;
+    @DBRef
+    private Response_chefs_dem_autorisation responseChefs;
     private Reponse reponseChef;
     private Reponse reponseRH;
 
@@ -111,6 +113,14 @@ public class DemandeAutorisation {
     // Date setters with flexible input
     public void setDateDemande(Object dateInput) {
         this.dateDemande = parseDate(dateInput);
+    }
+
+    public Response_chefs_dem_autorisation getResponseChefs() {
+        return responseChefs;
+    }
+
+    public void setResponseChefs(Response_chefs_dem_autorisation responseChefs) {
+        this.responseChefs = responseChefs;
     }
 
     public void setDateDebut(Object dateInput) {

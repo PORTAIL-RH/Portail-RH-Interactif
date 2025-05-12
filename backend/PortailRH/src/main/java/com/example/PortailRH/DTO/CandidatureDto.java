@@ -1,4 +1,4 @@
-package com.example.PortailRH.Model;
+package com.example.PortailRH.DTO;
 
 import java.util.Date;
 import java.util.Map;

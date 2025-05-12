@@ -1,99 +1,101 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiSun, FiMoon, FiLogOut, FiBell } from "react-icons/fi";
-import NotificationsModal from "../../Notifications/NotificationsModal";
-import "./Navbar.css";
-import { API_URL } from "../../../config"; 
+import { useState, useEffect, useCallback } from "react"
+import { useNavigate } from "react-router-dom"
+import { FiSun, FiMoon, FiLogOut, FiBell } from "react-icons/fi"
+import "./Navbar.css"
+import NotificationsModal from "../../Notifications/NotificationsModal"
+import { API_URL } from "../../../config"
+import useNotifications from "../../Notifications/useNotifications"
+
 
 const Navbar = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate()
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
-  });
-  const [theme, setTheme] = useState("dark");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+    role: "Collaborateur", // Default role
+  })
+  const [theme, setTheme] = useState("dark")
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false)
+
+  // Get user role from localStorage
+  useEffect(() => {
+    const userRole = localStorage.getItem("userRole") || "Collaborateur"
+    setUserData((prev) => ({
+      ...prev,
+      role: userRole,
+    }))
+  }, [])
+
+  // Use the notifications hook
+  const { notifications, unviewedCount, markAllAsRead, fetchNotifications } = useNotifications(userData.role)
 
   useEffect(() => {
     // Fetch user data
-    const userId = localStorage.getItem("userId");
+    const userId = localStorage.getItem("userId")
     if (userId) {
-      fetchUserData(userId);
-      fetchNotificationsCount(userId);
+      fetchUserData(userId)
     }
 
     // Get theme from localStorage
-    const savedTheme = localStorage.getItem("theme");
+    const savedTheme = localStorage.getItem("theme")
     if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+      setTheme(savedTheme)
+      document.documentElement.classList.toggle("dark", savedTheme === "dark")
     } else {
       // Set dark theme by default
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      setTheme("dark")
+      document.documentElement.classList.add("dark")
+      localStorage.setItem("theme", "dark")
     }
-  }, []);
+
+    // Fetch notifications when component mounts
+    fetchNotifications()
+  }, [fetchNotifications])
 
   const fetchUserData = async (userId) => {
     try {
-      const response = await fetch(`${API_URL}/api/Personnel/byId/${userId}`);
+      const response = await fetch(`${API_URL}/api/Personnel/byId/${userId}`)
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json()
         setUserData({
           firstName: data.nom || "User",
           lastName: data.prenom || "",
-        });
+          role: data.role || "Collaborateur",
+        })
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("Error fetching user data:", error)
     }
-  };
-
-  const fetchNotificationsCount = async (userId) => {
-    try {
-      const token = localStorage.getItem("authToken");
-      const response = await fetch(`${API_URL}/api/notifications/unread/count/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const count = await response.json();
-        setUnreadNotifications(count);
-      }
-    } catch (error) {
-      console.error("Error fetching notifications count:", error);
-    }
-  };
+  }
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.classList.toggle("dark", newTheme === "dark");
-    localStorage.setItem("theme", newTheme);
-  };
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    document.documentElement.classList.toggle("dark", newTheme === "dark")
+    localStorage.setItem("theme", newTheme)
+  }
 
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userId");
-    navigate("/");
-  };
+  const toggleNotificationsModal = useCallback(async () => {
+    // If opening the modal, fetch notifications first to ensure we have the latest data
+    if (!showNotificationsModal) {
+      try {
+        // Fetch notifications first to ensure we have the latest data
+        await fetchNotifications()
 
-  const toggleNotificationsModal = () => {
-    setShowNotificationsModal(!showNotificationsModal);
-  };
+        // Then mark all as read
+        await markAllAsRead()
 
-  const closeNotificationsModal = () => {
-    setShowNotificationsModal(false);
-    // Refresh the unread count after closing the modal
-    const userId = localStorage.getItem("userId");
-    if (userId) {
-      fetchNotificationsCount(userId);
+        // Refresh notifications to update the UI
+        await fetchNotifications()
+      } catch (error) {
+        console.error("Error handling notifications:", error)
+      }
     }
-  };
+
+    setShowNotificationsModal(!showNotificationsModal)
+  }, [showNotificationsModal, markAllAsRead, fetchNotifications])
+
 
   return (
     <>
@@ -113,7 +115,7 @@ const Navbar = () => {
 
           <button className="notification-button" onClick={toggleNotificationsModal} aria-label="Notifications">
             <FiBell />
-            {unreadNotifications > 0 && <span className="notification-badge">{unreadNotifications}</span>}
+            {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
           </button>
 
           <div className="user-dropdown">
@@ -128,21 +130,15 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/**<button className="logout-button" onClick={handleLogout}>
-            <FiLogOut className="logout-icon" />
-            <span className="logout-text">Déconnexion</span>
-          </button>**/}
+          
         </div>
       </nav>
 
-      <NotificationsModal
-        isOpen={showNotificationsModal}
-        onClose={closeNotificationsModal}
-        userId={localStorage.getItem("userId")}
-        token={localStorage.getItem("authToken")}
-      />
+      {showNotificationsModal && (
+        <NotificationsModal notifications={notifications} onClose={() => setShowNotificationsModal(false)} />
+      )}
     </>
-  );
-};
+  )
+}
 
-export default Navbar;
+export default Navbar

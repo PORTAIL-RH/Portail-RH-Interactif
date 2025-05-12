@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/gender-distribution").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/activation-status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}/accepted").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/Personnel/collaborateurs-by-service/{chefserviceid}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/Personnel/collaborateurs-by-chef/{chefId}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/active").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/Personnel/matricule/{matricule}").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/Personnel/reset-password").permitAll()
@@ -107,7 +107,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/collaborateurs-by-service/{chefserviceid}").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/demande-conge/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/days-used/{matPersId}").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}/approved").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-conge/personnel/{matPersId}/approved-by-chef1").permitAll()
 
 
                         ///demande document endpoints
@@ -162,6 +163,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/collaborateurs-by-service/{chefserviceid}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/approved").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}/approved").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}/approved-by-chef1").permitAll()
 
 
                         //demandeautorisation endpoints
@@ -177,7 +179,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/collaborateurs-by-service/{chefserviceid}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/approved").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/demande-autorisation/{id}").permitAll()
-
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/personnel/{matPersId}/approved").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-autorisation/personnel/{matPersId}/approved-by-chef1").permitAll()
 
                         //candidat/candidatures enpoints
                         .requestMatchers(HttpMethod.GET, "/api/candidatures").permitAll()
@@ -212,6 +215,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/files/metadata/{fileId}").permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/files/{fileId}").permitAll()
+
+
+                        //validator Endpoints
+
+                        .requestMatchers(HttpMethod.GET, "api/validators/chef-services/{chefId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "api/validators/by-chef/{chefId}").permitAll()
+
+
 
                         .anyRequest().authenticated()
                 )

@@ -31,7 +31,12 @@ public class WebConfig implements WebMvcConfigurer {
                 "http://172.20.10.7:8081",
                 "http://192.168.1.32:8081",  // Expo development server
                 "http://192.168.1.32:9070",  // Backend server
-                "exp://192.168.1.32:8081"    // Expo URL
+                "exp://192.168.1.32:8081",  // Expo URL
+
+                "http://localhost:8081",
+                "exp://127.0.0.1:8081",
+                "http://127.0.0.1:8081",
+                "exp://localhost:8081"
         ));        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With"));
         configuration.setAllowCredentials(true);

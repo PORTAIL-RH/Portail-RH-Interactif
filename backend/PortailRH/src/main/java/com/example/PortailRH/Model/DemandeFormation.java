@@ -14,11 +14,13 @@ import java.util.Date;
 
 public class DemandeFormation {
     @Id
-    private String id_libre_demande;
+    private String id;
     private String typeDemande;
     private Object dateDemande = new Date();
 
-
+    // Dans DemandeFormation
+    @DBRef
+    private Response_chefs_dem_formation responseChefs;
 
     @DBRef
     private Personnel matPers;
@@ -45,12 +47,20 @@ public class DemandeFormation {
 
     private String annee_f;
 
-    public String getId_libre_demande() {
-        return id_libre_demande;
+    public Response_chefs_dem_formation getResponseChefs() {
+        return responseChefs;
     }
 
-    public void setId_libre_demande(String id_libre_demande) {
-        this.id_libre_demande = id_libre_demande;
+    public void setResponseChefs(Response_chefs_dem_formation responseChefs) {
+        this.responseChefs = responseChefs;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getObservation() {
@@ -64,6 +74,7 @@ public class DemandeFormation {
     public Object getDateDebut() {
         return dateDebut;
     }
+
 
     public void setDateDebut(Object dateDebut) {
         this.dateDebut = dateDebut;

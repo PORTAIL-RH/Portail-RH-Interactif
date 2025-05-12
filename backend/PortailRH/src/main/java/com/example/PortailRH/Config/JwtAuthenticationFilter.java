@@ -37,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("api/Personnel/addWithMatriculeAndEmail")||
                 requestURI.contains("/api/personnel/updateAllFields/")||
                 requestURI.startsWith("/api/personnel/updateAllFields")||
-                requestURI.startsWith("/api/Personnel/collaborateurs-by-service/{chefserviceid}")||
+                requestURI.startsWith("/api/Personnel/collaborateurs-by-chef/{chefId}")||
                 requestURI.startsWith("/api/Personnel/request-password-reset")||
                 requestURI.startsWith("/api/Personnel/reset-password")||
                 requestURI.startsWith("/api/Personnel/validate-reset-token")||
@@ -86,6 +86,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/titres/{titreId}/types/{typeId}/themes") ||
                 requestURI.startsWith("/api/demande-formation/approved") ||
                 requestURI.startsWith("/api/demande-formation/personnel/{matPersId}/approved") ||
+                requestURI.startsWith("/api/demande-formation/personnel/{matPersId}/approved-by-chef1") ||
 
 
 
@@ -97,7 +98,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-autorisation/valider/{id}") ||
                 requestURI.startsWith("/api/demande-autorisation/collaborateurs-by-service/{chefserviceid}") ||
                 requestURI.startsWith("/api/demande-autorisation/approved") ||
-
+                requestURI.startsWith("/api/demande-autorisation/personnel/{matPersId}/approved") ||
+                requestURI.startsWith("/api/demande-autorisation/personnel/{matPersId}/approved-by-chef1") ||
 
 
 
@@ -111,7 +113,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-conge/{id}") ||
                 requestURI.startsWith("/api/demande-conge/collaborateurs-by-service/{chefserviceid}") ||
                 requestURI.startsWith("/api/demande-conge/days-used/{matPersId}") ||
-
+                requestURI.startsWith("/api/demande-conge/personnel/{matPersId}/approved") ||
+                requestURI.startsWith("/api/demande-conge/personnel/{matPersId}/approved-by-chef1") ||
 
 
                 requestURI.startsWith("/api/demande-document/valider/{id}") ||
@@ -166,7 +169,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 
                 requestURI.startsWith("/api/notifications/mark-all-read") ||
+                requestURI.startsWith("/api/notifications/unreadnbr") ||
                 requestURI.startsWith("/api/notifications"))
+
 
 
         {

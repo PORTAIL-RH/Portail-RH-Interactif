@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import "./Auth2.css"
 import { useNavigate } from "react-router-dom"
