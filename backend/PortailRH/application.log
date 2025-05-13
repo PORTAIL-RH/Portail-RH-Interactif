@@ -19198,3 +19198,76 @@ Caused by: java.net.UnknownHostException: portailrh-shard-00-01.lhwzf.mongodb.ne
 2025-05-13 18:48:07 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
 2025-05-13 18:48:07 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
 2025-05-13 18:48:07 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:48:33 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:48:35 DEBUG o.s.security.web.FilterChainProxy - Securing OPTIONS /api/notifications?role=Admin
+2025-05-13 18:48:35 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/notifications?role=Admin
+2025-05-13 18:48:35 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:48:35 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/notifications?role=Admin
+2025-05-13 18:48:35 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: { "role" : "Admin"} fields: Document{{}} sort: { "role" : "Admin"} for class: class com.example.PortailRH.Model.Notification in collection: notifications
+2025-05-13 18:48:35 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/notifications
+2025-05-13 18:48:35 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:48:35 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:48:35 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:48:35 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:48:35 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:49:03 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:49:03 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:49:03 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:49:03 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:49:03 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:49:05 DEBUG o.s.security.web.FilterChainProxy - Securing OPTIONS /api/notifications?role=Admin
+2025-05-13 18:49:05 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/notifications?role=Admin
+2025-05-13 18:49:05 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:49:05 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/notifications?role=Admin
+2025-05-13 18:49:05 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: { "role" : "Admin"} fields: Document{{}} sort: { "role" : "Admin"} for class: class com.example.PortailRH.Model.Notification in collection: notifications
+2025-05-13 18:49:05 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/notifications
+2025-05-13 18:49:25 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:49:25 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:49:25 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:49:25 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:49:29 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:49:29 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:49:29 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:49:29 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:49:29 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:49:38 DEBUG o.s.security.web.FilterChainProxy - Securing OPTIONS /api/notifications?role=Admin
+2025-05-13 18:49:38 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/notifications?role=Admin
+2025-05-13 18:49:38 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:49:38 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/notifications?role=Admin
+2025-05-13 18:49:38 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: { "role" : "Admin"} fields: Document{{}} sort: { "role" : "Admin"} for class: class com.example.PortailRH.Model.Notification in collection: notifications
+2025-05-13 18:49:39 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/notifications
+2025-05-13 18:49:59 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:50:04 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:50:04 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:50:04 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:50:04 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:50:04 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:50:05 DEBUG o.s.security.web.FilterChainProxy - Securing OPTIONS /api/notifications?role=Admin
+2025-05-13 18:50:05 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/notifications?role=Admin
+2025-05-13 18:50:05 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:50:05 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/notifications?role=Admin
+2025-05-13 18:50:05 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: { "role" : "Admin"} fields: Document{{}} sort: { "role" : "Admin"} for class: class com.example.PortailRH.Model.Notification in collection: notifications
+2025-05-13 18:50:05 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/notifications
+2025-05-13 18:50:25 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:50:25 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:50:25 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:50:25 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:50:33 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:50:33 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/Personnel/all
+2025-05-13 18:50:33 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:50:33 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/Personnel/all
+2025-05-13 18:50:33 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: {} fields: Document{{}} sort: null for class: class com.example.PortailRH.Model.Personnel in collection: Personnel
+2025-05-13 18:50:35 DEBUG o.s.security.web.FilterChainProxy - Securing OPTIONS /api/notifications?role=Admin
+2025-05-13 18:50:35 DEBUG o.s.security.web.FilterChainProxy - Securing GET /api/notifications?role=Admin
+2025-05-13 18:50:35 DEBUG o.s.s.w.a.AnonymousAuthenticationFilter - Set SecurityContextHolder to anonymous SecurityContext
+2025-05-13 18:50:35 DEBUG o.s.security.web.FilterChainProxy - Secured GET /api/notifications?role=Admin
+2025-05-13 18:50:35 DEBUG o.s.data.mongodb.core.MongoTemplate - find using query: { "role" : "Admin"} fields: Document{{}} sort: { "role" : "Admin"} for class: class com.example.PortailRH.Model.Notification in collection: notifications
+2025-05-13 18:50:35 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/notifications
+2025-05-13 18:50:38 INFO  o.s.b.w.e.tomcat.GracefulShutdown - Commencing graceful shutdown. Waiting for active requests to complete
+2025-05-13 18:50:56 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:51:09 INFO  c.e.P.C.CompressionLoggingFilter - Response compressed with GZIP for: /api/Personnel/all
+2025-05-13 18:51:10 INFO  o.s.b.w.e.tomcat.GracefulShutdown - Graceful shutdown complete
+2025-05-13 18:51:11 INFO  o.s.c.s.DefaultLifecycleProcessor - Shutdown phase 2147482623 ends with 1 bean still running after timeout of 30000ms: []
+2025-05-13 18:51:11 INFO  o.s.m.s.b.SimpleBrokerMessageHandler - Stopping...
+2025-05-13 18:51:11 INFO  o.s.m.s.b.SimpleBrokerMessageHandler - BrokerAvailabilityEvent[available=false, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@1e4aa0f9]]
+2025-05-13 18:51:11 INFO  o.s.m.s.b.SimpleBrokerMessageHandler - Stopped.

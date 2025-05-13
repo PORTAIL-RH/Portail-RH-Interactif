@@ -9,7 +9,10 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -739,6 +742,90 @@ public class DemandeCongeController {
             );
         }
     }
+    @GetMapping("/collaborateurs-by-service/{chefserviceid}")
+    public ResponseEntity<?> getDemandesCongeByService(@PathVariable String chefserviceid) {
+        try {
+            // 1. Validate ID format
+            if (!ObjectId.isValid(chefserviceid)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "ID invalide",
+                                "providedId", chefserviceid
+                        ));
+            }
+
+            ObjectId chefId = new ObjectId(chefserviceid);
+
+            // 2. Get chef information
+            Personnel chef = mongoTemplate.findOne(
+                    new Query(Criteria.where("_id").is(chefId)),
+                    Personnel.class
+            );
+            if (chef == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 3. Find services where chef is validator
+            List<Validator> chefValidators = mongoTemplate.find(
+                    new Query(Criteria.where("chef.$id").is(chefId)),
+                    Validator.class
+            );
+
+            if (chefValidators.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Aucun service associé à ce chef",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 4. Get service IDs
+            List<ObjectId> serviceIds = chefValidators.stream()
+                    .map(v -> v.getService())
+                    .filter(Objects::nonNull)
+                    .map(s -> new ObjectId(s.getId()))
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 5. Get all personnel in these services (excluding current chef)
+            List<Personnel> servicePersonnel = mongoTemplate.find(
+                    new Query(Criteria.where("service.$id").in(serviceIds)
+                            .and("_id").ne(chefId)),
+                    Personnel.class
+            );
+
+            // 6. Get demandes for these personnel
+            List<ObjectId> personnelIds = servicePersonnel.stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            List<DemandeConge> demandes = mongoTemplate.find(
+                    new Query(Criteria.where("matPers.$id").in(personnelIds))
+                            .with(Sort.by(Sort.Direction.DESC, "dateDemande")),
+                    DemandeConge.class
+            );
+
+            // 7. Prepare response
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "chef", buildPersonnelMap(chef),
+                    "services", buildServiceList(chefValidators),
+                    "statistics", buildStatistics(servicePersonnel, demandes),
+                    "demandes", buildDemandeList(demandes),
+                    "debug", buildDebugInfo(serviceIds, servicePersonnel)
+            ));
+
+        } catch (Exception e) {
+            log.error("Error in getDemandesCongeByService: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "error", e.getMessage()
+            ));
+        }
+    }
 
     // Helper methods
     private Map<String, Object> buildPersonnelMap(Personnel personnel) {
@@ -746,10 +833,24 @@ public class DemandeCongeController {
                 "id", personnel.getId(),
                 "nomComplet", personnel.getNom() + " " + personnel.getPrenom(),
                 "role", personnel.getRole(),
-                "email", personnel.getEmail()
+                "email", personnel.getEmail(),
+                "service", personnel.getServiceName()
+
         );
     }
 
+    private List<Map<String, Object>> buildServiceList(List<Validator> validators) {
+        return validators.stream()
+                .filter(v -> v.getService() != null)
+                .map(v -> {
+                    Map<String, Object> serviceMap = new LinkedHashMap<>();
+                    serviceMap.put("id", v.getService().getId());
+                    serviceMap.put("name", v.getService().getServiceName());
+                    serviceMap.put("poid", v.getPoid());
+                    return serviceMap;
+                })
+                .collect(Collectors.toList());
+    }
 
     private Map<String, Object> buildStatistics(List<Personnel> personnel, List<DemandeConge> demandes) {
         return Map.of(
@@ -763,35 +864,62 @@ public class DemandeCongeController {
         );
     }
 
-
-    private Map<String, Object> buildDebugInfo(List<ObjectId> serviceIds) {
-        return Map.of(
-                "serviceIds", serviceIds.stream()
-                        .map(ObjectId::toString)
-                        .collect(Collectors.toList())
-        );
-    }
-
-    private List<Map<String, Object>> buildServiceList(List<Validator> validators) {
-        List<Map<String, Object>> result = new ArrayList<>();
-
-        for (Validator v : validators) {
-            if (v.getService() != null) {
-                Map<String, Object> serviceMap = new HashMap<>();
-                serviceMap.put("id", v.getService().getId());
-                serviceMap.put("name", v.getService().getServiceName());
-                serviceMap.put("poid", v.getPoid());
-                result.add(serviceMap);
-            }
-        }
-
-        return result;
-    }
     private List<Map<String, Object>> buildDemandeList(List<DemandeConge> demandes) {
         return demandes.stream()
-                .map(this::convertDemandeToMap)
-                .filter(Objects::nonNull)
+                .map(d -> {
+                    Map<String, Object> demandeMap = new LinkedHashMap<>();
+                    demandeMap.put("id", d.getId());
+                    demandeMap.put("dateDemande", d.getDateDemande());
+                    demandeMap.put("dateDebut", d.getDateDebut());
+                    demandeMap.put("dateFin", d.getDateFin());
+                    demandeMap.put("typeConge", d.getTypeDemande());
+                    demandeMap.put("reponseChef", d.getResponseChefs());
+                    demandeMap.put("reponseRH", d.getReponseRH());
+                    demandeMap.put("texteDemande", d.getTexteDemande());
+                    demandeMap.put("observation", d.getObservation());
+                    demandeMap.put("codeSoc", d.getCodeSoc());
+                    demandeMap.put("snjTempDep", d.getSnjTempDep());
+                    demandeMap.put("snjTempRetour", d.getSnjTempRetour());
+                    demandeMap.put("nbrJours", d.getNbrJours());
+
+                    // Infos du personnel demandeur
+                    if (d.getMatPers() != null) {
+                        demandeMap.put("demandeur", buildPersonnelMap(d.getMatPers()));
+                    }
+
+                    // Fichiers joints
+                    if (d.getFiles() != null && !d.getFiles().isEmpty()) {
+                        List<Map<String, Object>> fileList = d.getFiles().stream()
+                                .map(file -> {
+                                    Map<String, Object> fileMap = new LinkedHashMap<>();
+                                    fileMap.put("id", defaultIfNull(file.getId(), ""));
+                                    fileMap.put("fileId", defaultIfNull(file.getFileId(), ""));
+                                    fileMap.put("filename", defaultIfNull(file.getFilename(), ""));
+                                    fileMap.put("fileType", defaultIfNull(file.getFileType(), ""));
+                                    return fileMap;
+                                })
+
+                                .collect(Collectors.toList());
+
+                        demandeMap.put("files", fileList);
+                    } else {
+                        demandeMap.put("files", Collections.emptyList());
+                    }
+
+                    return demandeMap;
+                })
                 .collect(Collectors.toList());
+    }
+
+
+    private Map<String, Object> buildDebugInfo(List<ObjectId> serviceIds, List<Personnel> personnel) {
+        return Map.of(
+                "serviceIds", serviceIds.stream().map(ObjectId::toString).collect(Collectors.toList()),
+                "personnelSample", personnel.isEmpty() ? "none" :
+                        personnel.subList(0, Math.min(3, personnel.size())).stream()
+                                .map(this::buildPersonnelMap)
+                                .collect(Collectors.toList())
+        );
     }
 
     private Map<String, Object> convertDemandeToMap(DemandeConge d) {
