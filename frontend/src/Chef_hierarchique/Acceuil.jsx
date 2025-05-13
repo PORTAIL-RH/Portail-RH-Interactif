@@ -152,6 +152,7 @@ const Accueil = () => {
     formation: { data: [], total: 0, approved: 0, pending: 0 },
     autorisation: { data: [], total: 0, approved: 0, pending: 0 }
   }));
+  const [chefServices, setChefServices] = useState([]);
 
   const [upcomingFormations, setUpcomingFormations] = useState(() => safeParse("upcomingFormations", []));
   const [loading, setLoading] = useState(false);
@@ -197,7 +198,46 @@ const Accueil = () => {
     document.documentElement.className = newTheme;
     localStorage.setItem("theme", newTheme);
   };
+useEffect(() => {
+  const savedServices = localStorage.getItem("services");
 
+  if (savedServices) {
+    try {
+      const parsedServices = JSON.parse(savedServices);
+      if (Array.isArray(parsedServices)) {
+        setChefServices(parsedServices);
+      } else {
+        console.warn("Données de services invalides dans localStorage.");
+      }
+    } catch (err) {
+      console.error("Erreur de parsing des services depuis localStorage :", err);
+    }
+  } else {
+    const fetchServices = async () => {
+      const userId = localStorage.getItem("userId");
+
+      if (userId) {
+        try {
+          const response = await fetchWithRetry(`${API_URL}/api/validators/by-chef/${userId}`);
+          if (Array.isArray(response)) {
+            setChefServices(response);
+            localStorage.setItem("services", JSON.stringify(response));
+          } else {
+            console.warn("Réponse inattendue de l'API :", response);
+          }
+        } catch (err) {
+          console.error("Erreur lors de la récupération des services :", err);
+        }
+      } else {
+        console.warn("userId non trouvé dans localStorage.");
+      }
+    };
+
+    fetchServices();
+  }
+}, []);
+
+  
   const saveToLocalStorage = useCallback((key, data) => {
     try {
       if (data) {
@@ -340,7 +380,7 @@ const Accueil = () => {
       }
 
       const response = await fetchWithRetry(
-        `${API_URL}/api/Personnel/collaborateurs-by-service/${userId}`
+        `${API_URL}/api/Personnel/collaborateurs-by-chef/${userId}`
       );
       
       const { 
@@ -471,7 +511,7 @@ const Accueil = () => {
     if (!silent) setLoading(true);
     try {
       const data = await fetchWithRetry(
-        `${API_URL}/api/demande-formation/personnel/${userId}/approved`
+        `${API_URL}/api/demande-formation/personnel/${userId}/approved-by-chef1`
       );
       
       const now = new Date();
@@ -650,43 +690,25 @@ const Accueil = () => {
                     </div>
                   </div>
 
-                  <div className="dashboard-card gender-distribution">
-                    <div className="card-header">
-                      <h2>Gender Distribution</h2>
-                    </div>
-                    <div className="card-content">
-                      <div className="gender-bars">
-                        <div className="gender-bar-container">
-                          <div className="gender-label">
-                            <FaMale className="male-icon" /> Male
-                          </div>
-                          <div className="gender-bar-wrapper">
-                            <div
-                              className="gender-bar male-bar"
-                              style={{ width: `${serviceInfo.malePercentage}%` }}
-                            ></div>
-                            <span className="gender-percentage">
-                              {serviceInfo.malePercentage}% ({serviceInfo.maleCount})
-                            </span>
-                          </div>
-                        </div>
-                        <div className="gender-bar-container">
-                          <div className="gender-label">
-                            <FaFemale className="female-icon" /> Female
-                          </div>
-                          <div className="gender-bar-wrapper">
-                            <div
-                              className="gender-bar female-bar"
-                              style={{ width: `${serviceInfo.femalePercentage}%` }}
-                            ></div>
-                            <span className="gender-percentage">
-                              {serviceInfo.femalePercentage}% ({serviceInfo.femaleCount})
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <div className="dashboard-card">
+  <div className="card-header">
+    <h2>Services for Current Chef</h2>
+  </div>
+  <div className="card-content">
+    {chefServices.length === 0 ? (
+      <p>No services found.</p>
+    ) : (
+      <ul>
+        {chefServices.map((service) => (
+          <li key={service.id}>
+            <strong>Nom Du Service :{service.serviceName}</strong> — Poid:   {service.poid}
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</div>
+
                 </>
               )}
 

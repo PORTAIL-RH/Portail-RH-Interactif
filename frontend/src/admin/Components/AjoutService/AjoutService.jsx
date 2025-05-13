@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react"
-import axios from "axios"
-import { toast, ToastContainer } from "react-toastify"
-import "react-toastify/dist/ReactToastify.css"
-import "./AjoutService.css"
-import Sidebar from "../Sidebar/Sidebar"
-import Navbar from "../Navbar/Navbar"
-import { API_URL } from "../../../config"
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "./AjoutService.css";
+import Sidebar from "../Sidebar/Sidebar";
+import Navbar from "../Navbar/Navbar";
+import { API_URL } from "../../../config";
 import {
   FiChevronDown,
   FiCheck,
@@ -18,277 +18,461 @@ import {
   FiServer,
   FiRefreshCw,
   FiInfo,
-} from "react-icons/fi"
+} from "react-icons/fi";
 
 const STORAGE_KEYS = {
-  SERVICES_DATA: 'servicesData'
+  SERVICES: 'servicesData',
+  PERSONNEL: 'personnelData',
+  LAST_FETCHED: 'lastFetched'
 };
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
 
 const AjoutService = () => {
   const [formData, setFormData] = useState({
     serviceName: "",
-    chefMatricule: "",
-  })
+    chefs: [
+      { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
+      { personnelId: "", poid: 2, matricule: "", nom: "", prenom: "", role: "" },
+      { personnelId: "", poid: 3, matricule: "", nom: "", prenom: "", role: "" }
+    ]
+  });
 
-  const [services, setServices] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [fetchingServices, setFetchingServices] = useState(false)
-  const [chefInfo, setChefInfo] = useState(null)
-  const [theme, setTheme] = useState("light")
-  const [chefMatricules, setChefMatricules] = useState([])
-  const [filteredMatricules, setFilteredMatricules] = useState([])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [activeTab, setActiveTab] = useState("add")
-  const [editingService, setEditingService] = useState(null)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [fetchingData, setFetchingData] = useState({
+    services: false,
+    personnel: false
+  });
+  const [personnelList, setPersonnelList] = useState([]);
+  const [theme, setTheme] = useState("light");
+  const [activeTab, setActiveTab] = useState("add");
+  const [editingService, setEditingService] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [dropdownStates, setDropdownStates] = useState([false, false, false]);
+  const [searchTerms, setSearchTerms] = useState(["", "", ""]);
 
-  const dropdownRef = useRef(null)
-  const inputRef = useRef(null)
+  const dropdownRefs = [useRef(null), useRef(null), useRef(null)];
+  const inputRefs = [useRef(null), useRef(null), useRef(null)];
 
-  // Helper functions for localStorage
-  const saveServicesToLocalStorage = (servicesData) => {
+  // Save data to localStorage with timestamp
+  const saveToStorage = (key, data) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.SERVICES_DATA, JSON.stringify({
-        services: servicesData,
-        lastUpdated: new Date().toISOString()
-      }));
+      const storageData = {
+        data,
+        timestamp: new Date().getTime()
+      };
+      localStorage.setItem(key, JSON.stringify(storageData));
     } catch (error) {
-      console.error("Error saving to localStorage:", error);
+      console.error(`Error saving to localStorage (${key}):`, error);
     }
   };
 
-  const loadServicesFromLocalStorage = () => {
+  // Load data from localStorage and check if expired
+  const loadFromStorage = (key) => {
     try {
-      const cachedData = localStorage.getItem(STORAGE_KEYS.SERVICES_DATA);
-      return cachedData ? JSON.parse(cachedData).services : [];
+      const storedData = localStorage.getItem(key);
+      if (!storedData) return null;
+      
+      const parsedData = JSON.parse(storedData);
+      return {
+        data: parsedData.data,
+        timestamp: parsedData.timestamp,
+        isExpired: (new Date().getTime() - parsedData.timestamp) > CACHE_DURATION
+      };
     } catch (error) {
-      console.error("Error loading from localStorage:", error);
-      return [];
+      console.error(`Error loading from localStorage (${key}):`, error);
+      return null;
     }
   };
 
-  useEffect(() => {
-    const handleSidebarToggle = (e) => {
-      setSidebarCollapsed(e.detail);
-    };
+  // Fetch services from API
+  const fetchServices = async () => {
+    setFetchingData(prev => ({...prev, services: true}));
+    try {
+      const response = await axios.get(`${API_URL}/api/services/all`);
+      setServices(response.data);
+      saveToStorage(STORAGE_KEYS.SERVICES, response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching services:", error);
+      toast.error("Failed to load services");
+      throw error;
+    } finally {
+      setFetchingData(prev => ({...prev, services: false}));
+    }
+  };
 
-    window.addEventListener('sidebarToggled', handleSidebarToggle);
-    return () => window.removeEventListener('sidebarToggled', handleSidebarToggle);
-  }, []);
+  // Fetch personnel from API
+  const fetchPersonnel = async () => {
+    setFetchingData(prev => ({...prev, personnel: true}));
+    try {
+      const response = await axios.get(`${API_URL}/api/Personnel/matricules`);
+      setPersonnelList(response.data);
+      saveToStorage(STORAGE_KEYS.PERSONNEL, response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching personnel:", error);
+      toast.error("Failed to load personnel data");
+      throw error;
+    } finally {
+      setFetchingData(prev => ({...prev, personnel: false}));
+    }
+  };
 
+  // Initial data loading
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light"
-    setTheme(savedTheme)
-    document.documentElement.classList.add(savedTheme)
-  }, [])
-
-  // Fetch services when component mounts or when activeTab changes to 'list'
-  useEffect(() => {
-    const fetchInitialData = async () => {
+    const loadInitialData = async () => {
       try {
-        const matriculesResponse = await axios.get(`${API_URL}/api/Personnel/matricules`)
-        setChefMatricules(matriculesResponse.data)
-        setFilteredMatricules(matriculesResponse.data)
-
-        const cachedServices = loadServicesFromLocalStorage();
-        if (cachedServices.length > 0) {
-          setServices(cachedServices);
-          const lastUpdated = JSON.parse(localStorage.getItem(STORAGE_KEYS.SERVICES_DATA))?.lastUpdated;
-          if (new Date() - new Date(lastUpdated) > 5 * 60 * 1000) {
-            await fetchServices();
-          }
+        // Load services
+        const cachedServices = loadFromStorage(STORAGE_KEYS.SERVICES);
+        if (cachedServices && !cachedServices.isExpired) {
+          setServices(cachedServices.data);
         } else {
           await fetchServices();
         }
+
+        // Load personnel
+        const cachedPersonnel = loadFromStorage(STORAGE_KEYS.PERSONNEL);
+        if (cachedPersonnel && !cachedPersonnel.isExpired) {
+          setPersonnelList(cachedPersonnel.data);
+        } else {
+          await fetchPersonnel();
+        }
       } catch (error) {
-        console.error("Initial data error:", error)
-        toast.error("Failed to load initial data")
+        console.error("Initial data loading error:", error);
       }
-    }
+    };
 
-    fetchInitialData()
-  }, [])
+    loadInitialData();
+  }, []);
 
-  // Automatically fetch services when switching to list tab
+  // Refresh services when switching to list tab if data is stale
   useEffect(() => {
     if (activeTab === "list") {
-      fetchServices();
-    }
-  }, [activeTab])
-
-  const fetchServices = async () => {
-    setFetchingServices(true)
-    try {
-      const response = await axios.get(`${API_URL}/api/services/all`)
-      setServices(response.data)
-      saveServicesToLocalStorage(response.data)
-      toast.success("Services loaded")
-    } catch (error) {
-      console.error("Fetch services error:", error)
-      toast.error("Failed to load services")
-    } finally {
-      setFetchingServices(false)
-    }
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) && inputRef.current !== event.target) {
-        setShowDropdown(false)
+      const cachedServices = loadFromStorage(STORAGE_KEYS.SERVICES);
+      if (!cachedServices || cachedServices.isExpired) {
+        fetchServices();
       }
     }
+  }, [activeTab]);
 
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
-
+  // Handle click outside dropdown
   useEffect(() => {
-    if (searchTerm) {
-      const filtered = chefMatricules.filter(
-        chef => chef.matricule.includes(searchTerm) ||
-               `${chef.nom} ${chef.prenom}`.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredMatricules(filtered)
-    } else {
-      setFilteredMatricules(chefMatricules)
-    }
-  }, [searchTerm, chefMatricules])
+    const handleClickOutside = (event) => {
+      dropdownStates.forEach((state, index) => {
+        if (dropdownRefs[index].current && 
+            !dropdownRefs[index].current.contains(event.target) && 
+            inputRefs[index].current !== event.target) {
+          const newDropdownStates = [...dropdownStates];
+          newDropdownStates[index] = false;
+          setDropdownStates(newDropdownStates);
+        }
+      });
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownStates]);
 
   const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    document.documentElement.classList.replace(theme, newTheme)
-    localStorage.setItem("theme", newTheme)
-  }
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.documentElement.classList.replace(theme, newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    if (name === "chefMatricule") {
-      setSearchTerm(value)
-      setShowDropdown(true)
-    }
-  }
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-  const handleMatriculeSelect = (matricule, nom, prenom) => {
-    setFormData(prev => ({ ...prev, chefMatricule: matricule }))
-    setChefInfo(`${nom} ${prenom}`)
-    setShowDropdown(false)
-  }
+  const handleChefSearchChange = (index, value) => {
+    const newSearchTerms = [...searchTerms];
+    newSearchTerms[index] = value;
+    setSearchTerms(newSearchTerms);
+  };
+
+  const toggleDropdown = (index) => {
+    const newDropdownStates = [...dropdownStates];
+    newDropdownStates[index] = !newDropdownStates[index];
+    setDropdownStates(newDropdownStates);
+  };
+
+  const handleChefSelect = (index, personnel) => {
+    const newChefs = [...formData.chefs];
+    newChefs[index] = {
+      ...newChefs[index],
+      personnelId: personnel.id || "",
+      matricule: personnel.matricule,
+      nom: personnel.nom,
+      prenom: personnel.prenom,
+      role: personnel.role
+    };
+    setFormData(prev => ({ ...prev, chefs: newChefs }));
+    
+    const newDropdownStates = [...dropdownStates];
+    newDropdownStates[index] = false;
+    setDropdownStates(newDropdownStates);
+  };
 
   const validateForm = () => {
     if (!formData.serviceName.trim()) {
-      toast.error("Service name is required")
-      return false
+      toast.error("Service name is required");
+      return false;
     }
-    if (!formData.chefMatricule) {
-      toast.error("Chef matricule is required")
-      return false
+    
+    const hasChef = formData.chefs.some(chef => chef.matricule);
+    if (!hasChef) {
+      toast.error("At least one chief is required");
+      return false;
     }
-    return true
-  }
+    
+    return true;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!validateForm()) return
+    e.preventDefault();
+    if (!validateForm()) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
-      const response = await axios.post(`${API_URL}/api/services/create`, formData)
+      const requestData = {
+        serviceName: formData.serviceName,
+        ...formData.chefs.reduce((acc, chef, index) => {
+          if (chef.matricule) {
+            acc[`chef${index + 1}`] = { 
+              matricule: chef.matricule,
+              poid: index + 1
+            };
+          }
+          return acc;
+        }, {})
+      };
+
+      const response = await axios.post(`${API_URL}/api/services/create`, requestData);
       if ([200, 201].includes(response.status)) {
-        toast.success("Service created!")
-        setFormData({ serviceName: "", chefMatricule: "" })
-        setChefInfo(null)
-        const updatedServices = [...services, response.data]
-        setServices(updatedServices)
-        saveServicesToLocalStorage(updatedServices)
-        setActiveTab("list")
+        toast.success("Service created!");
+        setFormData({
+          serviceName: "",
+          chefs: [
+            { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
+            { personnelId: "", poid: 2, matricule: "", nom: "", prenom: "", role: "" },
+            { personnelId: "", poid: 3, matricule: "", nom: "", prenom: "", role: "" }
+          ]
+        });
+        setSearchTerms(["", "", ""]);
+        const updatedServices = [...services, response.data.service];
+        setServices(updatedServices);
+        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
+        setActiveTab("list");
       }
     } catch (err) {
-      console.error("Creation error:", err)
-      toast.error(err.response?.data?.message || "Failed to create service")
+      console.error("Creation error:", err);
+      toast.error(err.response?.data?.message || "Failed to create service");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async (serviceId) => {
     if (!serviceId) {
-      toast.error("Invalid service ID")
-      return
+      toast.error("Invalid service ID");
+      return;
     }
 
     if (window.confirm("Delete this service?")) {
       try {
-        await axios.delete(`${API_URL}/api/services/delete/${serviceId}`)
-        const updatedServices = services.filter(s => s.id !== serviceId)
-        setServices(updatedServices)
-        saveServicesToLocalStorage(updatedServices)
-        toast.success("Service deleted!")
+        await axios.delete(`${API_URL}/api/services/delete/${serviceId}`);
+        const updatedServices = services.filter(s => s.id !== serviceId);
+        setServices(updatedServices);
+        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
+        toast.success("Service deleted!");
       } catch (error) {
-        console.error("Delete error:", error)
-        toast.error(error.response?.data?.message || "Delete failed")
+        console.error("Delete error:", error);
+        toast.error(error.response?.data?.message || "Delete failed");
       }
     }
-  }
+  };
 
   const handleEdit = (service) => {
     if (!service?.id) {
-      toast.error("Invalid service data")
-      return
+      toast.error("Invalid service data");
+      return;
     }
+
+    const chefs = [
+      service.chef1 ? { 
+        personnelId: service.chef1.id, 
+        poid: 1,
+        matricule: service.chef1.matricule,
+        nom: service.chef1.nom,
+        prenom: service.chef1.prenom,
+        role: service.chef1.role
+      } : { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
+      service.chef2 ? { 
+        personnelId: service.chef2.id, 
+        poid: 2,
+        matricule: service.chef2.matricule,
+        nom: service.chef2.nom,
+        prenom: service.chef2.prenom,
+        role: service.chef2.role
+      } : { personnelId: "", poid: 2, matricule: "", nom: "", prenom: "", role: "" },
+      service.chef3 ? { 
+        personnelId: service.chef3.id, 
+        poid: 3,
+        matricule: service.chef3.matricule,
+        nom: service.chef3.nom,
+        prenom: service.chef3.prenom,
+        role: service.chef3.role
+      } : { personnelId: "", poid: 3, matricule: "", nom: "", prenom: "", role: "" }
+    ];
 
     setEditingService({
       id: service.id,
       serviceName: service.serviceName,
-      chefMatricule: service.chefMatricule || service.chefHierarchique?.matricule || ""
-    })
-    setShowEditModal(true)
-  }
+      chefs: chefs
+    });
+    setShowEditModal(true);
+  };
 
   const handleEditSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (!editingService?.id) {
-      toast.error("Invalid service ID")
-      return
+      toast.error("Invalid service ID");
+      return;
     }
 
-    if (!editingService.serviceName?.trim() || !editingService.chefMatricule) {
-      toast.error("All fields required")
-      return
+    if (!editingService.serviceName?.trim()) {
+      toast.error("Service name is required");
+      return;
     }
 
     try {
+      const requestData = {
+        serviceName: editingService.serviceName
+      };
+
+      editingService.chefs.forEach((chef, index) => {
+        if (chef.matricule) {
+          requestData[`chef${index + 1}Matricule`] = chef.matricule;
+          requestData[`poid${index + 1}`] = index + 1;
+        }
+      });
+
       const response = await axios.put(
         `${API_URL}/api/services/update/${editingService.id}`,
-        {
-          serviceName: editingService.serviceName,
-          chefMatricule: editingService.chefMatricule,
-        }
-      )
+        requestData
+      );
 
       if (response.status === 200) {
         const updatedServices = services.map(s => 
           s.id === editingService.id ? response.data : s
-        )
-        setServices(updatedServices)
-        saveServicesToLocalStorage(updatedServices)
-        toast.success("Service updated!")
-        setShowEditModal(false)
+        );
+        setServices(updatedServices);
+        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
+        toast.success("Service updated!");
+        setShowEditModal(false);
       }
     } catch (error) {
-      console.error("Update error:", error)
-      toast.error(error.response?.data?.message || "Update failed")
+      console.error("Update error:", error);
+      toast.error(error.response?.data?.message || "Update failed");
     }
-  }
+  };
 
-  const handleEditChange = (e) => {
-    const { name, value } = e.target
-    setEditingService(prev => ({ ...prev, [name]: value }))
-  }
+  const handleEditChefSelect = (index, personnel) => {
+    const newChefs = [...editingService.chefs];
+    newChefs[index] = {
+      ...newChefs[index],
+      personnelId: personnel.id || "",
+      matricule: personnel.matricule,
+      nom: personnel.nom,
+      prenom: personnel.prenom,
+      role: personnel.role
+    };
+    setEditingService(prev => ({ ...prev, chefs: newChefs }));
+  };
+
+  const filteredPersonnel = (index) => {
+    const term = searchTerms[index].toLowerCase();
+    if (!term) return personnelList;
+
+    return personnelList.filter(personnel => 
+      personnel.matricule.toLowerCase().includes(term) ||
+      personnel.nom.toLowerCase().includes(term) ||
+      personnel.prenom.toLowerCase().includes(term) ||
+      (personnel.role && personnel.role.toLowerCase().includes(term))
+    );
+  };
+
+  const renderChefInputs = (chefs, isEditing = false) => {
+    return chefs.map((chef, index) => (
+      <div className="chef-input-group" key={index}>
+        <label>Chief {index + 1} (Weight {index + 1}):</label>
+        <div className="matricule-dropdown-container">
+          <input
+            ref={inputRefs[index]}
+            type="text"
+            value={chef.matricule ? `${chef.matricule} - ${chef.nom} ${chef.prenom}${chef.role ? ` (${chef.role})` : ''}` : ""}
+            onChange={(e) => isEditing ? null : handleChefSearchChange(index, e.target.value)}
+            onFocus={() => {
+              const newStates = [...dropdownStates];
+              newStates[index] = true;
+              setDropdownStates(newStates);
+            }}
+            placeholder="Select chief"
+            readOnly={isEditing}
+          />
+          <div className="dropdown-icon" onClick={() => toggleDropdown(index)}>
+            <FiChevronDown />
+          </div>
+
+          {dropdownStates[index] && (
+            <div className="matricule-dropdown" ref={dropdownRefs[index]}>
+              <div className="dropdown-search">
+                <FiSearch className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search chief..."
+                  value={searchTerms[index]}
+                  onChange={(e) => handleChefSearchChange(index, e.target.value)}
+                />
+              </div>
+              <div className="dropdown-scroll">
+                {filteredPersonnel(index).length > 0 ? (
+                  filteredPersonnel(index).map((personnel) => (
+                    <div
+                      key={personnel.matricule}
+                      className={`dropdown-item ${
+                        chef.matricule === personnel.matricule ? "selected" : ""
+                      }`}
+                      onClick={() => isEditing ? 
+                        handleEditChefSelect(index, personnel) : 
+                        handleChefSelect(index, personnel)
+                      }
+                    >
+                      <span className="matricule-number">{personnel.matricule}</span>
+                      <span className="chef-name">
+                        {personnel.nom} {personnel.prenom}{personnel.role ? ` (${personnel.role})` : ''}
+                      </span>
+                      {chef.matricule === personnel.matricule && <FiCheck className="selected-icon" />}
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-results">
+                    <FiX className="no-results-icon" />
+                    <span>No chiefs found</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    ));
+  };
 
   return (
     <div className={`app-container ${theme}`}>
@@ -315,76 +499,27 @@ const AjoutService = () => {
 
             {activeTab === "add" && (
               <div className="ajout-service-container">
-                <h2>Ajouter Un Service</h2>
+                <h2>Add Service</h2>
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
-                    <label>Nom Du Service:</label>
+                    <label>Service Name:</label>
                     <input
                       type="text"
                       name="serviceName"
                       value={formData.serviceName}
                       onChange={handleInputChange}
                       required
-                      placeholder="nom du Service"
+                      placeholder="Service name"
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label>Matricule Du Chef:</label>
-                    <div className="matricule-dropdown-container">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        name="chefMatricule"
-                        value={formData.chefMatricule}
-                        onChange={handleInputChange}
-                        onFocus={() => setShowDropdown(true)}
-                        required
-                        placeholder="Select chef"
-                      />
-                      <div className="dropdown-icon" onClick={() => setShowDropdown(!showDropdown)}>
-                        <FiChevronDown />
-                      </div>
-
-                      {showDropdown && (
-                        <div className="matricule-dropdown" ref={dropdownRef}>
-                          <div className="dropdown-search">
-                            <FiSearch className="search-icon" />
-                            <input
-                              type="text"
-                              placeholder="Search..."
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                          </div>
-                          <div className="dropdown-scroll">
-                            {filteredMatricules.length > 0 ? (
-                              filteredMatricules.map((chef) => (
-                                <div
-                                  key={chef.matricule}
-                                  className={`dropdown-item ${
-                                    formData.chefMatricule === chef.matricule ? "selected" : ""
-                                  }`}
-                                  onClick={() => handleMatriculeSelect(chef.matricule, chef.nom, chef.prenom)}
-                                >
-                                  <span className="matricule-number">{chef.matricule}</span>
-                                  <span className="chef-name">
-                                    {chef.nom} {chef.prenom}
-                                  </span>
-                                  {formData.chefMatricule === chef.matricule && <FiCheck className="selected-icon" />}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="no-results">
-                                <FiX className="no-results-icon" />
-                                <span>No matches</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {chefInfo && <div className="chef-info valid">{chefInfo}</div>}
+                  <div className="chefs-container">
+                    <h3>Service Chiefs</h3>
+                    <p className="helper-text">
+                      Select up to 3 chiefs for this service with fixed weights.
+                      Chief 1 has weight 1 (highest priority), Chief 2 has weight 2, and Chief 3 has weight 3.
+                    </p>
+                    {renderChefInputs(formData.chefs)}
                   </div>
 
                   <button type="submit" className="submit-button" disabled={loading}>
@@ -398,27 +533,38 @@ const AjoutService = () => {
               <div className="services-list-container">
                 <div className="services-list-header">
                   <h2><FiServer /> Services</h2>
-                  <button
-                    className="submit-button"
-                    onClick={fetchServices}
-                    disabled={fetchingServices}
-                  >
-                    <FiRefreshCw /> Refresh
-                  </button>
+                  <div className="action-buttons">
+                    <button
+                      className="submit-button"
+                      onClick={fetchServices}
+                      disabled={fetchingData.services}
+                    >
+                      <FiRefreshCw /> Refresh Services
+                    </button>
+                    <button
+                      className="submit-button"
+                      onClick={fetchPersonnel}
+                      disabled={fetchingData.personnel}
+                    >
+                      <FiRefreshCw /> Refresh Chiefs
+                    </button>
+                  </div>
                 </div>
 
-                {fetchingServices ? (
+                {fetchingData.services ? (
                   <div className="loading-container">
                     <div className="loading-spinner-large"></div>
-                    <p>Loading...</p>
+                    <p>Loading services...</p>
                   </div>
-                ) : services.length > 0 ? (
+) : Array.isArray(services) && services.length > 0 ? (
                   <div className="services-table-container">
                     <table className="services-table">
                       <thead>
                         <tr>
-                          <th>nom du Service </th>
-                          <th>Matricule du Chef </th>
+                          <th>Service Name</th>
+                          <th>Chief 1 (Weight 1)</th>
+                          <th>Chief 2 (Weight 2)</th>
+                          <th>Chief 3 (Weight 3)</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -427,7 +573,19 @@ const AjoutService = () => {
                           <tr key={service.id}>
                             <td>{service.serviceName}</td>
                             <td>
-                              {service.chefMatricule || service.chefHierarchique?.matricule}
+                              {service.chef1 ? 
+                                `${service.chef1.matricule} - ${service.chef1.nom}${service.chef1.role ? ` (${service.chef1.role})` : ''}` : 
+                                '-'}
+                            </td>
+                            <td>
+                              {service.chef2 ? 
+                                `${service.chef2.matricule} - ${service.chef2.nom}${service.chef2.role ? ` (${service.chef2.role})` : ''}` : 
+                                '-'}
+                            </td>
+                            <td>
+                              {service.chef3 ? 
+                                `${service.chef3.matricule} - ${service.chef3.nom}${service.chef3.role ? ` (${service.chef3.role})` : ''}` : 
+                                '-'}
                             </td>
                             <td className="actions">
                               <button className="edit-button" onClick={() => handleEdit(service)}>
@@ -445,8 +603,8 @@ const AjoutService = () => {
                 ) : (
                   <div className="empty-state">
                     <FiInfo />
-                    <h3>Aucun Services</h3>
-                    <p>Ajoute un service</p>
+                    <h3>No Services</h3>
+                    <p>Add a service to get started</p>
                   </div>
                 )}
               </div>
@@ -456,7 +614,7 @@ const AjoutService = () => {
               <div className="modal-overlay">
                 <div className="modal-container">
                   <div className="modal-header">
-                    <h3>Modifier Un Service</h3>
+                    <h3>Edit Service</h3>
                     <button className="modal-close" onClick={() => setShowEditModal(false)}>
                       <FiX />
                     </button>
@@ -469,19 +627,14 @@ const AjoutService = () => {
                           type="text"
                           name="serviceName"
                           value={editingService.serviceName}
-                          onChange={handleEditChange}
+                          onChange={(e) => setEditingService({...editingService, serviceName: e.target.value})}
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label>Chef Matricule:</label>
-                        <input
-                          type="text"
-                          name="chefMatricule"
-                          value={editingService.chefMatricule}
-                          onChange={handleEditChange}
-                          required
-                        />
+                      
+                      <div className="chefs-container">
+                        <h3>Service Chiefs</h3>
+                        {renderChefInputs(editingService.chefs, true)}
                       </div>
                     </form>
                   </div>
@@ -512,7 +665,7 @@ const AjoutService = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AjoutService
+export default AjoutService;

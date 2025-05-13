@@ -1,6 +1,5 @@
-"use client"
 import { FiX, FiCheck, FiClock, FiFileText, FiEye } from "react-icons/fi"
-import "./Demandes.css"
+import "./DemandeDetailsModal.css"
 import { useState } from "react"
 
 const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionable }) => {
@@ -68,7 +67,7 @@ const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionab
       setPreviewFileId(fileId)
       setPreviewFileUrl(url)
     } catch (err) {
-      console.error("Erreur d’aperçu:", err)
+      console.error("Erreur d'aperçu:", err)
       alert("Impossible d'afficher la pièce jointe.")
     }
   }
@@ -103,6 +102,36 @@ const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionab
     setActionMode(null)
   }
 
+  const renderChefResponse = (responseCode, observation) => {
+    let statusText = "";
+    let statusClass = "";
+    
+    switch (responseCode) {
+      case "O":
+        statusText = "Approuvée";
+        statusClass = "approved";
+        break;
+      case "N":
+        statusText = "Rejetée";
+        statusClass = "rejected";
+        break;
+      case "I":
+        statusText = "En attente";
+        statusClass = "pending";
+        break;
+      default:
+        statusText = "Non spécifié";
+        statusClass = "";
+    }
+    
+    return (
+      <div className={`chef-response ${statusClass}`}>
+        <span className="response-status">{statusText}</span>
+        {observation && <span className="response-observation">{observation}</span>}
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -110,6 +139,50 @@ const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionab
           <h2 className="modal-title">Détails de la demande</h2>
           <button className="modal-close" onClick={onClose}><FiX /></button>
         </div>
+        
+<div className="chefs-responses-section">
+  <h3 className="section-title">Réponses des chefs</h3>
+  <div className="chefs-responses-grid">
+  
+    <div className="chef-response-group">
+      <div className="chef-label">Chef 1</div>
+      <div className="chef-value">
+        {demande.reponseChef?.responseChef1 
+          ? renderChefResponse(
+              demande.reponseChef.responseChef1,
+              "Observation: " + demande.reponseChef.observationChef1
+            )
+          : <span className="empty">Non spécifié</span>}
+      </div>
+    </div>
+
+    <div className="chef-response-group">
+      <div className="chef-label">Chef 2</div>
+      <div className="chef-value">
+        {demande.reponseChef?.responseChef2 
+          ? renderChefResponse(
+              demande.reponseChef.responseChef2,
+              "Observation: " + demande.reponseChef.observationChef2
+            )
+          : <span className="empty">Non spécifié</span>}
+      </div>
+    </div>
+
+    <div className="chef-response-group">
+      <div className="chef-label">Chef 3</div>
+      <div className="chef-value">
+        {demande.reponseChef?.responseChef3 
+          ? renderChefResponse(
+              demande.reponseChef.responseChef3,
+              "Observation: " + demande.reponseChef.observationChef3
+            )
+          : <span className="empty">Non spécifié</span>}
+      </div>
+    </div>
+
+  </div>
+</div>
+
 
         <div className="modal-body">
           <div className="demande-details-grid">
@@ -177,56 +250,7 @@ const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionab
               <span className="empty">Aucune pièce jointe</span>
             )}
           </div>
-
-          <div className="demande-status">
-            <div className="detail-label">Statut actuel</div>
-            <div className="status-history">
-              <div className={`status-item ${getStatusClass(demande.reponseChef)}`}>
-                <div className="status-date">{formatDate(demande.dateDemande)}</div>
-                <div className={`status-text ${getStatusClass(demande.reponseChef)}`}>
-                  {getStatusIcon(demande.reponseChef)} {getStatusText(demande.reponseChef)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {actionMode && (
-          <div className="action-observation">
-            <label htmlFor="observation">Observation (facultatif)</label>
-            <textarea
-              id="observation"
-              className="observation-textarea"
-              value={observation}
-              onChange={(e) => setObservation(e.target.value)}
-              placeholder="Ajouter une observation..."
-            />
-            <div className="observation-actions">
-              <button className="btn-cancel" onClick={cancelAction}>
-                Annuler
-              </button>
-              <button className="btn-confirm" onClick={confirmAction}>
-                Confirmer {actionMode === "approve" ? "l'approbation" : "le refus"}
-              </button>
-            </div>
-          </div>
-        )}
         </div>
-
-        {!actionMode && (
-          <div className="modal-footer">
-            <button className="modal-btn modal-btn-secondary" onClick={onClose}>Fermer</button>
-            {isActionable && (
-              <>
-                <button className="modal-btn modal-btn-danger" onClick={() => setActionMode("reject")}>
-                  <FiX /> Refuser
-                </button>
-                <button className="modal-btn modal-btn-primary" onClick={() => setActionMode("approve")}>
-                  <FiCheck /> Approuver
-                </button>
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

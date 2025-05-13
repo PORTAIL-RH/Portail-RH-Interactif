@@ -1,343 +1,407 @@
-@import url('../../shared-styles.css');
-
-/* ============ Base Layout ============ */
-.content-wrapper {
-  flex: 1;
-  padding: 1rem;
-  background-color: var(--bg-color);
+/* Base styles and variables */
+:root {
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --secondary-color: #f3f4f6;
+  --text-color: #1f2937;
+  --text-light: #6b7280;
+  --border-color: #e5e7eb;
+  --background-color: #ffffff;
+  --card-background: #ffffff;
+  --danger-color: #ef4444;
+  --danger-hover: #dc2626;
+  --success-color: #10b981;
+  --success-hover: #059669;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --transition: all 0.2s ease;
+  --radius: 0.375rem;
+  --scrollbar-width: 8px;
+  --scrollbar-track: rgba(0, 0, 0, 0.05);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
 }
 
+.dark {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --secondary-color: #374151;
+  --text-color: #f9fafb;
+  --text-light: #d1d5db;
+  --border-color: #4b5563;
+  --background-color: #111827;
+  --card-background: #1f2937;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --scrollbar-track: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.2);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Global scrollbar styling */
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}
+
+/* Ensure scrollbars are always visible */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+    "Helvetica Neue", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  transition: var(--transition);
+  overflow-y: scroll;
+}
+
+/* App Container */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: var(--transition);
+  position: relative;
+}
+
+/* Main Content Container */
 .ajout-container {
   flex: 1;
-  margin-left: var(--sidebar-width);
-  transition: 
-    margin-left var(--sidebar-transition),
-    width var(--sidebar-transition);
-  width: calc(100% - var(--sidebar-width));
-  will-change: margin-left, width;
+  display: flex;
+  flex-direction: column;
+  margin-left: 250px;
+  transition: margin-left 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .ajout-container.collapsed {
-  margin-left: var(--sidebar-collapsed-width);
-  width: calc(100% - var(--sidebar-collapsed-width));
+  margin-left: 70px;
 }
 
 .ajout-content {
+  flex: 1;
   padding: 1.5rem;
-  min-height: calc(100vh - var(--navbar-height));
-  background-color: var(--bg-color);
-  transition: padding var(--sidebar-transition);
+  overflow-y: auto;
+  position: relative;
+  z-index: 1; /* Ensure content is above other elements */
 }
 
-/* ============ Dark Mode ============ */
-.app-container.dark {
-  --bg-color: var(--dark-bg);
-  --text-primary: var(--dark-text);
-  --bg-card: var(--dark-card);
-  --border-color: var(--dark-border);
+/* Service Container */
+.service-container {
+  background-color: var(--card-background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: visible; /* Changed from hidden to visible */
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
 }
 
-/* ============ Tab Navigation ============ */
+/* Tabs */
 .service-tabs {
   display: flex;
-  background-color: var(--bg-tertiary);
-  border-radius: 0.75rem;
-  padding: 0.375rem;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow-sm);
   position: relative;
+  background-color: var(--secondary-color);
+  border-bottom: 1px solid var(--border-color);
+  z-index: 2; /* Ensure tabs are above content */
 }
 
 .service-tab {
   flex: 1;
-  padding: 0.75rem 1.5rem;
+  padding: 1rem;
   text-align: center;
-  font-weight: 600;
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-  z-index: 1;
-  border: none;
   background: transparent;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-light);
+  transition: var(--transition);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .service-tab.active {
   color: var(--primary-color);
 }
 
+.service-tab:hover {
+  color: var(--primary-hover);
+}
+
 .tab-indicator {
   position: absolute;
-  height: calc(100% - 0.75rem);
-  top: 0.375rem;
-  left: 0.375rem;
-  width: calc(50% - 0.75rem);
-  background-color: var(--bg-card);
-  border-radius: 0.5rem;
-  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: var(--shadow-sm);
-  z-index: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 50%;
+  background-color: var(--primary-color);
+  transition: transform 0.3s ease;
+  transform: translateX(0);
 }
 
 .tab-indicator.right {
   transform: translateX(100%);
 }
 
-/* ============ Form Styles ============ */
+/* Add Service Form */
 .ajout-service-container {
-  background-color: var(--bg-card);
-  border-radius: 0.75rem;
-  padding: 2rem;
-  box-shadow: var(--shadow-sm);
-  margin-bottom: 2rem;
+  padding: 1.5rem;
+  position: relative;
+  overflow: visible;
 }
 
 .ajout-service-container h2 {
-  font-size: 1.5rem;
   margin-bottom: 1.5rem;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-color);
 }
 
 .form-group {
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .form-group label {
   display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
   margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
 .form-group input {
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 0.75rem;
   border: 1px solid var(--border-color);
-  border-radius: 0.625rem;
-  background-color: var(--bg-input);
-  color: var(--text-primary);
-  font-size: 0.875rem;
-  transition: all 0.2s ease;
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  transition: var(--transition);
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px var(--primary-transparent);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
-/* ============ Enhanced Dropdown ============ */
+.chefs-container {
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.chefs-container h3 {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.chef-input-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  position: relative;
+}
+
+.chef-input-group label {
+  min-width: 70px;
+  font-weight: 500;
+}
+
 .matricule-dropdown-container {
+  flex: 1;
   position: relative;
 }
 
 .matricule-dropdown-container input {
+  width: 100%;
+  padding: 0.75rem;
   padding-right: 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 .dropdown-icon {
   position: absolute;
-  right: 1rem;
+  right: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-tertiary);
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-}
-
-.dropdown-icon:hover {
-  background-color: var(--bg-hover);
-  color: var(--text-primary);
+  color: var(--text-light);
 }
 
 .matricule-dropdown {
   position: absolute;
-  top: calc(100% + 0.5rem);
+  top: calc(100% + 5px);
   left: 0;
   width: 100%;
-  background-color: var(--bg-card);
+  max-height: 300px;
+  background-color: var(--card-background);
   border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
+  border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  z-index: 50;
-  opacity: 0;
-  transform: translateY(-10px);
-  visibility: hidden;
-  transition: 
-    opacity 0.2s ease,
-    transform 0.2s ease,
-    visibility 0.2s;
-}
-
-.matricule-dropdown.show {
-  opacity: 1;
-  transform: translateY(0);
-  visibility: visible;
+  z-index: 100; /* Increased z-index to ensure dropdown is above all elements */
+  overflow: visible; /* Changed from hidden to visible */
 }
 
 .dropdown-search {
+  position: relative;
   padding: 0.75rem;
   border-bottom: 1px solid var(--border-color);
-  position: relative;
 }
 
-.dropdown-search .search-icon {
+.search-icon {
   position: absolute;
-  left: 1rem;
+  left: 1.25rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-tertiary);
+  color: var(--text-light);
 }
 
 .dropdown-search input {
   width: 100%;
-  padding: 0.625rem 0.625rem 0.625rem 2.25rem;
+  padding: 0.5rem;
+  padding-left: 2rem;
   border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  background-color: var(--bg-input);
-  color: var(--text-primary);
-  font-size: 0.875rem;
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  color: var(--text-color);
 }
 
 .dropdown-scroll {
-  max-height: 300px;
+  max-height: 250px;
   overflow-y: auto;
-  padding: 0.5rem 0;
+  position: relative;
+  z-index: 101; /* Ensure scrollbar is above all elements */
 }
 
 .dropdown-item {
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  color: var(--text-primary);
-  font-size: 0.875rem;
   display: flex;
   align-items: center;
-  margin: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
 .dropdown-item:hover {
-  background-color: var(--bg-hover);
+  background-color: rgba(99, 102, 241, 0.1);
 }
 
 .dropdown-item.selected {
-  background-color: var(--primary-transparent);
-  color: var(--primary-color);
+  background-color: rgba(99, 102, 241, 0.15);
 }
 
 .matricule-number {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  background-color: var(--bg-tertiary);
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
-  margin-right: 0.75rem;
-  font-size: 0.75rem;
+  font-weight: 500;
+  margin-right: 0.5rem;
+  color: var(--primary-color);
 }
 
 .chef-name {
   flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .selected-icon {
-  color: var(--primary-color);
+  color: var(--success-color);
   margin-left: 0.5rem;
-  flex-shrink: 0;
 }
 
 .no-results {
-  padding: 1.5rem;
-  text-align: center;
-  color: var(--text-tertiary);
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--text-light);
   gap: 0.5rem;
 }
 
 .no-results-icon {
   color: var(--danger-color);
-  font-size: 1.5rem;
 }
 
-/* ============ Chef Info Display ============ */
-.chef-info {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  display: inline-flex;
+.poid-input {
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  animation: fadeIn 0.3s ease;
 }
 
-.chef-info.valid {
-  background-color: var(--success-transparent);
-  color: var(--success-color);
+.poid-input label {
+  min-width: auto;
 }
 
-/* ============ Submit Button ============ */
+.poid-input input {
+  width: 80px;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
 .submit-button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.875rem 1.75rem;
+  padding: 0.75rem 1.5rem;
   background-color: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 0.75rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
+  border-radius: var(--radius);
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
-  width: 100%;
-  margin-top: 0.5rem;
+  transition: var(--transition);
 }
 
 .submit-button:hover {
   background-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.submit-button:active {
-  transform: translateY(0);
 }
 
 .submit-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-  background-color: var(--secondary-color);
 }
 
-/* ============ Services Table ============ */
+/* Services List */
 .services-list-container {
-  background-color: var(--bg-card);
-  border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
+  position: relative;
 }
 
 .services-list-header {
@@ -348,9 +412,8 @@
 }
 
 .services-list-header h2 {
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 600;
-  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -358,115 +421,124 @@
 
 .services-table-container {
   overflow-x: auto;
-  border-radius: 0.5rem;
+  position: relative;
+  z-index: 5; /* Ensure table scrollbar is above other elements */
 }
 
 .services-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 0.875rem;
+  border-collapse: collapse;
+  text-align: left;
 }
 
 .services-table th {
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-weight: 600;
-  text-align: left;
-  padding: 0.875rem 1rem;
+  padding: 1rem;
+  background-color: var(--secondary-color);
+  font-weight: 500;
+  border-bottom: 2px solid var(--border-color);
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 6; /* Ensure table headers are above scrolling content */
 }
 
 .services-table td {
-  padding: 0.875rem 1rem;
-  color: var(--text-primary);
+  padding: 1rem;
   border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-card);
 }
 
-.services-table tr:last-child td {
-  border-bottom: none;
+.services-table tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
-.services-table tr:hover td {
-  background-color: var(--bg-hover);
+.dark .services-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
-.services-table .actions {
+.actions {
   display: flex;
   gap: 0.5rem;
-  justify-content: flex-end;
 }
 
-.services-table .edit-button,
-.services-table .delete-button {
-  padding: 0.5rem 0.875rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
+.edit-button,
+.delete-button {
+  display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.25rem;
+  padding: 0.5rem;
   border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 0.875rem;
 }
 
-.services-table .edit-button {
-  background-color: var(--primary-transparent);
-  color: var(--primary-color);
+.edit-button {
+  background-color: var(--secondary-color);
+  color: var(--text-color);
 }
 
-.services-table .edit-button:hover {
-  background-color: var(--primary-color);
-  color: white;
+.edit-button:hover {
+  background-color: #e5e7eb;
 }
 
-.services-table .delete-button {
-  background-color: var(--danger-transparent);
+.delete-button {
+  background-color: rgba(239, 68, 68, 0.1);
   color: var(--danger-color);
 }
 
-.services-table .delete-button:hover {
-  background-color: var(--danger-color);
-  color: white;
+.delete-button:hover {
+  background-color: rgba(239, 68, 68, 0.2);
 }
 
-/* ============ Empty State ============ */
+/* Empty State */
 .empty-state {
-  padding: 3rem 2rem;
-  text-align: center;
-  color: var(--text-tertiary);
-  background-color: var(--bg-tertiary);
-  border-radius: 0.75rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  margin: 1rem 0;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--text-light);
+  text-align: center;
 }
 
 .empty-state svg {
-  font-size: 2.5rem;
-  opacity: 0.7;
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
 }
 
 .empty-state h3 {
+  margin-bottom: 0.5rem;
   font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 500;
 }
 
-.empty-state p {
-  color: var(--text-secondary);
-  max-width: 28rem;
-  margin: 0 auto;
-  line-height: 1.5;
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
 }
 
-/* ============ Modal Styles ============ */
+.loading-spinner-large {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Modal */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -477,173 +549,183 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  z-index: 1000; /* Highest z-index to ensure modal is above everything */
 }
 
 .modal-container {
-  background-color: var(--bg-card);
-  border-radius: 1rem;
-  box-shadow: var(--shadow-xl);
   width: 90%;
-  max-width: 32rem;
+  max-width: 600px;
+  background-color: var(--card-background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: visible; /* Changed from hidden to visible */
   max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .modal-header {
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background-color: var(--card-background);
+  z-index: 1002; /* Ensure header is above modal body */
 }
 
-.modal-title {
-  font-size: 1.375rem;
+.modal-header h3 {
+  font-size: 1.25rem;
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .modal-close {
   background: transparent;
   border: none;
-  color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
+  color: var(--text-light);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  padding: 0.25rem;
   border-radius: 50%;
-  transition: all 0.2s ease;
+  transition: var(--transition);
 }
 
 .modal-close:hover {
-  background-color: var(--bg-hover);
-  color: var(--danger-color);
+  background-color: var(--secondary-color);
+  color: var(--text-color);
 }
 
 .modal-body {
   padding: 1.5rem;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1001; /* Ensure modal body scrollbar is above other elements */
 }
 
 .modal-footer {
-  padding: 1.5rem;
-  border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  position: sticky;
+  bottom: 0;
+  background-color: var(--card-background);
+  z-index: 1002; /* Ensure footer is above modal body */
 }
 
 .modal-cancel {
-  padding: 0.75rem 1.25rem;
-  border-radius: 0.625rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
+  padding: 0.75rem 1.5rem;
+  background-color: var(--secondary-color);
+  color: var(--text-color);
   border: none;
-  transition: all 0.2s ease;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
 .modal-cancel:hover {
-  background-color: var(--bg-hover);
-  color: var(--text-primary);
+  background-color: #e5e7eb;
 }
 
 .modal-save {
   padding: 0.75rem 1.5rem;
-  border-radius: 0.625rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
   background-color: var(--primary-color);
   color: white;
   border: none;
-  transition: all 0.2s ease;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
 }
 
 .modal-save:hover {
   background-color: var(--primary-hover);
 }
 
-/* ============ Animations ============ */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ============ Responsive Design ============ */
+/* Responsive */
 @media (max-width: 768px) {
-  .ajout-content {
-    padding: 1rem;
+  .ajout-container {
+    margin-left: 0;
   }
 
-  .service-tabs {
-    margin-bottom: 1.5rem;
+  .ajout-container.collapsed {
+    margin-left: 0;
   }
 
-  .service-tab {
-    padding: 0.75rem 1rem;
-    font-size: 0.8125rem;
-  }
-
-  .ajout-service-container {
-    padding: 1.5rem;
-  }
-
-  .services-list-container {
-    padding: 1rem;
-  }
-
-  .services-table .actions {
+  .chef-input-group {
     flex-direction: column;
-    gap: 0.375rem;
+    align-items: flex-start;
   }
 
-  .services-table .edit-button,
-  .services-table .delete-button {
+  .matricule-dropdown-container {
     width: 100%;
-    justify-content: center;
   }
 
-  .modal-container {
-    width: 95%;
-    max-width: none;
+  .poid-input {
+    width: 100%;
+  }
+
+  .services-table th,
+  .services-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .actions {
+    flex-direction: column;
   }
 }
 
-@media (max-width: 480px) {
-  .service-tab {
-    padding: 0.625rem 0.75rem;
-    font-size: 0.75rem;
-  }
+/* Sidebar and Navbar styles - these would typically be in separate files */
+/* Basic styles to ensure the layout works */
+.sidebar {
+  width: 250px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  background-color: var(--card-background);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.3s ease;
+  z-index: 100;
+  overflow-y: auto;
+}
 
-  .form-group input {
-    padding: 0.75rem 0.875rem;
-  }
+.sidebar.collapsed {
+  width: 70px;
+}
 
-  .submit-button {
-    padding: 0.75rem 1.25rem;
-  }
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: var(--card-background);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 50; /* Ensure navbar is above content but below dropdowns */
+}
+
+/* Toast container styles to ensure toasts appear above everything */
+.Toastify__toast-container {
+  z-index: 9999 !important;
+}
+
+/* Ensure all scrollable containers have proper z-index */
+.ajout-content,
+.dropdown-scroll,
+.services-table-container,
+.modal-body,
+.sidebar {
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
 }

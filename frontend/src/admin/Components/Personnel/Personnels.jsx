@@ -115,7 +115,7 @@ const Personnel = () => {
 
     loadInitialData();
 
-    // Set up polling for personnel every 2 seconds
+    // Set up polling for personnel every 20 seconds
     const pollingInterval = setInterval(fetchPersonnel, 20000);
 
     // Sidebar toggle listener
@@ -371,111 +371,115 @@ const Personnel = () => {
     }
   };
 
-  // Handle validation (activate/deactivate) - FIXED VERSION
-  const handleValidate = async (personnelId, action) => {
-    setUpdatingId(personnelId);
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        showToast("Please login first", "error");
-        setUpdatingId(null);
-        return;
-      }
-  
-      // Get the personnel being activated
-      const person = personnel.find(p => p.id === personnelId);
-      if (!person) {
-        throw new Error("Personnel not found");
-      }
-  
-      showToast(`${action === "activate" ? "Activating" : "Deactivating"} personnel...`, "info");
-  
-      // Prepare payload - use the current service if available
-      const serviceToUse = person.serviceId || selectedService;
-      const payload = action === "activate" ? {
-        role: person.role || selectedRole,
-        serviceId: ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole) 
-          ? serviceToUse 
-          : null
-      } : null;
-  
-      console.log("Sending activation payload:", payload);
-  
-      const response = await fetch(
-        `${API_URL}/api/admin/${action === "activate" ? "activate" : "desactivate"}-personnel/${personnelId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: payload ? JSON.stringify(payload) : null,
-        }
-      );
-  
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || `Failed to ${action} personnel`);
-      }
-  
-      const result = await response.json();
-      showToast(result.message, "success");
-  
-      // Find the service object if service is selected
-      const serviceObj = serviceToUse 
-        ? services.find(s => s.serviceId === serviceToUse) 
-        : null;
-  
-      // Update only the specific personnel in state
-      setPersonnel(prevPersonnel =>
-        prevPersonnel.map(p =>
-          p.id === personnelId
-            ? {
-                ...p,
-                active: action === "activate",
-                role: action === "activate" ? (person.role || selectedRole) : p.role,
-                serviceId: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceToUse
-                  : p.serviceId,
-                service: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceObj
-                  : p.service,
-                serviceName: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceObj?.serviceName
-                  : p.serviceName
-              }
-            : p
-        )
-      );
-  
-      // Update localStorage
-      saveToLocalStorage(STORAGE_KEYS.PERSONNEL_DATA, { 
-        personnel: personnel.map(p =>
-          p.id === personnelId
-            ? {
-                ...p,
-                active: action === "activate",
-                role: action === "activate" ? (person.role || selectedRole) : p.role,
-                serviceId: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceToUse
-                  : p.serviceId,
-                service: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceObj
-                  : p.service,
-                serviceName: action === "activate" && ["collaborateur", "Chef Hiérarchique", "RH"].includes(person.role || selectedRole)
-                  ? serviceObj?.serviceName
-                  : p.serviceName
-              }
-            : p
-        )
-      });
-    } catch (error) {
-      showToast(error.message, "error");
-      console.error(`Error ${action}ing personnel:`, error);
-    } finally {
-      setUpdatingId(null);
+// Handle validation (activate/deactivate)
+const handleValidate = async (personnelId, action) => {
+  setUpdatingId(personnelId);
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      showToast("Please login first", "error");
+      return;
     }
-  };
+
+    const person = personnel.find(p => p.id === personnelId);
+    if (!person) {
+      throw new Error("Personnel not found");
+    }
+
+    const roleToUse = person.role || selectedRole;
+    const needsService = ["collaborateur", "Chef Hiérarchique", "RH"].includes(roleToUse);
+    
+    // Resolve service properly
+    let serviceToUse = null;
+    let serviceIdToUse = null;
+
+    if (needsService) {
+      // Case 1: Service is already populated
+      if (person.service && (person.service.id || person.service._id)) {
+        serviceToUse = person.service;
+        serviceIdToUse = person.service.id || person.service._id;
+      }
+      // Case 2: Find by selected service (ID or name)
+      else if (selectedService) {
+        serviceToUse = services.find(s => s.id === selectedService) || 
+                       services.find(s => s._id === selectedService) ||
+                       services.find(s => s.serviceName === selectedService);
+        
+        if (serviceToUse) {
+          serviceIdToUse = serviceToUse.id || serviceToUse._id;
+        }
+      }
+
+      if (!serviceIdToUse) {
+        throw new Error("Service reference could not be resolved");
+      }
+    }
+
+    if (action === "activate") {
+      if (!roleToUse) {
+        throw new Error("Please select a role before activation");
+      }
+      if (needsService && !serviceIdToUse) {
+        throw new Error("Please select a service before activation");
+      }
+    }
+
+    const payload = action === "activate" ? {
+      role: roleToUse,
+      serviceId: serviceIdToUse
+    } : null;
+
+    const response = await fetch(
+      `${API_URL}/api/admin/${action === "activate" ? "activate" : "desactivate"}-personnel/${personnelId}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: payload ? JSON.stringify(payload) : null,
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to ${action} personnel`);
+    }
+
+    const result = await response.json();
+    showToast(result.message, "success");
+
+    // Update local state with expected structure
+    setPersonnel(prevPersonnel =>
+      prevPersonnel.map(p =>
+        p.id === personnelId
+          ? {
+              ...p,
+              active: action === "activate",
+              role: roleToUse,
+              service: serviceToUse || p.service,
+              serviceId: serviceIdToUse || p.serviceId,
+              serviceName: serviceToUse?.serviceName || p.serviceName,
+              chefsHierarchiques: action === "activate" && serviceToUse 
+                ? [
+                    ...(serviceToUse.chef1 ? [serviceToUse.chef1] : []),
+                    ...(serviceToUse.chef2 ? [serviceToUse.chef2] : []),
+                    ...(serviceToUse.chef3 ? [serviceToUse.chef3] : [])
+                  ].filter(Boolean)
+                : []
+            }
+          : p
+      )
+    );
+
+  } catch (error) {
+    showToast(error.message || "An unexpected error occurred", "error");
+    console.error(`Error ${action}ing personnel:`, error);
+  } finally {
+    setUpdatingId(null);
+  }
+};
+
   // Handle cancel editing
   const handleCancelEdit = () => {
     setEditingPersonnel(null);
@@ -898,10 +902,11 @@ const Personnel = () => {
                       <select id="filterService" value={filterService} onChange={(e) => setFilterService(e.target.value)}>
                         <option value="">All Services</option>
                         {services.map((service) => (
-                          <option key={service.serviceId} value={service.serviceId}>
-                            {service.serviceName}
-                          </option>
-                        ))}
+  <option key={service.serviceId} value={service.serviceId}>
+    {service.serviceName}
+  </option>
+))}
+
                       </select>
                     </div>
                   </div>

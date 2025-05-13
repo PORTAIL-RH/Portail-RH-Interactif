@@ -9,19 +9,18 @@ import 'react-toastify/dist/ReactToastify.css';
 import { API_URL } from "../../../config";
 
 const DemandesConge = () => {
-  // Initialize state with localStorage data if available
   const [demandesData, setDemandesData] = useState(() => {
     try {
       const stored = localStorage.getItem("demandes");
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.conge && Array.isArray(parsed.conge.data)) {
+        if (parsed.conge?.data && Array.isArray(parsed.conge.data)) {
           return {
-            conge: {
-              data: parsed.conge.data || [],
-              total: parsed.conge.total || 0,
-              pending: parsed.conge.pending || 0,
-              approved: parsed.conge.approved || 0
+            conge: { 
+              data: parsed.conge.data || [], 
+              total: parsed.conge.total || 0, 
+              approved: parsed.conge.approved || 0, 
+              pending: parsed.conge.pending || 0 
             },
             timestamp: parsed.timestamp || 0
           };
@@ -30,19 +29,14 @@ const DemandesConge = () => {
     } catch (e) {
       console.error("Error parsing demandes from localStorage:", e);
     }
-    // Default empty state
     return {
-      conge: {
-        data: [],
-        total: 0,
-        pending: 0,
-        approved: 0
-      },
+      conge: { data: [], total: 0, approved: 0, pending: 0 },
       timestamp: 0
     };
   });
 
   const [demandes, setDemandes] = useState([]);
+  const [filteredDemandes, setFilteredDemandes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [startDate, setStartDate] = useState(null);
@@ -50,7 +44,6 @@ const DemandesConge = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [filteredDemandes, setFilteredDemandes] = useState([]);
   const [selectedDemande, setSelectedDemande] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [theme, setTheme] = useState("light");
@@ -62,25 +55,136 @@ const DemandesConge = () => {
   const [previewFileUrl, setPreviewFileUrl] = useState(null);
   const [usedDaysData, setUsedDaysData] = useState({});
   const [lastUpdated, setLastUpdated] = useState("");
-  const [dataSource, setDataSource] = useState(""); // Track data source
+  const [dataSource, setDataSource] = useState("");
+  const [services, setServices] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Theme management
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+
+  const getUserInfo = useCallback(() => {
+    try {
+      const userData = localStorage.getItem("userData");
+      if (!userData) return null;
+      
+      const parsed = JSON.parse(userData);
+      setCurrentUser(parsed);
+      
+      const storedServices = localStorage.getItem("services");
+      if (storedServices) {
+        const servicesData = JSON.parse(storedServices);
+        setServices(servicesData);
+      }
+      
+      return parsed;
+    } catch (e) {
+      console.error("Error reading user info:", e);
+      return null;
+    }
+  }, []);
+
+  const getUserPoidForDemande = useCallback((demande) => {
+    if (!services || services.length === 0) return 0;
+    
+    const demandeServiceName = demande.demandeur?.service;
+    if (!demandeServiceName) return 0;
+    
+    const demandeService = services.find(s => 
+      s.serviceName.toLowerCase() === demandeServiceName.toLowerCase()
+    );
+    
+    if (!demandeService) {
+      console.warn(`Service not found: ${demandeServiceName}`);
+      return 0;
+    }
+
+    return demandeService.poid || 0;
+  }, [services]);
+
+  const getUserPositionName = (poid) => {
+    switch(poid) {
+      case 1: return "Chef 1";
+      case 2: return "Chef 2";
+      case 3: return "Chef 3";
+      default: return "Non chef";
+    }
+  };
+
+  const getCurrentUserResponse = (demande) => {
+    if (!demande.reponseChef) return "I";
+    
+    const currentPoid = getUserPoidForDemande(demande);
+    switch(currentPoid) {
+      case 1: return demande.reponseChef.responseChef1 || "I";
+      case 2: return demande.reponseChef.responseChef2 || "I";
+      case 3: return demande.reponseChef.responseChef3 || "I";
+      default: return "I";
+    }
+  };
+
+  const canValidateDemande = (demande) => {
+    const currentPoid = getUserPoidForDemande(demande);
+    if (!currentPoid || currentPoid === 0) return false;
+    const userResponse = getCurrentUserResponse(demande);
+    return userResponse === "I";
+  };
+
+  const renderUserSpecificStatus = (demande) => {
+    const userResponse = getCurrentUserResponse(demande);
+    const currentPoid = getUserPoidForDemande(demande);
+    
+    if (userResponse === "O") {
+      return (
+        <span className="status-badge approved">
+          <FiCheck className="status-icon" />
+          Approuvée (Chef {currentPoid})
+        </span>
+      );
+    }
+    
+    if (userResponse === "N") {
+      return (
+        <span className="status-badge rejected">
+          <FiX className="status-icon" />
+          Rejetée (Chef {currentPoid})
+        </span>
+      );
+    }
+
+    return (
+      <span className="status-badge pending">
+        <FiClock className="status-icon" />
+        En attente (Chef {currentPoid})
+      </span>
+    );
+  };
+
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
-    applyTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
+    document.body.className = savedTheme;
 
     const handleStorageChange = () => {
       const currentTheme = localStorage.getItem("theme") || "light";
       setTheme(currentTheme);
-      applyTheme(currentTheme);
+      document.documentElement.className = currentTheme;
+      document.body.className = currentTheme;
     };
 
     window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("themeChanged", (e) => {
-      setTheme(e.detail || "light");
-      applyTheme(e.detail || "light");
-    });
+    window.addEventListener("themeChanged", handleStorageChange);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
@@ -88,44 +192,20 @@ const DemandesConge = () => {
     };
   }, []);
 
-  const applyTheme = (theme) => {
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(theme);
-    document.body.className = theme;
-  };
-
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    applyTheme(newTheme);
+    document.documentElement.className = newTheme;
+    document.body.className = newTheme;
     localStorage.setItem("theme", newTheme);
     window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
   };
-
-  const getUserId = () => {
-    try {
-      const userData = localStorage.getItem("userId");
-      if (!userData) return null;
-
-      try {
-        const parsed = JSON.parse(userData);
-        return parsed?.userId || parsed?.id || null;
-      } catch {
-        return userData;
-      }
-    } catch (e) {
-      console.error("Error reading userId from localStorage:", e);
-      return null;
-    }
-  };
-
-  const userId = getUserId();
 
   const fetchUsedDays = useCallback(async (matPersId) => {
     try {
       const token = localStorage.getItem("authToken");
       const response = await fetch(
-        `http://localhost:8080/api/demande-conge/days-used/${matPersId}`,
+        `${API_URL}/api/demande-conge/days-used/${matPersId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -148,14 +228,14 @@ const DemandesConge = () => {
   const fetchFromAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
+      const userInfo = getUserInfo();
 
-      if (!userId) {
-        throw new Error("User ID not found in localStorage");
+      if (!userInfo) {
+        throw new Error("User info not found");
       }
 
-      console.log("Fetching conge demandes from API...");
       const response = await fetch(
-        `http://localhost:8080/api/demande-conge/collaborateurs-by-service/${userId}`,
+        `${API_URL}/api/demande-conge/collaborateurs-by-service/${userInfo.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -169,13 +249,19 @@ const DemandesConge = () => {
       }
 
       const data = await response.json();
-
+      
       if (!data.demandes) {
         throw new Error("Invalid response format: demandes array missing");
       }
 
-      const demandesFromResponse = Array.isArray(data.demandes) ? data.demandes : [];
-      
+      const demandesFromResponse = (Array.isArray(data.demandes) ? data.demandes : []).map(demande => ({
+        ...demande,
+        files: demande.files?.map(file => ({
+          ...file,
+          fileId: file.fileId || file.id
+        })) || []
+      }));
+
       // Fetch used days for each unique employee
       const uniqueMatPersIds = [...new Set(demandesFromResponse.map(d => d.matPers?.id))].filter(id => id);
       const usedDaysPromises = uniqueMatPersIds.map(id => fetchUsedDays(id));
@@ -190,15 +276,19 @@ const DemandesConge = () => {
       
       setUsedDaysData(usedDaysMap);
 
-      // Process the data for our state structure
       const processedConge = {
         data: demandesFromResponse,
         total: demandesFromResponse.length,
-        pending: demandesFromResponse.filter(d => d.reponseChef === "I").length,
-        approved: demandesFromResponse.filter(d => d.reponseChef === "O").length
+        approved: demandesFromResponse.filter(d => d.reponseChef && 
+          (d.reponseChef.responseChef1 === "O" || 
+           d.reponseChef.responseChef2 === "O" || 
+           d.reponseChef.responseChef3 === "O")).length,
+        pending: demandesFromResponse.filter(d => !d.reponseChef || 
+          (d.reponseChef.responseChef1 === "I" && 
+           d.reponseChef.responseChef2 === "I" && 
+           d.reponseChef.responseChef3 === "I")).length
       };
 
-      // Update localStorage cache
       const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
       const updatedCache = {
         ...currentCache,
@@ -208,38 +298,25 @@ const DemandesConge = () => {
       
       localStorage.setItem("demandes", JSON.stringify(updatedCache));
 
-      // Update state
-      setDemandesData(updatedCache);
-      setDemandes(processedConge.data);
-      setFilteredDemandes(processedConge.data);
-      setDataSource("api");
-      
-      // Update last updated timestamp
-      const now = new Date().toLocaleTimeString();
-      setLastUpdated(now);
-      
-      return true;
+      return processedConge;
     } catch (error) {
       console.error("API fetch error:", error);
       throw error;
     }
-  }, [userId, fetchUsedDays]);
+  }, [getUserInfo, fetchUsedDays]);
 
   const fetchDemandes = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // First try to get from localStorage
       const stored = localStorage.getItem("demandes");
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           const cacheAge = Date.now() - (parsed.timestamp || 0);
           
-          // Use cached data if less than 1 hour old and has valid data
           if (cacheAge < 3600000 && parsed.conge?.data && Array.isArray(parsed.conge.data)) {
-            console.log("Using cached conge data");
             setDemandesData(parsed);
             setDemandes(parsed.conge.data);
             setFilteredDemandes(parsed.conge.data);
@@ -247,7 +324,6 @@ const DemandesConge = () => {
             setDataSource("cache");
             setLoading(false);
             
-            // Fetch fresh data in background but don't wait for it
             fetchFromAPI().catch(e => console.error("Background refresh failed:", e));
             return;
           }
@@ -256,19 +332,62 @@ const DemandesConge = () => {
         }
       }
 
-      // If no valid cache, fetch from API
-      await fetchFromAPI();
+      const processedData = await fetchFromAPI();
+      setDemandesData(prev => ({
+        ...prev,
+        conge: processedData,
+        timestamp: Date.now()
+      }));
+      setDemandes(processedData.data);
+      setFilteredDemandes(processedData.data);
+      setDataSource("api");
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (error) {
       console.error("Fetch error:", error);
       setError(error.message || "An unknown error occurred");
+      
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.conge?.data && Array.isArray(parsed.conge.data)) {
+            setDemandesData(parsed);
+            setDemandes(parsed.conge.data);
+            setFilteredDemandes(parsed.conge.data);
+            setDataSource("cache-fallback");
+          }
+        } catch (e) {
+          console.error("Error parsing fallback data:", e);
+        }
+      }
     } finally {
       setLoading(false);
     }
   }, [fetchFromAPI]);
 
-  // Initial fetch
   useEffect(() => {
+    getUserInfo();
     fetchDemandes();
+  }, [getUserInfo, fetchDemandes]);
+
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
+
+    eventSource.onmessage = (event) => {
+      const update = JSON.parse(event.data);
+      if (update.type === "created" || update.type === "updated" || update.type === "deleted") {
+        fetchDemandes();
+      }
+    };
+
+    eventSource.onerror = (error) => {
+      console.error("EventSource error:", error);
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
   }, [fetchDemandes]);
 
   useEffect(() => {
@@ -278,13 +397,16 @@ const DemandesConge = () => {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (demande) =>
-          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)) ||
+          (demande.matPers?.nomComplet && demande.matPers.nomComplet.toLowerCase().includes(query)) ||
           (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query))
       );
     }
 
     if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => demande.reponseChef === selectedStatus);
+      filtered = filtered.filter((demande) => {
+        const userResponse = getCurrentUserResponse(demande);
+        return userResponse === selectedStatus;
+      });
     }
 
     if (startDate && endDate) {
@@ -314,13 +436,34 @@ const DemandesConge = () => {
   const toggleFilterExpand = () => {
     setIsFilterExpanded((prev) => !prev);
   };
-  
+
   const handleAction = async () => {
     try {
       const token = localStorage.getItem("authToken");
+      const userInfo = getUserInfo();
+      const demande = demandes.find(d => d.id === currentDemandeId);
+      
+      if (!userInfo || !demande) {
+        throw new Error("User validation information not available");
+      }
+
+      const currentPoid = getUserPoidForDemande(demande);
+      
+      if (!currentPoid || currentPoid === 0) {
+        throw new Error("Vous n'êtes pas autorisé à valider cette demande");
+      }
+
+      let chefLevel = "";
+      switch(currentPoid) {
+        case 1: chefLevel = "chef1"; break;
+        case 2: chefLevel = "chef2"; break;
+        case 3: chefLevel = "chef3"; break;
+        default: throw new Error("Invalid user position");
+      }
+
       const url = actionType === "approve" 
-        ? `http://localhost:8080/api/demande-conge/valider/${currentDemandeId}`
-        : `http://localhost:8080/api/demande-conge/refuser/${currentDemandeId}`;
+        ? `${API_URL}/api/demande-conge/valider/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`
+        : `${API_URL}/api/demande-conge/refuser/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -338,21 +481,65 @@ const DemandesConge = () => {
         throw new Error(errorText);
       }
 
-      // Update the demandes state
-      const updatedDemandes = demandes.map(d => 
-        d.id === currentDemandeId ? { 
-          ...d, 
-          reponseChef: actionType === "approve" ? "O" : "N",
-          observation: observation 
-        } : d
-      );
+      const result = await response.json();
+      
+      if (result.status === "error") {
+        throw new Error(result.message);
+      }
 
-      // Update localStorage cache
+      const updatedData = demandes.map(d => {
+        if (d.id === currentDemandeId) {
+          const updatedDemande = { 
+            ...d, 
+            observation: observation 
+          };
+          
+          if (!updatedDemande.reponseChef) {
+            updatedDemande.reponseChef = {
+              id: `temp-${Date.now()}`,
+              demandeId: currentDemandeId,
+              responseChef1: "I",
+              responseChef2: "I",
+              responseChef3: "I",
+              dateChef1: "",
+              dateChef2: "",
+              dateChef3: "",
+              observationChef1: "",
+              observationChef2: "",
+              observationChef3: ""
+            };
+          }
+
+          if (currentPoid === 1) {
+            updatedDemande.reponseChef.responseChef1 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef1 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef1 = observation;
+          } else if (currentPoid === 2) {
+            updatedDemande.reponseChef.responseChef2 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef2 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef2 = observation;
+          } else if (currentPoid === 3) {
+            updatedDemande.reponseChef.responseChef3 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef3 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef3 = observation;
+          }
+          
+          return updatedDemande;
+        }
+        return d;
+      });
+
       const updatedConge = {
-        data: updatedDemandes,
-        total: updatedDemandes.length,
-        pending: updatedDemandes.filter(d => d.reponseChef === "I").length,
-        approved: updatedDemandes.filter(d => d.reponseChef === "O").length
+        data: updatedData,
+        total: updatedData.length,
+        approved: updatedData.filter(d => d.reponseChef && 
+          (d.reponseChef.responseChef1 === "O" || 
+           d.reponseChef.responseChef2 === "O" || 
+           d.reponseChef.responseChef3 === "O")).length,
+        pending: updatedData.filter(d => !d.reponseChef || 
+          (d.reponseChef.responseChef1 === "I" && 
+           d.reponseChef.responseChef2 === "I" && 
+           d.reponseChef.responseChef3 === "I")).length
       };
 
       const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
@@ -365,27 +552,20 @@ const DemandesConge = () => {
       localStorage.setItem("demandes", JSON.stringify(updatedCache));
 
       setDemandesData(updatedCache);
-      setDemandes(updatedDemandes);
-      setFilteredDemandes(updatedDemandes);
-
-      // If approved, refresh the used days data for this employee
-      if (actionType === "approve") {
-        const approvedDemande = demandes.find(d => d.id === currentDemandeId);
-        if (approvedDemande?.matPers?.id) {
-          const newUsedDaysData = await fetchUsedDays(approvedDemande.matPers.id);
-          if (newUsedDaysData) {
-            setUsedDaysData(prev => ({
-              ...prev,
-              [approvedDemande.matPers.id]: newUsedDaysData
-            }));
-          }
-        }
-      }
-
+      setDemandes(updatedData);
+      setFilteredDemandes(updatedData);
       closeActionModal();
       
+      // Updated toast messages to show chef level
+      const chefPosition = getUserPositionName(currentPoid);
+      toast.success(
+        actionType === "approve" 
+          ? `Demande approuvée (${chefPosition})` 
+          : `Demande refusée (${chefPosition})`
+      );
+      
     } catch (error) {
-      alert(`Erreur: ${error.message}`);
+      toast.error(`Erreur: ${error.message}`);
     }
   };
 
@@ -399,7 +579,6 @@ const DemandesConge = () => {
     setSelectedDemande(null);
   };
 
-  // File handling functions
   const fetchFileBlobUrl = async (fileId) => {
     if (!fileId) {
       throw new Error("File ID is missing");
@@ -426,7 +605,6 @@ const DemandesConge = () => {
 
   const handlePreview = async (fileId) => {
     if (!fileId) {
-      console.error("No file ID provided for preview");
       toast.warning("Aucun fichier sélectionné");
       return;
     }
@@ -442,14 +620,12 @@ const DemandesConge = () => {
       setPreviewFileId(fileId);
       setPreviewFileUrl(url);
     } catch (err) {
-      console.error("Erreur d'aperçu:", err);
       toast.error("Impossible d'afficher la pièce jointe: " + err.message);
     }
   };
 
   const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
     if (!fileId) {
-      console.error("No file ID provided for download");
       toast.warning("Aucun fichier sélectionné");
       return;
     }
@@ -476,7 +652,6 @@ const DemandesConge = () => {
         URL.revokeObjectURL(url);
       }, 100);
     } catch (err) {
-      console.error("Erreur de téléchargement:", err);
       toast.update(toastId, {
         render: "Échec du téléchargement: " + err.message,
         type: "error",
@@ -487,10 +662,10 @@ const DemandesConge = () => {
   };
 
   const clearFilters = () => {
-    setSelectedStatus("all");
     setStartDate(null);
     setEndDate(null);
     setSearchQuery("");
+    setSelectedStatus("all");
   };
 
   const handleRefresh = () => {
@@ -586,7 +761,7 @@ const DemandesConge = () => {
                 className={`filter-tab ${selectedStatus === "N" ? "active" : ""}`}
                 onClick={() => setSelectedStatus("N")}
               >
-                Refusées
+                Rejetées
               </button>
             </div>
 
@@ -604,7 +779,7 @@ const DemandesConge = () => {
               <FiSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="Rechercher par nom ou contenu..."
+                placeholder="Rechercher par nom, titre ou thème..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -625,7 +800,9 @@ const DemandesConge = () => {
             <div className="stat-card pending">
               <div className="stat-content">
                 <h3>En Attente</h3>
-                <p className="stat-value">{demandesData.conge.pending}</p>
+                <p className="stat-value">
+                  {demandes.filter(d => getCurrentUserResponse(d) === "I").length}
+                </p>
               </div>
               <div className="stat-icon">
                 <FiClock />
@@ -635,7 +812,9 @@ const DemandesConge = () => {
             <div className="stat-card approved">
               <div className="stat-content">
                 <h3>Approuvées</h3>
-                <p className="stat-value">{demandesData.conge.approved}</p>
+                <p className="stat-value">
+                  {demandes.filter(d => getCurrentUserResponse(d) === "O").length}
+                </p>
               </div>
               <div className="stat-icon">
                 <FiCheck />
@@ -695,147 +874,168 @@ const DemandesConge = () => {
                     <th>Texte Demande</th>
                     <th>Jours utilisés</th>
                     <th>Fichier</th>
-                    <th>Statut</th>
+                    <th>Votre Position</th>
+                    <th>Votre Statut</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDemandes.map((demande) => (
-                    <tr key={demande.id} onClick={() => openModal(demande)}>
-                      <td>
-                        <div className="cell-with-icon">
-                          <FiCalendar className="cell-icon" />
-                          <span>
-                            {new Date(demande.dateDemande).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="employee-info">
-                          <span className="employee-name">{demande.matPers?.nom || "Inconnu"}</span>
-                          {demande.matPers?.prenom && (
-                            <span className="employee-details">{demande.matPers.prenom}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="date-range-cell">
-                          {demande.dateDebut && demande.dateFin ? (
-                            <>
-                              <div className="date-item">
-                                <span className="date-label">Début:</span>
-                                <span className="date-value">{new Date(demande.dateDebut).toLocaleDateString()}</span>
+                  {filteredDemandes.map((demande) => {
+                    const currentPoid = getUserPoidForDemande(demande);
+                    const userResponse = getCurrentUserResponse(demande);
+                    const canValidate = canValidateDemande(demande);
+                    
+                    return (
+                      <tr key={demande.id} onClick={() => openModal(demande)}>
+                        <td>
+                          <div className="cell-with-icon">
+                            <FiCalendar className="cell-icon" />
+                            <span>
+                              {formatDateTime(demande.dateDemande)}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="employee-info">
+                            <span className="employee-name">
+                              {demande.demandeur?.nomComplet || "Inconnu"}
+                            </span>
+                            {demande.demandeur?.service && (
+                              <span className="employee-details">
+                                {demande.demandeur?.service}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="date-range-cell">
+                            {demande.dateDebut ? (
+                              <>
+                                <div className="date-item">
+                                  <span className="date-label">Début:</span>
+                                  <span className="date-value">
+                                    {new Date(demande.dateDebut).toLocaleDateString('fr-FR')}
+                                  </span>
+                                </div>
+                                <div className="date-item">
+                                  <span className="date-label">Fin:</span>
+                                  <span className="date-value">
+                                    {new Date(demande.dateFin).toLocaleDateString('fr-FR')}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <span className="no-date">Non spécifiée</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="demande-text">
+                            {demande.texteDemande || <span className="no-content">Aucun texte</span>}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="simple-days-cell">
+                            {usedDaysData[demande.matPers?.id] ? (
+                              <div className="simple-days-content">
+                                <div className="simple-days-text">
+                                  <span className="days-used">{usedDaysData[demande.matPers?.id].totalDaysUsed}</span>
+                                  <span className="days-separator">/</span>
+                                  <span className="days-total">{usedDaysData[demande.matPers?.id].maxDaysPerYear}</span>
+                                </div>
+                                <div className={`simple-days-remaining ${
+                                  demande.reponseChef === "O" ? "highlight-update" : ""
+                                }`}>
+                                  {usedDaysData[demande.matPers?.id].remainingDays} jours restants
+                                </div>
                               </div>
-                              <div className="date-item">
-                                <span className="date-label">Fin:</span>
-                                <span className="date-value">{new Date(demande.dateFin).toLocaleDateString()}</span>
-                              </div>
-                            </>
-                          ) : (
-                            <span className="no-date">Non spécifiée</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="demande-text">
-                          {demande.texteDemande || <span className="no-content">Aucun texte</span>}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="simple-days-cell">
-                          {usedDaysData[demande.matPers?.id] ? (
-                            <div className="simple-days-content">
-                              <div className="simple-days-text">
-                                <span className="days-used">{usedDaysData[demande.matPers?.id].totalDaysUsed}</span>
-                                <span className="days-separator">/</span>
-                                <span className="days-total">{usedDaysData[demande.matPers?.id].maxDaysPerYear}</span>
-                              </div>
-                              <div className={`simple-days-remaining ${
-                                demande.reponseChef === "O" ? "highlight-update" : ""
-                              }`}>
-                                {usedDaysData[demande.matPers?.id].remainingDays} jours restants
-                              </div>
+                            ) : (
+                              <span className="simple-days-loading">...</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="file-actions">
+                          {demande.files?.length > 0 ? (
+                            <div className="file-buttons">
+                              {demande.files.map((file, index) => (
+                                <React.Fragment key={file.id}>
+                                  <button
+                                    className="btn-preview"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePreview(file.fileId);
+                                    }}
+                                    title={`Aperçu: ${file.filename}`}
+                                  >
+                                    <FiEye />
+                                  </button>
+                                  <button
+                                    className="btn-download"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(file.fileId, file.filename);
+                                    }}
+                                    title={`Télécharger: ${file.filename}`}
+                                  >
+                                    <FiDownload />
+                                  </button>
+                                  {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+                                </React.Fragment>
+                              ))}
                             </div>
                           ) : (
-                            <span className="simple-days-loading">...</span>
+                            <span>Aucun fichier</span>
                           )}
-                        </div>
-                      </td>
-                      <td>
- <td className="file-actions">
-  {demande.files?.length > 0 ? (
-    <div className="file-buttons">
-      {demande.files.map((file, index) => (
-        <React.Fragment key={file.id}>
-          <button
-            className="btn-preview"
-            onClick={() => handlePreview(file.fileId)}
-            title={`Aperçu: ${file.filename}`}
-          >
-            <FiEye />
-          </button>
-          <button
-            className="btn-download"
-            onClick={() => handleDownload(file.fileId, file.filename)}
-            title={`Télécharger: ${file.filename}`}
-          >
-            <FiDownload />
-          </button>
-          {index < demande.files.length - 1 && <span className="file-separator">|</span>}
-        </React.Fragment>
-      ))}
-    </div>
-  ) : (
-    <span className="file-actions">Aucun fichier</span>
-  )}
-</td>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${
-                          demande.reponseChef === "I" ? "pending" :
-                          demande.reponseChef === "O" ? "approved" :
-                          demande.reponseChef === "N" ? "rejected" : "processed"
-                        }`}>
-                          <span className="status-icon">
-                            {demande.reponseChef === "I" ? <FiClock /> :
-                             demande.reponseChef === "O" ? <FiCheck /> :
-                             demande.reponseChef === "N" ? <FiX /> : <FiCheck />}
+                        </td>
+                        <td>
+                          <span className="position-badge">
+                            {getUserPositionName(currentPoid)}
                           </span>
-                          {demande.reponseChef === "I" ? "En attente" :
-                           demande.reponseChef === "O" ? "Approuvé" :
-                           demande.reponseChef === "N" ? "Rejeté" : "Traitée"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="action-button approve"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openActionModal(demande.id, "approve");
-                            }}
-                            disabled={demande.reponseChef !== "I"}
-                            title={demande.reponseChef !== "I" ? "Déjà traitée" : "Approuver"}
-                          >
-                            <FiCheck />
-                            <span>Approuver</span>
-                          </button>
-                          <button
-                            className="action-button reject"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openActionModal(demande.id, "reject");
-                            }}
-                            disabled={demande.reponseChef !== "I"}
-                            title={demande.reponseChef !== "I" ? "Déjà traitée" : "Rejeter"}
-                          >
-                            <FiX />
-                            <span>Rejeter</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          {renderUserSpecificStatus(demande)}
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className={`action-button approve ${!canValidate ? 'disabled' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (canValidate) {
+                                  openActionModal(demande.id, "approve");
+                                }
+                              }}
+                              disabled={!canValidate}
+                              title={!canValidate ? 
+                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
+                                "Non autorisé") : 
+                                "Approuver"}
+                            >
+                              <FiCheck />
+                              <span>Approuver</span>
+                            </button>
+                            <button
+                              className={`action-button reject ${!canValidate ? 'disabled' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (canValidate) {
+                                  openActionModal(demande.id, "reject");
+                                }
+                              }}
+                              disabled={!canValidate}
+                              title={!canValidate ? 
+                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
+                                "Non autorisé") : 
+                                "Rejeter"}
+                            >
+                              <FiX />
+                              <span>Rejeter</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -845,7 +1045,7 @@ const DemandesConge = () => {
                 <FiFilter size={48} />
               </div>
               <h3>Aucune demande trouvée</h3>
-              <p>Aucune demande ne correspond à vos critères de recherche.</p>          
+              <p>Aucune demande ne correspond à vos critères de recherche.</p>
               <button className="clear-filters-button" onClick={clearFilters}>
                 Effacer les filtres
               </button>
@@ -853,6 +1053,7 @@ const DemandesConge = () => {
           )}
 
           {showObservationModal && (
+            
             <div className="modal-overlay">
               <div className={`modal-content ${theme}`}>
                 <h2>
