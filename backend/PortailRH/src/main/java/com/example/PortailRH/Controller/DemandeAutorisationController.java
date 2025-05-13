@@ -622,6 +622,19 @@ public class DemandeAutorisationController {
             demande.setReponseRH(Reponse.T);
             demande.setObservation(observation); // Set observation if provided
             demandeAutorisationRepository.save(demande);
+
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Autorisation a été traiter.";
+            String role = "collaborateur" ; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }

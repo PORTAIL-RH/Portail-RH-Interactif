@@ -317,6 +317,19 @@ public class DemandeDocumentController {
             }
 
             DemandeDocument updated = demandeDocumentRepository.save(demande);
+
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Document a été traiter.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
+
             sseController.sendUpdate("updated", updated);
 
             return ResponseEntity.ok(updated);

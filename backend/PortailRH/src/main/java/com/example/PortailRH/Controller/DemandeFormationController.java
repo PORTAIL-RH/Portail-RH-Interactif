@@ -612,8 +612,17 @@ public class DemandeFormationController {
             // Sauvegarder la demande mise à jour
             DemandeFormation updatedDemande = demandeFormationRepository.save(demande);
 
-            // Envoyer une mise à jour via SSE
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Formation a été traiter.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, role, collaborateurId);
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",

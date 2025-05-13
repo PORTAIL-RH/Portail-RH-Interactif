@@ -23,19 +23,19 @@ public class NotificationController {
     // Créer une nouvelle notification pour un rôle spécifique
     @PostMapping
     public ResponseEntity<?> createNotification(@RequestBody Notification notification) {
-        Notification savedNotification = notificationService.createNotification(notification.getMessage(), notification.getRole(), notification.getServiceId());
+        Notification savedNotification = notificationService.createNotification(notification.getMessage(), notification.getRole(), notification.getPersonnelId());
         return ResponseEntity.ok(savedNotification);
     }
 
-    // Récupérer les notifications par rôle et serviceId (optionnel)
+    // Récupérer les notifications par rôle et personnelId (optionnel)
     @GetMapping
     public ResponseEntity<List<Notification>> getNotifications(
             @RequestParam String role,
-            @RequestParam(required = false) String serviceId) { // serviceId est optionnel
+            @RequestParam(required = false) String personnelId) { // personnelId est optionnel
         List<Notification> notifications;
-        if (serviceId != null && !serviceId.isEmpty()) {
-            // Filtrer par rôle et serviceId
-            notifications = notificationService.getNotificationsByRoleAndServiceId(role, serviceId);
+        if (personnelId != null && !personnelId.isEmpty()) {
+            // Filtrer par rôle et personnelId
+            notifications = notificationService.getNotificationsByRoleAndPersonnelId(role, personnelId);
         } else {
             // Filtrer uniquement par rôle
             notifications = notificationService.getNotificationsByRole(role);
@@ -71,25 +71,25 @@ public class NotificationController {
         return ResponseEntity.ok(notifications.size());
     }
 
-    // Mark all notifications as read for a specific role and serviceId
-    // Expects a role and serviceId in a PUT request body, validates them, and calls the service method.
+    // Mark all notifications as read for a specific role and personnelId
+    // Expects a role and personnelId in a PUT request body, validates them, and calls the service method.
     @PutMapping("/mark-all-read")
     public ResponseEntity<?> markAllAsRead(@RequestBody Map<String, String> request) {
         String role = request.get("role");
-        String serviceId = request.get("serviceId");
+        String personnelId = request.get("personnelId");
 
         if (role == null || role.isEmpty()) {
             return ResponseEntity.badRequest().body("Role is required");
         }
 
-        // If role is not admin, serviceId is required
+        // If role is not admin, personnelId is required
         if (!"Admin".equalsIgnoreCase(role)){
-            if (serviceId == null || serviceId.isEmpty()) {
-                return ResponseEntity.badRequest().body("ServiceId is required for non-admin roles");
+            if (personnelId == null || personnelId.isEmpty()) {
+                return ResponseEntity.badRequest().body("personnelId is required for non-admin roles");
             }
         }
 
-        int updatedCount = notificationService.markAllAsRead(role, serviceId);
+        int updatedCount = notificationService.markAllAsRead(role, personnelId);
         return ResponseEntity.ok(Map.of(
                 "message", "All notifications marked as read",
                 "updatedCount", updatedCount

@@ -19,7 +19,7 @@ public class Notification {
 
     private String role; // Nouveau champ pour spécifier le rôle
 
-    private String serviceId; // Nouveau champ pour spécifier le serviceId
+    private String personnelId; // Nouveau champ pour spécifier le personnelId
 
     // Getters and Setters
     public String getId() {
@@ -62,11 +62,11 @@ public class Notification {
         this.role = role;
     }
 
-    public String getServiceId() {
-        return serviceId;
+    public String getPersonnelId() {
+        return personnelId;
     }
 
-    public void setServiceId(String serviceId) {
-        this.serviceId = serviceId;
+    public void setPersonnelId(String personnelId) {
+        this.personnelId = personnelId;
     }
 }
