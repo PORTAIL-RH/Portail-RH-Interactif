@@ -769,7 +769,9 @@ public class DemandeAutorisationController {
                             "matricule", defaultIfNull(p.getMatricule(), ""),
                             "nom", defaultIfNull(p.getNom(), ""),
                             "prenom", defaultIfNull(p.getPrenom(), ""),
-                            "email", defaultIfNull(p.getEmail(), "")
+                            "email", defaultIfNull(p.getEmail(), ""),
+                            "service", defaultIfNull(p.getServiceName(), "")
+
                     ))
                     .orElse(null));
 

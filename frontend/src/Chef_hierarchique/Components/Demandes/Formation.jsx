@@ -1,3 +1,4 @@
+"use client"
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
@@ -8,20 +9,19 @@ import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { API_URL } from "../../../config";
 
-const Formation = () => {
-  // Initialize state with localStorage data if available
+const DemandesFormation = () => {
   const [demandesData, setDemandesData] = useState(() => {
     try {
       const stored = localStorage.getItem("demandes");
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.formation && Array.isArray(parsed.formation.data)) {
+        if (parsed.formation?.data && Array.isArray(parsed.formation.data)) {
           return {
-            formation: {
-              data: parsed.formation.data || [],
-              total: parsed.formation.total || 0,
-              pending: parsed.formation.pending || 0,
-              approved: parsed.formation.approved || 0
+            formation: { 
+              data: parsed.formation.data || [], 
+              total: parsed.formation.total || 0, 
+              approved: parsed.formation.approved || 0, 
+              pending: parsed.formation.pending || 0 
             },
             timestamp: parsed.timestamp || 0
           };
@@ -30,21 +30,15 @@ const Formation = () => {
     } catch (e) {
       console.error("Error parsing demandes from localStorage:", e);
     }
-    // Default empty state
     return {
-      formation: {
-        data: [],
-        total: 0,
-        pending: 0,
-        approved: 0
-      },
+      formation: { data: [], total: 0, approved: 0, pending: 0 },
       timestamp: 0
     };
   });
 
   const [demandes, setDemandes] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [filteredDemandes, setFilteredDemandes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -61,25 +55,134 @@ const Formation = () => {
   const [previewFileId, setPreviewFileId] = useState(null);
   const [previewFileUrl, setPreviewFileUrl] = useState(null);
   const [lastUpdated, setLastUpdated] = useState("");
-  const [dataSource, setDataSource] = useState(""); // Track data source
+  const [dataSource, setDataSource] = useState("");
+  const [services, setServices] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // Theme management
+  const formatDateTime = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    return date.toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getUserInfo = useCallback(() => {
+    try {
+      const userData = localStorage.getItem("userData");
+      if (!userData) return null;
+      
+      const parsed = JSON.parse(userData);
+      setCurrentUser(parsed);
+      
+      const storedServices = localStorage.getItem("services");
+      if (storedServices) {
+        const servicesData = JSON.parse(storedServices);
+        setServices(servicesData);
+      }
+      
+      return parsed;
+    } catch (e) {
+      console.error("Error reading user info:", e);
+      return null;
+    }
+  }, []);
+
+  const getUserPoidForDemande = useCallback((demande) => {
+    if (!services || services.length === 0) return 0;
+    
+    const demandeServiceName = demande.matPers?.service;
+    if (!demandeServiceName) return 0;
+    
+    const demandeService = services.find(s => 
+      s.serviceName.toLowerCase() === demandeServiceName.toLowerCase()
+    );
+    
+    if (!demandeService) {
+      console.warn(`Service not found: ${demandeServiceName}`);
+      return 0;
+    }
+
+    return demandeService.poid || 0;
+  }, [services]);
+
+  const getUserPositionName = (poid) => {
+    switch(poid) {
+      case 1: return "Chef 1";
+      case 2: return "Chef 2";
+      case 3: return "Chef 3";
+      default: return "Non chef";
+    }
+  };
+
+  const getCurrentUserResponse = (demande) => {
+    if (!demande.reponseChef) return "I";
+    
+    const currentPoid = getUserPoidForDemande(demande);
+    switch(currentPoid) {
+      case 1: return demande.reponseChef.responseChef1 || "I";
+      case 2: return demande.reponseChef.responseChef2 || "I";
+      case 3: return demande.reponseChef.responseChef3 || "I";
+      default: return "I";
+    }
+  };
+
+  const canValidateDemande = (demande) => {
+    const currentPoid = getUserPoidForDemande(demande);
+    if (!currentPoid || currentPoid === 0) return false;
+    const userResponse = getCurrentUserResponse(demande);
+    return userResponse === "I";
+  };
+
+  const renderUserSpecificStatus = (demande) => {
+    const userResponse = getCurrentUserResponse(demande);
+    const currentPoid = getUserPoidForDemande(demande);
+    
+    if (userResponse === "O") {
+      return (
+        <span className="status-badge approved">
+          <FiCheck className="status-icon" />
+          Approuvée (Chef {currentPoid})
+        </span>
+      );
+    }
+    
+    if (userResponse === "N") {
+      return (
+        <span className="status-badge rejected">
+          <FiX className="status-icon" />
+          Rejetée (Chef {currentPoid})
+        </span>
+      );
+    }
+
+    return (
+      <span className="status-badge pending">
+        <FiClock className="status-icon" />
+        En attente (Chef {currentPoid})
+      </span>
+    );
+  };
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
-    applyTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
+    document.body.className = savedTheme;
 
     const handleStorageChange = () => {
       const currentTheme = localStorage.getItem("theme") || "light";
       setTheme(currentTheme);
-      applyTheme(currentTheme);
+      document.documentElement.className = currentTheme;
+      document.body.className = currentTheme;
     };
 
     window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("themeChanged", (e) => {
-      setTheme(e.detail || "light");
-      applyTheme(e.detail || "light");
-    });
+    window.addEventListener("themeChanged", handleStorageChange);
 
     return () => {
       window.removeEventListener("storage", handleStorageChange);
@@ -87,50 +190,26 @@ const Formation = () => {
     };
   }, []);
 
-  const applyTheme = (theme) => {
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(theme);
-    document.body.className = theme;
-  };
-
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    applyTheme(newTheme);
+    document.documentElement.className = newTheme;
+    document.body.className = newTheme;
     localStorage.setItem("theme", newTheme);
     window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
   };
 
-  const getUserId = () => {
-    try {
-      const userData = localStorage.getItem("userId");
-      if (!userData) return null;
-
-      try {
-        const parsed = JSON.parse(userData);
-        return parsed?.userId || parsed?.id || null;
-      } catch {
-        return userData;
-      }
-    } catch (e) {
-      console.error("Error reading userId from localStorage:", e);
-      return null;
-    }
-  };
-
-  const userId = getUserId();
-
   const fetchFromAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
+      const userInfo = getUserInfo();
 
-      if (!userId) {
-        throw new Error("User ID not found in localStorage");
+      if (!userInfo) {
+        throw new Error("User info not found");
       }
 
-      console.log("Fetching formation demandes from API...");
       const response = await fetch(
-        `http://localhost:8080/api/demande-formation/collaborateurs-by-service/${userId}`,
+        `${API_URL}/api/demande-formation/collaborateurs-by-service/${userInfo.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -144,22 +223,32 @@ const Formation = () => {
       }
 
       const data = await response.json();
-
+      
       if (!data.demandes) {
         throw new Error("Invalid response format: demandes array missing");
       }
 
-      const demandesFromResponse = Array.isArray(data.demandes) ? data.demandes : [];
+      const demandesFromResponse = (Array.isArray(data.demandes) ? data.demandes : []).map(demande => ({
+        ...demande,
+        files: demande.files?.map(file => ({
+          ...file,
+          fileId: file.fileId || file.id
+        })) || []
+      }));
 
-      // Process the data for our state structure
       const processedFormation = {
         data: demandesFromResponse,
         total: demandesFromResponse.length,
-        pending: demandesFromResponse.filter(d => d.reponseChef === "I").length,
-        approved: demandesFromResponse.filter(d => d.reponseChef === "O").length
+        approved: demandesFromResponse.filter(d => d.reponseChef && 
+          (d.reponseChef.responseChef1 === "O" || 
+           d.reponseChef.responseChef2 === "O" || 
+           d.reponseChef.responseChef3 === "O")).length,
+        pending: demandesFromResponse.filter(d => !d.reponseChef || 
+          (d.reponseChef.responseChef1 === "I" && 
+           d.reponseChef.responseChef2 === "I" && 
+           d.reponseChef.responseChef3 === "I")).length
       };
 
-      // Update localStorage cache
       const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
       const updatedCache = {
         ...currentCache,
@@ -169,38 +258,25 @@ const Formation = () => {
       
       localStorage.setItem("demandes", JSON.stringify(updatedCache));
 
-      // Update state
-      setDemandesData(updatedCache);
-      setDemandes(processedFormation.data);
-      setFilteredDemandes(processedFormation.data);
-      setDataSource("api");
-      
-      // Update last updated timestamp
-      const now = new Date().toLocaleTimeString();
-      setLastUpdated(now);
-      
-      return true;
+      return processedFormation;
     } catch (error) {
       console.error("API fetch error:", error);
       throw error;
     }
-  }, [userId]);
+  }, [getUserInfo]);
 
   const fetchDemandes = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // First try to get from localStorage
       const stored = localStorage.getItem("demandes");
       if (stored) {
         try {
           const parsed = JSON.parse(stored);
           const cacheAge = Date.now() - (parsed.timestamp || 0);
           
-          // Use cached data if less than 1 hour old and has valid data
           if (cacheAge < 3600000 && parsed.formation?.data && Array.isArray(parsed.formation.data)) {
-            console.log("Using cached formation data");
             setDemandesData(parsed);
             setDemandes(parsed.formation.data);
             setFilteredDemandes(parsed.formation.data);
@@ -208,7 +284,6 @@ const Formation = () => {
             setDataSource("cache");
             setLoading(false);
             
-            // Fetch fresh data in background but don't wait for it
             fetchFromAPI().catch(e => console.error("Background refresh failed:", e));
             return;
           }
@@ -217,31 +292,50 @@ const Formation = () => {
         }
       }
 
-      // If no valid cache, fetch from API
-      await fetchFromAPI();
+      const processedData = await fetchFromAPI();
+      setDemandesData(prev => ({
+        ...prev,
+        formation: processedData,
+        timestamp: Date.now()
+      }));
+      setDemandes(processedData.data);
+      setFilteredDemandes(processedData.data);
+      setDataSource("api");
+      setLastUpdated(new Date().toLocaleTimeString());
     } catch (error) {
       console.error("Fetch error:", error);
       setError(error.message || "An unknown error occurred");
+      
+      const stored = localStorage.getItem("demandes");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.formation?.data && Array.isArray(parsed.formation.data)) {
+            setDemandesData(parsed);
+            setDemandes(parsed.formation.data);
+            setFilteredDemandes(parsed.formation.data);
+            setDataSource("cache-fallback");
+          }
+        } catch (e) {
+          console.error("Error parsing fallback data:", e);
+        }
+      }
     } finally {
       setLoading(false);
     }
   }, [fetchFromAPI]);
 
-  // Initial fetch
   useEffect(() => {
+    getUserInfo();
     fetchDemandes();
-  }, [fetchDemandes]);
+  }, [getUserInfo, fetchDemandes]);
 
-  // SSE connection for real-time updates
   useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/api/sse/updates");
+    const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
 
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
-      const { type } = update;
-
-      if (type === "created" || type === "updated" || type === "deleted") {
-        console.log("SSE update received, refreshing data...");
+      if (update.type === "created" || update.type === "updated" || update.type === "deleted") {
         fetchDemandes();
       }
     };
@@ -263,15 +357,18 @@ const Formation = () => {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (demande) =>
-          (demande.personnel?.nom && demande.personnel.nom.toLowerCase().includes(query)) ||
+          (demande.matPers?.nomComplet && demande.matPers.nomComplet.toLowerCase().includes(query)) ||
           (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
-          (demande.titre?.name && demande.titre.name.toLowerCase().includes(query)) ||
-          (demande.theme?.name && demande.theme.name.toLowerCase().includes(query))
+          (demande.titre?.titre && demande.titre.titre.toLowerCase().includes(query)) ||
+          (demande.theme?.theme && demande.theme.theme.toLowerCase().includes(query))
       );
     }
 
     if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => demande.reponseChef === selectedStatus);
+      filtered = filtered.filter((demande) => {
+        const userResponse = getCurrentUserResponse(demande);
+        return userResponse === selectedStatus;
+      });
     }
 
     if (startDate && endDate) {
@@ -285,10 +382,6 @@ const Formation = () => {
   }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
 
   const openActionModal = (demandeId, type) => {
-    if (!demandeId) {
-      console.error("ID de demande invalide.");
-      return;
-    }
     setCurrentDemandeId(demandeId);
     setActionType(type);
     setObservation("");
@@ -302,16 +395,37 @@ const Formation = () => {
     setCurrentDemandeId(null);
   };
 
+  const toggleFilterExpand = () => {
+    setIsFilterExpanded((prev) => !prev);
+  };
+
   const handleAction = async () => {
-    if (!currentDemandeId) {
-      alert("ID de demande invalide.");
-      return;
-    }
     try {
       const token = localStorage.getItem("authToken");
+      const userInfo = getUserInfo();
+      const demande = demandes.find(d => d.id === currentDemandeId);
+      
+      if (!userInfo || !demande) {
+        throw new Error("User validation information not available");
+      }
+
+      const currentPoid = getUserPoidForDemande(demande);
+      
+      if (!currentPoid || currentPoid === 0) {
+        throw new Error("Vous n'êtes pas autorisé à valider cette demande");
+      }
+
+      let chefLevel = "";
+      switch(currentPoid) {
+        case 1: chefLevel = "chef1"; break;
+        case 2: chefLevel = "chef2"; break;
+        case 3: chefLevel = "chef3"; break;
+        default: throw new Error("Invalid user position");
+      }
+
       const url = actionType === "approve" 
-        ? `http://localhost:8080/api/demande-formation/valider/${currentDemandeId}`
-        : `http://localhost:8080/api/demande-formation/refuser/${currentDemandeId}`;
+        ? `${API_URL}/api/demande-formation/valider/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`
+        : `${API_URL}/api/demande-formation/refuser/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -329,43 +443,93 @@ const Formation = () => {
         throw new Error(errorText);
       }
 
-      // Update both state and localStorage
-      const updatedDemandes = demandes.map(d => 
-        d.id === currentDemandeId ? { 
-          ...d, 
-          reponseChef: actionType === "approve" ? "O" : "N",
-          observation: observation 
-        } : d
-      );
+      const result = await response.json();
+      
+      if (result.status === "error") {
+        throw new Error(result.message);
+      }
 
-      const updatedFormation = {
-        data: updatedDemandes,
-        total: updatedDemandes.length,
-        pending: updatedDemandes.filter(d => d.reponseChef === "I").length,
-        approved: updatedDemandes.filter(d => d.reponseChef === "O").length
+      const updatedData = demandes.map(d => {
+        if (d.id === currentDemandeId) {
+          const updatedDemande = { 
+            ...d, 
+            observation: observation 
+          };
+          
+          if (!updatedDemande.reponseChef) {
+            updatedDemande.reponseChef = {
+              id: `temp-${Date.now()}`,
+              demandeId: currentDemandeId,
+              responseChef1: "I",
+              responseChef2: "I",
+              responseChef3: "I",
+              dateChef1: "",
+              dateChef2: "",
+              dateChef3: "",
+              observationChef1: "",
+              observationChef2: "",
+              observationChef3: ""
+            };
+          }
+
+          if (currentPoid === 1) {
+            updatedDemande.reponseChef.responseChef1 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef1 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef1 = observation;
+          } else if (currentPoid === 2) {
+            updatedDemande.reponseChef.responseChef2 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef2 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef2 = observation;
+          } else if (currentPoid === 3) {
+            updatedDemande.reponseChef.responseChef3 = actionType === "approve" ? "O" : "N";
+            updatedDemande.reponseChef.dateChef3 = new Date().toISOString();
+            updatedDemande.reponseChef.observationChef3 = observation;
+          }
+          
+          return updatedDemande;
+        }
+        return d;
+      });
+
+      const updatedformation = {
+        data: updatedData,
+        total: updatedData.length,
+        approved: updatedData.filter(d => d.reponseChef && 
+          (d.reponseChef.responseChef1 === "O" || 
+           d.reponseChef.responseChef2 === "O" || 
+           d.reponseChef.responseChef3 === "O")).length,
+        pending: updatedData.filter(d => !d.reponseChef || 
+          (d.reponseChef.responseChef1 === "I" && 
+           d.reponseChef.responseChef2 === "I" && 
+           d.reponseChef.responseChef3 === "I")).length
       };
 
       const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
       const updatedCache = {
         ...currentCache,
-        formation: updatedFormation,
+        formation: updatedformation,
         timestamp: Date.now()
       };
       
       localStorage.setItem("demandes", JSON.stringify(updatedCache));
 
       setDemandesData(updatedCache);
-      setDemandes(updatedDemandes);
-      setFilteredDemandes(updatedDemandes);
-
+      setDemandes(updatedData);
+      setFilteredDemandes(updatedData);
       closeActionModal();
       
+      // Updated toast messages to show chef level
+      const chefPosition = getUserPositionName(currentPoid);
+      toast.success(
+        actionType === "approve" 
+          ? `Demande approuvée (${chefPosition})` 
+          : `Demande refusée (${chefPosition})`
+      );
+      
     } catch (error) {
-      console.error("Action error:", error);
-      alert(`Error: ${error.message}`);
+      toast.error(`Erreur: ${error.message}`);
     }
   };
-
   const openModal = (demande) => {
     setSelectedDemande(demande);
     setIsModalOpen(true);
@@ -376,11 +540,6 @@ const Formation = () => {
     setSelectedDemande(null);
   };
 
-  const toggleFilterExpand = () => {
-    setIsFilterExpanded((prev) => !prev);
-  };
-
-  // File handling functions
   const fetchFileBlobUrl = async (fileId) => {
     if (!fileId) {
       throw new Error("File ID is missing");
@@ -407,7 +566,6 @@ const Formation = () => {
 
   const handlePreview = async (fileId) => {
     if (!fileId) {
-      console.error("No file ID provided for preview");
       toast.warning("Aucun fichier sélectionné");
       return;
     }
@@ -423,14 +581,12 @@ const Formation = () => {
       setPreviewFileId(fileId);
       setPreviewFileUrl(url);
     } catch (err) {
-      console.error("Erreur d'aperçu:", err);
       toast.error("Impossible d'afficher la pièce jointe: " + err.message);
     }
   };
 
   const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
     if (!fileId) {
-      console.error("No file ID provided for download");
       toast.warning("Aucun fichier sélectionné");
       return;
     }
@@ -457,7 +613,6 @@ const Formation = () => {
         URL.revokeObjectURL(url);
       }, 100);
     } catch (err) {
-      console.error("Erreur de téléchargement:", err);
       toast.update(toastId, {
         render: "Échec du téléchargement: " + err.message,
         type: "error",
@@ -468,10 +623,10 @@ const Formation = () => {
   };
 
   const clearFilters = () => {
-    setSelectedStatus("all");
     setStartDate(null);
     setEndDate(null);
     setSearchQuery("");
+    setSelectedStatus("all");
   };
 
   const handleRefresh = () => {
@@ -567,7 +722,7 @@ const Formation = () => {
                 className={`filter-tab ${selectedStatus === "N" ? "active" : ""}`}
                 onClick={() => setSelectedStatus("N")}
               >
-                Refusées
+                Rejetées
               </button>
             </div>
 
@@ -606,7 +761,9 @@ const Formation = () => {
             <div className="stat-card pending">
               <div className="stat-content">
                 <h3>En Attente</h3>
-                <p className="stat-value">{demandesData.formation.pending}</p>
+                <p className="stat-value">
+                  {demandes.filter(d => getCurrentUserResponse(d) === "I").length}
+                </p>
               </div>
               <div className="stat-icon">
                 <FiClock />
@@ -616,7 +773,9 @@ const Formation = () => {
             <div className="stat-card approved">
               <div className="stat-content">
                 <h3>Approuvées</h3>
-                <p className="stat-value">{demandesData.formation.approved}</p>
+                <p className="stat-value">
+                  {demandes.filter(d => getCurrentUserResponse(d) === "O").length}
+                </p>
               </div>
               <div className="stat-icon">
                 <FiCheck />
@@ -676,145 +835,160 @@ const Formation = () => {
                     <th>Type Formation</th>
                     <th>Thème Formation</th>
                     <th>Période</th>
-                    <th>Texte Demande</th>
                     <th>Fichier</th>
-                    <th>Statut</th>
+                    <th>Votre Position</th>
+                    <th>Votre Statut</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredDemandes.map((demande) => (
-                    <tr key={demande.id} onClick={() => openModal(demande)}>
-                      <td>
-                        <div className="cell-with-icon">
-                          <FiCalendar className="cell-icon" />
-                          <span>
-                            {demande.dateDemande ? new Date(demande.dateDemande).toLocaleDateString('fr-FR') : "Inconnu"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="employee-info">
-                          <span className="employee-name">
-                            {demande.personnel?.nom && demande.personnel?.prenom 
-                              ? `${demande.personnel.nom} ${demande.personnel.prenom}`
-                              : "Inconnu"}
-                          </span>
-                          {demande.personnel?.matricule && (
-                            <span className="employee-details">Matricule: {demande.personnel.matricule}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="demande-title">
-                          {demande.titre?.name || "Sans titre"}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="demande-type">
-                          {demande.type?.name || "Non spécifié"}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="demande-theme">
-                          {demande.theme?.name || "Non spécifié"}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="date-range-cell">
-                          {demande.dateDebut ? (
-                            <>
-                              <div className="date-item">
-                                <span className="date-label">Début:</span>
-                                <span className="date-value">
-                                  {new Date(demande.dateDebut).toLocaleDateString('fr-FR')}
-                                </span>
-                              </div>
-                              <div className="date-item">
-                                <span className="date-label">Durée:</span>
-                                <span className="date-value">
-                                  {demande.nbrJours} jour{demande.nbrJours > 1 ? 's' : ''}
-                                </span>
-                              </div>
-                            </>
+                  {filteredDemandes.map((demande) => {
+                    const currentPoid = getUserPoidForDemande(demande);
+                    const userResponse = getCurrentUserResponse(demande);
+                    const canValidate = canValidateDemande(demande);
+                    
+                    return (
+                      <tr key={demande.id_libre_demande} onClick={() => openModal(demande)}>
+                        <td>
+                          <div className="cell-with-icon">
+                            <FiCalendar className="cell-icon" />
+                            <span>
+                              {formatDateTime(demande.dateDemande)}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="employee-info">
+                            <span className="employee-name">
+                              {demande.matPers?.matricule || "Inconnu"}
+                            </span>
+                            {demande.matPers?.service && (
+                              <span className="employee-details">
+                                {demande.matPers?.service}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="demande-title">
+                            {demande.titre?.titre || "Sans titre"}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="demande-type">
+                            {demande.type?.type || "Non spécifié"}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="demande-theme">
+                            {demande.theme?.theme || "Non spécifié"}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="date-range-cell">
+                            {demande.dateDebut ? (
+                              <>
+                                <div className="date-item">
+                                  <span className="date-label">Début:</span>
+                                  <span className="date-value">
+                                    {new Date(demande.dateDebut).toLocaleDateString('fr-FR')}
+                                  </span>
+                                </div>
+                                <div className="date-item">
+                                  <span className="date-label">Durée:</span>
+                                  <span className="date-value">
+                                    {demande.nbrJours} jour{demande.nbrJours > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              </>
+                            ) : (
+                              <span className="no-date">Non spécifiée</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="file-actions">
+                          {demande.files?.length > 0 ? (
+                            <div className="file-buttons">
+                              {demande.files.map((file, index) => (
+                                <React.Fragment key={file.id}>
+                                  <button
+                                    className="btn-preview"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePreview(file.fileId);
+                                    }}
+                                    title={`Aperçu: ${file.filename}`}
+                                  >
+                                    <FiEye />
+                                  </button>
+                                  <button
+                                    className="btn-download"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownload(file.fileId, file.filename);
+                                    }}
+                                    title={`Télécharger: ${file.filename}`}
+                                  >
+                                    <FiDownload />
+                                  </button>
+                                  {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+                                </React.Fragment>
+                              ))}
+                            </div>
                           ) : (
-                            <span className="no-date">Non spécifiée</span>
+                            <span>Aucun fichier</span>
                           )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="demande-text">
-                          {demande.texteDemande || <span className="no-content">Aucun détail fourni</span>}
-                        </div>
-                      </td>
-                      <td>
-                      <td className="file-actions">
-  {demande.files?.length > 0 ? (
-    <div className="file-buttons">
-      {demande.files.map((file, index) => (
-        <React.Fragment key={file.id}>
-          <button
-            className="btn-preview"
-            onClick={() => handlePreview(file.fileId)}
-            title={`Aperçu: ${file.filename}`}
-          >
-            <FiEye />
-          </button>
-          <button
-            className="btn-download"
-            onClick={() => handleDownload(file.fileId, file.filename)}
-            title={`Télécharger: ${file.filename}`}
-          >
-            <FiDownload />
-          </button>
-          {index < demande.files.length - 1 && <span className="file-separator">|</span>}
-        </React.Fragment>
-      ))}
-    </div>
-  ) : (
-    <span className="file-actions">Aucun fichier</span>
-  )}
-</td>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${
-                          demande.reponseChef === "I" ? "pending" :
-                          demande.reponseChef === "O" ? "approved" :
-                          demande.reponseChef === "N" ? "rejected" : "processed"
-                        }`}>
-                          {demande.reponseChef === "I" ? "En attente" :
-                           demande.reponseChef === "O" ? "Approuvé" :
-                           demande.reponseChef === "N" ? "Rejeté" : "Traitée"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            className="action-button approve"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openActionModal(demande.id, "approve");
-                            }}
-                            disabled={demande.reponseChef !== "I"}
-                          >
-                            <FiCheck />
-                            <span>Approuver</span>
-                          </button>
-                          <button
-                            className="action-button reject"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openActionModal(demande.id, "reject");
-                            }}
-                            disabled={demande.reponseChef !== "I"}
-                          >
-                            <FiX />
-                            <span>Rejeter</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td>
+                          <span className="position-badge">
+                            {getUserPositionName(currentPoid)}
+                          </span>
+                        </td>
+                        <td>
+                          {renderUserSpecificStatus(demande)}
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              className={`action-button approve ${!canValidate ? 'disabled' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (canValidate) {
+                                  openActionModal(demande.id_libre_demande
+                                    , "approve");
+                                }
+                              }}
+                              disabled={!canValidate}
+                              title={!canValidate ? 
+                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
+                                "Non autorisé") : 
+                                "Approuver"}
+                            >
+                              <FiCheck />
+                              <span>Approuver</span>
+                            </button>
+                            <button
+                              className={`action-button reject ${!canValidate ? 'disabled' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (canValidate) {
+                                  openActionModal(demande.id_libre_demande, "reject");
+                                }
+                              }}
+                              disabled={!canValidate}
+                              title={!canValidate ? 
+                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
+                                "Non autorisé") : 
+                                "Rejeter"}
+                            >
+                              <FiX />
+                              <span>Rejeter</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -846,6 +1020,7 @@ const Formation = () => {
                     onChange={(e) => setObservation(e.target.value)}
                     placeholder={`Entrez votre observation ${actionType === "approve" ? "(optionnel)" : ""}`}
                     rows={4}
+                    required={actionType === "reject"}
                   />
                 </div>
                 <div className="modal-actions">
@@ -866,8 +1041,6 @@ const Formation = () => {
               </div>
             </div>
           )}
-
-          {/* File Preview Modal */}
           {previewFileUrl && (
             <div className="file-preview-modal">
               <div className="file-preview-content">
@@ -914,8 +1087,8 @@ const Formation = () => {
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={closeModal}
-              onApprove={() => openActionModal(selectedDemande.id, "approve")}
-              onReject={() => openActionModal(selectedDemande.id, "reject")}
+              onApprove={() => openActionModal(selectedDemande.id_libre_demande, "approve")}
+              onReject={() => openActionModal(selectedDemande.id_libre_demande, "reject")}
               isActionable={selectedDemande.reponseChef === "I"}
               theme={theme}
             />
@@ -926,4 +1099,4 @@ const Formation = () => {
   );
 };
 
-export default Formation;
+export default DemandesFormation;

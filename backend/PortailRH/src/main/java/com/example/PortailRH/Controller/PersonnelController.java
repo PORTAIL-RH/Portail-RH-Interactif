@@ -976,23 +976,19 @@ public class PersonnelController {
     }
 
     // Get personnel by ID
- /*   @GetMapping("/byId/{id}")
+ @GetMapping("/byId/{id}")
     public ResponseEntity<?> getPersonnelById(@PathVariable String id) {
-        try {
-            Personnel personnel = personnelRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Personnel not found"));
+     try {
+         Personnel personnel = personnelRepository.findById(id)
+                 .orElseThrow(() -> new RuntimeException("Personnel not found"));
 
-            if (personnel.getService() == null && "Chef Hiérarchique".equals(personnel.getRole())) {
-                com.example.PortailRH.Model.Service service = serviceRepository.findByChefHierarchiqueId(id);
-                personnel.setService(service);
-            }
 
-            return ResponseEntity.ok(convertToPersonnelDTO(personnel));
-        } catch (Exception e) {
-            logger.error("Error in getPersonnelById", e);
-            return ResponseEntity.internalServerError().body(Map.of("message", "Error retrieving personnel"));
-        }
-    }*/
+         return ResponseEntity.ok(convertToPersonnelDTO(personnel));
+     } catch (Exception e) {
+         logger.error("Error in getPersonnelById", e);
+         return ResponseEntity.internalServerError().body(Map.of("message", "Error retrieving personnel"));
+     }
+ }
 
     // Get all active personnel
     @GetMapping("/active")

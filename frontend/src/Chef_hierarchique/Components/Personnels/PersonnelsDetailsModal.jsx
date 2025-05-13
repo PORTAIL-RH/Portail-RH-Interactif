@@ -1,8 +1,24 @@
 "use client"
 import "./PersonnelsDetailModal.css"
+import React, { useState } from "react"
 
 const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
+  const [copiedEmail, setCopiedEmail] = useState(null)
+
   if (!personnel) return null
+
+  const handleCopyEmail = (email) => {
+    navigator.clipboard.writeText(email)
+    setCopiedEmail(email)
+    setTimeout(() => setCopiedEmail(null), 2000)
+  }
+
+  const handleEmailAllChefs = () => {
+    if (personnel.chefs && personnel.chefs.length > 0) {
+      const emails = personnel.chefs.map(chef => chef.email).join(';')
+      window.location.href = `mailto:${emails}`
+    }
+  }
 
   return (
     <div className={`modal-overlay ${theme}`}>
@@ -43,15 +59,27 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Email:</span>
-                <span className="detail-value">{personnel.email || "N/A"}</span>
+                <span className="detail-value">
+                  {personnel.email ? (
+                    <a href={`mailto:${personnel.email}`} className="email-link">
+                      {personnel.email}
+                    </a>
+                  ) : "N/A"}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Phone:</span>
-                <span className="detail-value">{personnel.telephone || "N/A"}</span>
+                <span className="detail-value">
+                  {personnel.telephone ? (
+                    <a href={`tel:${personnel.telephone}`} className="phone-link">
+                      {personnel.telephone}
+                    </a>
+                  ) : "N/A"}
+                </span>
               </div>
               <div className="detail-item">
                 <span className="detail-label">CIN:</span>
-                <span className="detail-value">{personnel.cin || "N/A"}</span>
+                <span className="detail-value">{personnel.CIN || "N/A"}</span>
               </div>
             </div>
           </div>
@@ -80,6 +108,62 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
               <div className="detail-item">
                 <span className="detail-label">Company Code:</span>
                 <span className="detail-value">{personnel.code_soc || "N/A"}</span>
+              </div>
+              <div className="detail-item chefs-section">
+                <span className="detail-label">Hierarchical Chiefs:</span>
+                <span className="detail-value">
+                  {personnel.chefs && personnel.chefs.length > 0 ? (
+                    <div className="chefs-container">
+                      {personnel.chefs.map((chef, index) => (
+                        <div key={index} className="chef-card">
+                          <div className="chef-info">
+                            <div className="chef-name">{chef.nomComplet}</div>
+                            <div className="chef-details">
+                              <span className="chef-matricule">{chef.matricule}</span>
+                              <span className="chef-weight">Weight: {chef.poid}</span>
+                            </div>
+                          </div>
+                          <div className="chef-actions">
+                            <button 
+                              className="action-button email-button" 
+                              onClick={() => window.location.href = `mailto:${chef.email}`}
+                              title="Email this chief"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                              </svg>
+                            </button>
+                            <button 
+                              className="action-button copy-button" 
+                              onClick={() => handleCopyEmail(chef.email)}
+                              title="Copy email"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                              </svg>
+                              {copiedEmail === chef.email && <span className="copy-tooltip">Copied!</span>}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        className="email-all-button" 
+                        onClick={handleEmailAllChefs}
+                        disabled={!personnel.chefs || personnel.chefs.length === 0}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                          <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                        Email All Chiefs
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="no-chiefs">No hierarchical chiefs assigned</span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -118,4 +202,3 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
 }
 
 export default PersonnelDetailsModal
-

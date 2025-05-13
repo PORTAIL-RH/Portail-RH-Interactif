@@ -912,7 +912,7 @@ public class DemandeFormationController {
             map.put("theme", d.getTheme());
             map.put("dateDebut", d.getDateDebut());
             map.put("nbrJours", d.getNbrJours());
-            map.put("reponseChef", d.getReponseChef());
+            map.put("reponseChef", d.getResponseChefs());
 
             // Optional fields
             Optional.ofNullable(d.getTexteDemande()).ifPresent(v -> map.put("texteDemande", v));
@@ -925,7 +925,9 @@ public class DemandeFormationController {
                             "matricule", defaultIfNull(p.getMatricule(), ""),
                             "nom", defaultIfNull(p.getNom(), ""),
                             "prenom", defaultIfNull(p.getPrenom(), ""),
-                            "email", defaultIfNull(p.getEmail(), "")
+                            "email", defaultIfNull(p.getEmail(), ""),
+                            "service", defaultIfNull(p.getServiceName(), "")
+
                     ))
                     .orElse(null));
 
