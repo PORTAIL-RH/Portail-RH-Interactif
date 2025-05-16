@@ -70,6 +70,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/services/{id}").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/services/delete/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/services/update/{id}").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/services/{serviceId}/assign-chefs").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/services/basic").permitAll()
 
 
 

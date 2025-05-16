@@ -20,15 +20,151 @@ public class ServiceController {
 
     @Autowired
     private ServiceRepository serviceRepository;
+
     @Autowired
     private ValidatorRepository validatorRepository;
 
     @Autowired
     private PersonnelRepository personnelRepository;
-    public ServiceController(ServiceRepository serviceRepository, PersonnelRepository personnelRepository) {
-        this.serviceRepository = serviceRepository;
-        this.personnelRepository = personnelRepository;
+
+    // Step 1: Create basic service with just a name
+    @PostMapping("/create")
+    public ResponseEntity<?> createBasicService(@RequestBody Map<String, String> request) {
+        try {
+            // Validate service name
+            if (!request.containsKey("serviceName") || request.get("serviceName").trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Service name is required"));
+            }
+
+            // Check if service already exists
+            Optional<Service> existingService = serviceRepository.findByServiceName(request.get("serviceName"));
+            if (existingService.isPresent()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of("message", "Service with this name already exists"));
+            }
+
+            // Create and save new service
+            Service service = new Service();
+            service.setServiceName(request.get("serviceName"));
+            Service savedService = serviceRepository.save(service);
+
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
+                    "id", savedService.getId(),
+                    "serviceName", savedService.getServiceName()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error creating service: " + e.getMessage()));
+        }
     }
+    @GetMapping("/basic")
+    public ResponseEntity<?> getBasicServices() {
+        try {
+            // Get all services
+            List<Service> allServices = serviceRepository.findAll();
+
+            // Filter services that don't have any chiefs assigned
+            List<Map<String, Object>> basicServices = allServices.stream()
+                    .filter(service -> service.getChef1() == null &&
+                            service.getChef2() == null &&
+                            service.getChef3() == null)
+                    .map(service -> {
+                        Map<String, Object> serviceMap = new HashMap<>();
+                        serviceMap.put("id", service.getId());
+                        serviceMap.put("serviceName", service.getServiceName());
+                        return serviceMap;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(basicServices);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error retrieving basic services: " + e.getMessage()));
+        }
+    }
+    // Step 2: Assign chefs to an existing service
+    @PutMapping("/{serviceId}/assign-chefs")
+    public ResponseEntity<?> assignChefsToService(
+            @PathVariable String serviceId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            // Find the service
+            Optional<Service> serviceOptional = serviceRepository.findById(serviceId);
+            if (serviceOptional.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Service service = serviceOptional.get();
+            List<Validator> createdValidators = new ArrayList<>();
+
+            // Process each chef
+            for (int i = 1; i <= 3; i++) {
+                String chefKey = "chef" + i;
+                if (request.containsKey(chefKey)) {
+                    Map<String, Object> chefMap = (Map<String, Object>) request.get(chefKey);
+
+                    // Validate chef data
+                    if (!chefMap.containsKey("personnelId") || chefMap.get("personnelId").toString().isEmpty()) {
+                        return ResponseEntity.badRequest()
+                                .body(Map.of("message", "personnelId is required for chef" + i));
+                    }
+
+                    String personnelId = chefMap.get("personnelId").toString();
+                    Optional<Personnel> chefOptional = personnelRepository.findById(personnelId);
+                    if (chefOptional.isEmpty()) {
+                        return ResponseEntity.badRequest()
+                                .body(Map.of("message", "Personnel not found with id: " + personnelId + " for chef" + i));
+                    }
+
+                    // Get poid (default to 0 if not specified)
+                    int poid = chefMap.containsKey("poid") ?
+                            Integer.parseInt(chefMap.get("poid").toString()) : 0;
+
+                    // Assign chef and poid to service
+                    Personnel chef = chefOptional.get();
+                    switch (i) {
+                        case 1:
+                            service.setChef1(chef);
+                            service.setPoid1(poid);
+                            break;
+                        case 2:
+                            service.setChef2(chef);
+                            service.setPoid2(poid);
+                            break;
+                        case 3:
+                            service.setChef3(chef);
+                            service.setPoid3(poid);
+                            break;
+                    }
+
+                    // Create Validator entry
+                    Validator validator = new Validator(service, chef, poid);
+                    validatorRepository.save(validator);
+                    createdValidators.add(validator);
+                }
+            }
+
+            // Update service with chef assignments
+            Service updatedService = serviceRepository.save(service);
+
+            // Build response
+            Map<String, Object> response = new HashMap<>();
+            response.put("service", buildServiceResponse(updatedService));
+            response.put("validators", createdValidators.stream()
+                    .map(this::buildValidatorResponse)
+                    .collect(Collectors.toList()));
+
+            return ResponseEntity.ok(response);
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "Invalid poid value (must be a number)"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Error assigning chefs: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/all")
     public ResponseEntity<?> getAllServices() {
         try {
@@ -75,129 +211,6 @@ public class ServiceController {
         }
     }
 
-
-        @PostMapping("/create")
-            public ResponseEntity<?> createService(@RequestBody Map<String, Object> request) {
-                try {
-                    // Validate service name
-                    if (!request.containsKey("serviceName") || request.get("serviceName").toString().isEmpty()) {
-                        return ResponseEntity.badRequest()
-                                .body(Map.of("message", "Service name is required"));
-                    }
-
-                    // Create new service
-                    Service service = new Service();
-                    service.setServiceName(request.get("serviceName").toString());
-
-                    // Save service first to get its ID
-                    Service savedService = serviceRepository.save(service);
-                    List<Validator> createdValidators = new ArrayList<>();
-
-                    // Process each chef
-                    for (int i = 1; i <= 3; i++) {
-                        String chefKey = "chef" + i;
-                        if (request.containsKey(chefKey)) {
-                            Map<String, Object> chefMap = (Map<String, Object>) request.get(chefKey);
-
-                            // Validate chef data
-                            if (!chefMap.containsKey("personnelId") || chefMap.get("personnelId").toString().isEmpty()) {
-                                return ResponseEntity.badRequest()
-                                        .body(Map.of("message", "personnelId is required for chef" + i));
-                            }
-
-                            String personnelId = chefMap.get("personnelId").toString();
-                            Optional<Personnel> chefOptional = personnelRepository.findById(personnelId);
-                            if (chefOptional.isEmpty()) {
-                                return ResponseEntity.badRequest()
-                                        .body(Map.of("message", "Personnel not found with id: " + personnelId + " for chef" + i));
-                            }
-
-                            // Get poid (default to 0 if not specified)
-                            int poid = chefMap.containsKey("poid") ?
-                                    Integer.parseInt(chefMap.get("poid").toString()) : 0;
-
-                            // Assign chef and poid to service
-                            Personnel chef = chefOptional.get();
-                            switch (i) {
-                                case 1:
-                                    savedService.setChef1(chef);
-                                    savedService.setPoid1(poid);
-                                    break;
-                                case 2:
-                                    savedService.setChef2(chef);
-                                    savedService.setPoid2(poid);
-                                    break;
-                                case 3:
-                                    savedService.setChef3(chef);
-                                    savedService.setPoid3(poid);
-                                    break;
-                            }
-
-                            // Create Validator entry
-                            Validator validator = new Validator(savedService, chef, poid);
-                            validatorRepository.save(validator);
-                            createdValidators.add(validator);
-                        }
-                    }
-
-                    // Update service with chef assignments
-                    serviceRepository.save(savedService);
-
-                    // Build response
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("service", buildServiceResponse(savedService));
-                    response.put("validators", createdValidators.stream()
-                            .map(this::buildValidatorResponse)
-                            .collect(Collectors.toList()));
-
-                    return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
-                } catch (NumberFormatException e) {
-                    return ResponseEntity.badRequest()
-                            .body(Map.of("message", "Invalid poid value (must be a number)"));
-                } catch (Exception e) {
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                            .body(Map.of("message", "Error creating service: " + e.getMessage()));
-                }
-            }
-
-            private Map<String, Object> buildServiceResponse(Service service) {
-                Map<String, Object> serviceMap = new HashMap<>();
-                serviceMap.put("id", service.getId());
-                serviceMap.put("serviceName", service.getServiceName());
-
-                if (service.getChef1() != null) {
-                    serviceMap.put("chef1", buildChefResponse(service.getChef1(), service.getPoid1()));
-                }
-                if (service.getChef2() != null) {
-                    serviceMap.put("chef2", buildChefResponse(service.getChef2(), service.getPoid2()));
-                }
-                if (service.getChef3() != null) {
-                    serviceMap.put("chef3", buildChefResponse(service.getChef3(), service.getPoid3()));
-                }
-
-                return serviceMap;
-            }
-
-            private Map<String, Object> buildChefResponse(Personnel chef, int poid) {
-                Map<String, Object> chefMap = new HashMap<>();
-                chefMap.put("personnelId", chef.getId());
-                chefMap.put("matricule", chef.getMatricule());
-                chefMap.put("fullName", chef.getNom());
-                chefMap.put("poid", poid);
-                return chefMap;
-            }
-
-            private Map<String, Object> buildValidatorResponse(Validator validator) {
-                Map<String, Object> validatorMap = new HashMap<>();
-                validatorMap.put("id", validator.getId());
-                validatorMap.put("serviceId", validator.getService().getId());
-                validatorMap.put("serviceName", validator.getService().getServiceName());
-                validatorMap.put("chefId", validator.getChef().getId());
-                validatorMap.put("chefMatricule", validator.getChef().getMatricule());
-                validatorMap.put("poid", validator.getPoid());
-                return validatorMap;
-            }
     @GetMapping("/by-chef/{matricule}")
     public ResponseEntity<?> getServiceByChefMatricule(@PathVariable String matricule) {
         try {
@@ -279,6 +292,7 @@ public class ServiceController {
                     .body(Map.of("message", "Error retrieving service: " + e.getMessage()));
         }
     }
+
     @PutMapping("/update/{id}")
     public ResponseEntity<?> updateService(
             @PathVariable String id,
@@ -371,13 +385,13 @@ public class ServiceController {
     @DeleteMapping("/delete/{id}")
     public ResponseEntity<?> deleteService(@PathVariable String id) {
         try {
-            // Vérifier l'existence du service
+            // Check if service exists
             Optional<Service> serviceOptional = serviceRepository.findById(id);
             if (serviceOptional.isEmpty()) {
                 return ResponseEntity.notFound().build();
             }
 
-            // Vérifier si le service a des employés associés
+            // Check if service has associated personnel
             List<Personnel> personnelList = personnelRepository.findByServiceId(id);
             if (!personnelList.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -392,4 +406,42 @@ public class ServiceController {
         }
     }
 
+    // Helper methods
+    private Map<String, Object> buildServiceResponse(Service service) {
+        Map<String, Object> serviceMap = new HashMap<>();
+        serviceMap.put("id", service.getId());
+        serviceMap.put("serviceName", service.getServiceName());
+
+        if (service.getChef1() != null) {
+            serviceMap.put("chef1", buildChefResponse(service.getChef1(), service.getPoid1()));
+        }
+        if (service.getChef2() != null) {
+            serviceMap.put("chef2", buildChefResponse(service.getChef2(), service.getPoid2()));
+        }
+        if (service.getChef3() != null) {
+            serviceMap.put("chef3", buildChefResponse(service.getChef3(), service.getPoid3()));
+        }
+
+        return serviceMap;
+    }
+
+    private Map<String, Object> buildChefResponse(Personnel chef, int poid) {
+        Map<String, Object> chefMap = new HashMap<>();
+        chefMap.put("personnelId", chef.getId());
+        chefMap.put("matricule", chef.getMatricule());
+        chefMap.put("fullName", chef.getNom());
+        chefMap.put("poid", poid);
+        return chefMap;
+    }
+
+    private Map<String, Object> buildValidatorResponse(Validator validator) {
+        Map<String, Object> validatorMap = new HashMap<>();
+        validatorMap.put("id", validator.getId());
+        validatorMap.put("serviceId", validator.getService().getId());
+        validatorMap.put("serviceName", validator.getService().getServiceName());
+        validatorMap.put("chefId", validator.getChef().getId());
+        validatorMap.put("chefMatricule", validator.getChef().getMatricule());
+        validatorMap.put("poid", validator.getPoid());
+        return validatorMap;
+    }
 }

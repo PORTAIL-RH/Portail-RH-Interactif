@@ -60,6 +60,11 @@ const Calendar = lazy(() => import('./Chef_hierarchique/Components/Calendar/Cale
 const Notificationschef = lazy(() => import('./Chef_hierarchique/Components/Notifications/Notifications.jsx'));
 const NotificationModalchef = lazy(() => import('./Chef_hierarchique/Components/Navbar/NotificationModal.jsx'));
 const Documentschef = lazy(() => import('./Chef_hierarchique/Components/Documents/Documents.jsx'));
+const CongeChef = lazy(() => import('./Chef_hierarchique/Components/Ajout-Demande/Conge.jsx'));
+const FormationChef = lazy(() => import('./Chef_hierarchique/Components/Ajout-Demande/Formation.jsx'));
+const AutorisationChef = lazy(() => import('./Chef_hierarchique/Components/Ajout-Demande/Autorisation.jsx'));
+const DocumentChef = lazy(() => import('./Chef_hierarchique/Components/Ajout-Demande/Document.jsx'));
+const AvanceChef = lazy(() => import('./Chef_hierarchique/Components/Ajout-Demande/Avance.jsx'));
 
 // Collaborateur Components
 const Authentication = lazy(() => import('./collaborateurs/Authentification/Authentication.jsx'));
@@ -130,6 +135,12 @@ export const AppRoutes = () => (
       <Route path="/Notificationschef" element={<ProtectedRoute><Notificationschef /></ProtectedRoute>} />
       <Route path="/NotificationModalchef" element={<ProtectedRoute><NotificationModalchef /></ProtectedRoute>} />
       <Route path="/Documentschef" element={<ProtectedRoute><Documentschef /></ProtectedRoute>} />
+            <Route path="/AvanceChef" element={<ProtectedRoute><AvanceChef /></ProtectedRoute>} />
+      <Route path="/DocumentChef" element={<ProtectedRoute><DocumentChef /></ProtectedRoute>} />
+      <Route path="/AutorisationChef" element={<ProtectedRoute><AutorisationChef /></ProtectedRoute>} />
+      <Route path="/FormationChef" element={<ProtectedRoute><FormationChef /></ProtectedRoute>} />
+      <Route path="/CongeChef" element={<ProtectedRoute><CongeChef /></ProtectedRoute>} />
+
 
       
       {/* RH Protected Routes */}

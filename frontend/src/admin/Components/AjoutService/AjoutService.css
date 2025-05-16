@@ -6,7 +6,7 @@
   --text-color: #1f2937;
   --text-light: #6b7280;
   --border-color: #e5e7eb;
-  --background-color: #ffffff;
+  --background-color: #f9fafb;
   --card-background: #ffffff;
   --danger-color: #ef4444;
   --danger-hover: #dc2626;
@@ -42,20 +42,23 @@
   box-sizing: border-box;
 }
 
-/* Global scrollbar styling */
+/* Global scrollbar styling - IMPORTANT: High z-index to ensure visibility */
 ::-webkit-scrollbar {
   width: var(--scrollbar-width);
   height: var(--scrollbar-width);
+  z-index: 99999 !important;
 }
 
 ::-webkit-scrollbar-track {
   background: var(--scrollbar-track);
   border-radius: var(--radius);
+  z-index: 99999 !important;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--scrollbar-thumb);
   border-radius: var(--radius);
+  z-index: 99999 !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -68,6 +71,17 @@
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
+/* Force scrollbars to be visible */
+.dropdown-scroll,
+.modal-body,
+.services-table-container,
+.ajout-content {
+  overflow-y: auto !important;
+  overflow-x: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track) !important;
+}
+
 body {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
     "Helvetica Neue", sans-serif;
@@ -76,7 +90,7 @@ body {
   color: var(--text-color);
   background-color: var(--background-color);
   transition: var(--transition);
-  overflow-y: scroll;
+  overflow-y: scroll !important;
 }
 
 /* App Container */
@@ -97,7 +111,7 @@ body {
   margin-left: 250px;
   transition: margin-left 0.3s ease;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .ajout-container.collapsed {
@@ -107,9 +121,9 @@ body {
 .ajout-content {
   flex: 1;
   padding: 1.5rem;
-  overflow-y: auto;
+  overflow-y: auto !important;
   position: relative;
-  z-index: 1; /* Ensure content is above other elements */
+  z-index: 1;
 }
 
 /* Service Container */
@@ -117,7 +131,7 @@ body {
   background-color: var(--card-background);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  overflow: visible; /* Changed from hidden to visible */
+  overflow: visible; /* Changed from hidden to visible to ensure dropdowns show */
   max-width: 1200px;
   margin: 0 auto;
   position: relative;
@@ -129,7 +143,7 @@ body {
   position: relative;
   background-color: var(--secondary-color);
   border-bottom: 1px solid var(--border-color);
-  z-index: 2; /* Ensure tabs are above content */
+  z-index: 2;
 }
 
 .service-tab {
@@ -173,11 +187,43 @@ body {
   transform: translateX(100%);
 }
 
+/* Create Mode Tabs */
+.create-mode-tabs {
+  display: flex;
+  margin-bottom: 1.5rem;
+  background-color: var(--secondary-color);
+  border-radius: var(--radius);
+  padding: 0.25rem;
+}
+
+.create-mode-tab {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 0.125rem);
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-light);
+  transition: var(--transition);
+}
+
+.create-mode-tab.active {
+  background-color: var(--card-background);
+  color: var(--primary-color);
+  box-shadow: var(--shadow);
+}
+
+.create-mode-tab:hover:not(.active) {
+  color: var(--primary-hover);
+}
+
 /* Add Service Form */
 .ajout-service-container {
   padding: 1.5rem;
   position: relative;
-  overflow: visible;
+  overflow: visible; /* Ensure dropdowns are visible */
 }
 
 .ajout-service-container h2 {
@@ -187,8 +233,19 @@ body {
   color: var(--text-color);
 }
 
+.simple-create-form,
+.advanced-create-form {
+  background-color: var(--card-background);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: visible; /* Ensure dropdowns are visible */
+}
+
 .form-group {
   margin-bottom: 1.5rem;
+  position: relative;
 }
 
 .form-group label {
@@ -213,9 +270,16 @@ body {
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
+.helper-text {
+  margin-bottom: 1rem;
+  color: var(--text-light);
+  font-size: 0.875rem;
+}
+
 .chefs-container {
   margin-bottom: 1.5rem;
   position: relative;
+  overflow: visible; /* Ensure dropdowns are visible */
 }
 
 .chefs-container h3 {
@@ -235,13 +299,51 @@ body {
   border-radius: var(--radius);
   background-color: var(--background-color);
   position: relative;
+  transition: var(--transition);
+  overflow: visible; /* Ensure dropdowns are visible */
+}
+
+.chef-input-group:hover {
+  border-color: var(--primary-color);
 }
 
 .chef-input-group label {
-  min-width: 70px;
+  min-width: 150px;
   font-weight: 500;
 }
 
+/* Service Dropdown */
+.service-dropdown-container {
+  position: relative;
+  width: 100%;
+}
+
+.service-dropdown-container input {
+  width: 100%;
+  padding: 0.75rem;
+  padding-right: 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background-color: var(--background-color);
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.service-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  width: 100%;
+  max-height: 300px;
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000; /* Very high z-index to ensure visibility */
+  overflow: visible; /* Ensure scrollbars are visible */
+}
+
+/* Matricule Dropdown */
 .matricule-dropdown-container {
   flex: 1;
   position: relative;
@@ -255,6 +357,7 @@ body {
   border-radius: var(--radius);
   background-color: var(--background-color);
   color: var(--text-color);
+  cursor: pointer;
 }
 
 .dropdown-icon {
@@ -264,6 +367,12 @@ body {
   transform: translateY(-50%);
   cursor: pointer;
   color: var(--text-light);
+  transition: var(--transition);
+}
+
+.matricule-dropdown-container:hover .dropdown-icon,
+.service-dropdown-container:hover .dropdown-icon {
+  color: var(--primary-color);
 }
 
 .matricule-dropdown {
@@ -276,8 +385,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  z-index: 100; /* Increased z-index to ensure dropdown is above all elements */
-  overflow: visible; /* Changed from hidden to visible */
+  z-index: 10000; /* Very high z-index to ensure visibility */
+  overflow: visible; /* Ensure scrollbars are visible */
 }
 
 .dropdown-search {
@@ -304,11 +413,17 @@ body {
   color: var(--text-color);
 }
 
+.dropdown-search input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
 .dropdown-scroll {
   max-height: 250px;
-  overflow-y: auto;
+  overflow-y: auto !important;
   position: relative;
-  z-index: 101; /* Ensure scrollbar is above all elements */
+  z-index: 10001; /* Even higher z-index for scrollbars */
 }
 
 .dropdown-item {
@@ -317,6 +432,7 @@ body {
   padding: 0.75rem 1rem;
   cursor: pointer;
   transition: var(--transition);
+  border-bottom: 1px solid transparent;
 }
 
 .dropdown-item:hover {
@@ -331,6 +447,7 @@ body {
   font-weight: 500;
   margin-right: 0.5rem;
   color: var(--primary-color);
+  min-width: 80px;
 }
 
 .chef-name {
@@ -355,26 +472,8 @@ body {
   color: var(--danger-color);
 }
 
-.poid-input {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.poid-input label {
-  min-width: auto;
-}
-
-.poid-input input {
-  width: 80px;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background-color: var(--background-color);
-  color: var(--text-color);
-}
-
-.submit-button {
+.submit-button,
+.refresh-button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -387,21 +486,34 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow);
 }
 
-.submit-button:hover {
+.submit-button:hover,
+.refresh-button:hover {
   background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
 }
 
-.submit-button:disabled {
+.submit-button:active,
+.refresh-button:active {
+  transform: translateY(0);
+}
+
+.submit-button:disabled,
+.refresh-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow);
 }
 
 /* Services List */
 .services-list-container {
   padding: 1.5rem;
   position: relative;
+  overflow: visible; /* Ensure scrollbars are visible */
 }
 
 .services-list-header {
@@ -419,16 +531,25 @@ body {
   gap: 0.5rem;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .services-table-container {
-  overflow-x: auto;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
   position: relative;
-  z-index: 5; /* Ensure table scrollbar is above other elements */
+  z-index: 1; /* Base z-index for the table container */
 }
 
 .services-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
+  background-color: var(--card-background);
 }
 
 .services-table th {
@@ -438,12 +559,17 @@ body {
   border-bottom: 2px solid var(--border-color);
   position: sticky;
   top: 0;
-  z-index: 6; /* Ensure table headers are above scrolling content */
+  z-index: 2; /* Higher than table container but lower than dropdowns */
 }
 
 .services-table td {
   padding: 1rem;
   border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.services-table tr:last-child td {
+  border-bottom: none;
 }
 
 .services-table tr:hover {
@@ -464,12 +590,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.5rem;
+  padding: 0.5rem 0.75rem;
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
   transition: var(--transition);
   font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .edit-button {
@@ -479,6 +606,7 @@ body {
 
 .edit-button:hover {
   background-color: #e5e7eb;
+  transform: translateY(-1px);
 }
 
 .delete-button {
@@ -488,6 +616,19 @@ body {
 
 .delete-button:hover {
   background-color: rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
+}
+
+.edit-button:active,
+.delete-button:active {
+  transform: translateY(0);
+}
+
+.edit-button:disabled,
+.delete-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Empty State */
@@ -499,6 +640,9 @@ body {
   padding: 3rem;
   color: var(--text-light);
   text-align: center;
+  background-color: var(--card-background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .empty-state svg {
@@ -520,6 +664,9 @@ body {
   align-items: center;
   justify-content: center;
   padding: 3rem;
+  background-color: var(--card-background);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
 }
 
 .loading-spinner-large {
@@ -549,7 +696,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* Highest z-index to ensure modal is above everything */
+  z-index: 20000; /* Very high z-index to ensure it's above everything */
+  backdrop-filter: blur(2px);
 }
 
 .modal-container {
@@ -558,11 +706,23 @@ body {
   background-color: var(--card-background);
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg);
-  overflow: visible; /* Changed from hidden to visible */
+  overflow: visible; /* Changed from hidden to visible to ensure scrollbars are visible */
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  animation: modalFadeIn 0.3s ease;
   position: relative;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
@@ -574,7 +734,7 @@ body {
   position: sticky;
   top: 0;
   background-color: var(--card-background);
-  z-index: 1002; /* Ensure header is above modal body */
+  z-index: 20002; /* Higher than modal body */
 }
 
 .modal-header h3 {
@@ -603,9 +763,10 @@ body {
 
 .modal-body {
   padding: 1.5rem;
-  overflow-y: auto;
+  overflow-y: auto !important;
+  flex: 1;
   position: relative;
-  z-index: 1001; /* Ensure modal body scrollbar is above other elements */
+  z-index: 20001; /* High but lower than header and footer */
 }
 
 .modal-footer {
@@ -617,7 +778,7 @@ body {
   position: sticky;
   bottom: 0;
   background-color: var(--card-background);
-  z-index: 1002; /* Ensure footer is above modal body */
+  z-index: 20002; /* Same as header */
 }
 
 .modal-cancel {
@@ -644,14 +805,38 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
+  box-shadow: var(--shadow);
 }
 
 .modal-save:hover {
   background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-save:active {
+  transform: translateY(0);
+}
+
+.modal-save:disabled,
+.modal-cancel:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Toast container styles */
+.Toastify__toast-container {
+  z-index: 99999 !important; /* Highest z-index to ensure toasts are always visible */
+}
+
+.Toastify__toast {
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
   .ajout-container {
     margin-left: 0;
   }
@@ -659,18 +844,37 @@ body {
   .ajout-container.collapsed {
     margin-left: 0;
   }
+}
+
+@media (max-width: 768px) {
+  .ajout-content {
+    padding: 1rem;
+  }
+
+  .service-tab {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.875rem;
+  }
 
   .chef-input-group {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .chef-input-group label {
+    min-width: auto;
+    width: 100%;
   }
 
   .matricule-dropdown-container {
     width: 100%;
   }
 
-  .poid-input {
-    width: 100%;
+  .services-list-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
   .services-table th,
@@ -681,6 +885,43 @@ body {
 
   .actions {
     flex-direction: column;
+  }
+
+  .modal-container {
+    width: 95%;
+    max-height: 95vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .create-mode-tab {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .services-table {
+    font-size: 0.75rem;
+  }
+
+  .services-table th,
+  .services-table td {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .edit-button,
+  .delete-button {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .modal-footer {
+    flex-direction: column;
+  }
+
+  .modal-cancel,
+  .modal-save {
+    width: 100%;
+    text-align: center;
   }
 }
 
@@ -696,7 +937,7 @@ body {
   border-right: 1px solid var(--border-color);
   transition: width 0.3s ease;
   z-index: 100;
-  overflow-y: auto;
+  overflow-y: auto !important;
 }
 
 .sidebar.collapsed {
@@ -713,19 +954,38 @@ body {
   box-shadow: var(--shadow);
   position: sticky;
   top: 0;
-  z-index: 50; /* Ensure navbar is above content but below dropdowns */
+  z-index: 50;
 }
 
-/* Toast container styles to ensure toasts appear above everything */
-.Toastify__toast-container {
-  z-index: 9999 !important;
+/* Fix for Firefox scrollbars */
+@-moz-document url-prefix() {
+  .dropdown-scroll,
+  .modal-body,
+  .services-table-container,
+  .ajout-content,
+  .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
 }
 
-/* Ensure all scrollable containers have proper z-index */
-.ajout-content,
+/* Fix for Safari scrollbars */
+@supports (-webkit-overflow-scrolling: touch) {
+  .dropdown-scroll,
+  .modal-body,
+  .services-table-container,
+  .ajout-content,
+  .sidebar {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Ensure all scrollable containers have proper stacking context */
 .dropdown-scroll,
-.services-table-container,
 .modal-body,
+.services-table-container,
+.ajout-content,
 .sidebar {
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  transform: translateZ(0);
+  will-change: transform;
 }

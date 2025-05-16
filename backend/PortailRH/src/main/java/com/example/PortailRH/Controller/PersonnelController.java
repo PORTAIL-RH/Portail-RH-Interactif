@@ -854,6 +854,8 @@ public class PersonnelController {
             List<Map<String, String>> result = chefHierarchiques.stream()
                     .map(personnel -> {
                         Map<String, String> entry = new HashMap<>();
+                        entry.put("id", personnel.getId());
+
                         entry.put("matricule", personnel.getMatricule());
                         entry.put("nom", personnel.getNom());
                         entry.put("prenom", personnel.getPrenom());
