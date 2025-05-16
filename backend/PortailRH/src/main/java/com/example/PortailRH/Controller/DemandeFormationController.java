@@ -232,7 +232,79 @@ public class DemandeFormationController {
         }
     }
 
+    @GetMapping("/approved")
+    public ResponseEntity<?> getDemandesFormationApprovedByChef1() {
+        try {
+            // 1. Get all responses where chef1 approved ("O")
+            List<Response_chefs_dem_formation> reponsesChef1 = responseChefsFormationRepository.findByResponseChef1("O");
 
+            // 2. Extract the IDs of approved requests
+            List<String> demandeIds = reponsesChef1.stream()
+                    .map(Response_chefs_dem_formation::getDemandeId)
+                    .collect(Collectors.toList());
+
+            // 3. Get the corresponding formation requests
+            List<DemandeFormation> demandes = demandeFormationRepository.findByIdIn(demandeIds);
+
+            // 4. Format the response with formation details
+            List<Map<String, Object>> response = demandes.stream()
+                    .map(demande -> {
+                        Map<String, Object> demandeMap = new HashMap<>();
+                        demandeMap.put("id", demande.getId());
+                        demandeMap.put("dateDemande", demande.getDateDemande());
+                        demandeMap.put("typeDemande", demande.getTypeDemande());
+                        demandeMap.put("dateDebut", demande.getDateDebut());
+                        demandeMap.put("nbrJours", demande.getNbrJours());
+                        demandeMap.put("texteDemande", demande.getTexteDemande());
+                        demandeMap.put("reponseChef", demande.getReponseChef());
+
+                        // Add personnel information
+                        if (demande.getMatPers() != null) {
+                            Map<String, Object> personnelMap = new HashMap<>();
+                            personnelMap.put("id", demande.getMatPers().getId());
+                            personnelMap.put("matricule", demande.getMatPers().getMatricule());
+                            personnelMap.put("nom", demande.getMatPers().getNom());
+                            personnelMap.put("prenom", demande.getMatPers().getPrenom());
+                            demandeMap.put("matPers", personnelMap);
+                        }
+
+                        // Add formation details
+                        if (demande.getTitre() != null) {
+                            demandeMap.put("titre", demande.getTitre().getTitre());
+                        }
+                        if (demande.getTheme() != null) {
+                            demandeMap.put("theme", demande.getTheme().getTheme());
+                        }
+                        if (demande.getType() != null) {
+                            demandeMap.put("type", demande.getType().getType());
+                        }
+
+                        // Add response details
+                        if (demande.getResponseChefs() != null) {
+                            Map<String, Object> responseMap = new HashMap<>();
+                            responseMap.put("responseChef1", demande.getResponseChefs().getResponseChef1());
+                            responseMap.put("observationChef1", demande.getResponseChefs().getObservationChef1());
+                            responseMap.put("dateChef1", demande.getResponseChefs().getDateChef1());
+                            demandeMap.put("responseChefs", responseMap);
+                        }
+
+                        return demandeMap;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error fetching approved formation requests", e);
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "status", "error",
+                            "message", "Erreur lors de la récupération des demandes de formation approuvées",
+                            "error", e.getMessage()
+                    )
+            );
+        }
+    }
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeFormation>> getDemandesFormationByPersonnelId(@PathVariable String matPersId) {
         List<DemandeFormation> demandes = demandeFormationRepository.findByMatPersId(matPersId);
@@ -302,7 +374,7 @@ public class DemandeFormationController {
             @RequestBody Map<String, String> request) {
 
         try {
-            // 1. Input validation
+            // 1. Validation des entrées
             if (!ObjectId.isValid(chefId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -317,14 +389,11 @@ public class DemandeFormationController {
                 ));
             }
 
-            // 2. Find the formation request and its response
+            // 2. Recherche de la demande et de sa réponse
             DemandeFormation demande = demandeFormationRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de formation non trouvée"));
 
-            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
-            // 3. Check if request is already approved or rejected
+            // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -339,13 +408,18 @@ public class DemandeFormationController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Vérification que le validateur appartient au même service
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Récupération de la réponse
+            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Mise à jour selon le poids du validateur
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -394,20 +468,20 @@ public class DemandeFormationController {
                     ));
             }
 
-            // 6. Save validation response
+            // 6. Sauvegarde de la réponse
             responseChefsRepository.save(response);
 
-            // 7. Check if all validations are complete
+            // 7. Vérification si toutes les validations sont complètes
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
                     && "O".equals(response.getResponseChef3());
 
-            // 8. Update main request status
+            // 8. Mise à jour du statut principal
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
-            demande.setResponseChefs(response); // Maintain the link
+            demande.setResponseChefs(response);
             demandeFormationRepository.save(demande);
 
-            // 9. Notify employee
+            // 9. Notification de l'employé
             if (demande.getMatPers() != null) {
                 String message = tousValides
                         ? "Votre demande de formation a été approuvée"
@@ -420,7 +494,7 @@ public class DemandeFormationController {
                 );
             }
 
-            // 10. Send SSE update
+            // 10. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(
@@ -451,7 +525,7 @@ public class DemandeFormationController {
             @RequestBody Map<String, String> request) {
 
         try {
-            // 1. Input validation
+            // 1. Validation des entrées
             if (!ObjectId.isValid(chefId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -466,14 +540,11 @@ public class DemandeFormationController {
                 ));
             }
 
-            // 2. Find the formation request and its response
+            // 2. Recherche de la demande et de sa réponse
             DemandeFormation demande = demandeFormationRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de formation non trouvée"));
 
-            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
-            // 3. Check if request is already approved or rejected
+            // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -488,13 +559,18 @@ public class DemandeFormationController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Vérification que le validateur appartient au même service
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Récupération de la réponse
+            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Mise à jour selon le poids du validateur
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -543,16 +619,16 @@ public class DemandeFormationController {
                     ));
             }
 
-            // 6. Save refusal response
+            // 6. Sauvegarde du refus
             responseChefsRepository.save(response);
 
-            // 7. Update main request status
+            // 7. Mise à jour du statut principal (refus immédiat)
             demande.setReponseChef(Reponse.N);
             demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
-            demande.setResponseChefs(response); // Maintain the link
+            demande.setResponseChefs(response);
             demandeFormationRepository.save(demande);
 
-            // 8. Notify employee
+            // 8. Notification de l'employé
             if (demande.getMatPers() != null) {
                 notificationService.createNotification(
                         "Votre demande de formation a été refusée",
@@ -561,7 +637,7 @@ public class DemandeFormationController {
                 );
             }
 
-            // 9. Send SSE update
+            // 9. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(

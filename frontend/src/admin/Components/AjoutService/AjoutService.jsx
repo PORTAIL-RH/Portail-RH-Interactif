@@ -20,16 +20,15 @@ import {
   FiInfo,
 } from "react-icons/fi";
 
-const STORAGE_KEYS = {
-  SERVICES: 'servicesData',
-  PERSONNEL: 'personnelData',
-  LAST_FETCHED: 'lastFetched'
-};
-
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
-
 const AjoutService = () => {
-  const [formData, setFormData] = useState({
+  // State for simple service creation (name only)
+  const [simpleFormData, setSimpleFormData] = useState({
+    serviceName: ""
+  });
+
+  // State for assigning chefs to service
+  const [assignChefsData, setAssignChefsData] = useState({
+    selectedServiceId: "",
     serviceName: "",
     chefs: [
       { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
@@ -39,132 +38,67 @@ const AjoutService = () => {
   });
 
   const [services, setServices] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [fetchingData, setFetchingData] = useState({
-    services: false,
-    personnel: false
-  });
+  const [basicServices, setBasicServices] = useState([]); // Services without chefs
   const [personnelList, setPersonnelList] = useState([]);
+  const [loading, setLoading] = useState({
+    createSimple: false,
+    assignChefs: false,
+    fetch: false,
+    update: false,
+    delete: false
+  });
   const [theme, setTheme] = useState("light");
   const [activeTab, setActiveTab] = useState("add");
+  const [activeCreateMode, setActiveCreateMode] = useState("simple");
   const [editingService, setEditingService] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [dropdownStates, setDropdownStates] = useState([false, false, false]);
   const [searchTerms, setSearchTerms] = useState(["", "", ""]);
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const [serviceSearchTerm, setServiceSearchTerm] = useState("");
 
   const dropdownRefs = [useRef(null), useRef(null), useRef(null)];
   const inputRefs = [useRef(null), useRef(null), useRef(null)];
+  const serviceDropdownRef = useRef(null);
 
-  // Save data to localStorage with timestamp
-  const saveToStorage = (key, data) => {
-    try {
-      const storageData = {
-        data,
-        timestamp: new Date().getTime()
-      };
-      localStorage.setItem(key, JSON.stringify(storageData));
-    } catch (error) {
-      console.error(`Error saving to localStorage (${key}):`, error);
-    }
-  };
-
-  // Load data from localStorage and check if expired
-  const loadFromStorage = (key) => {
-    try {
-      const storedData = localStorage.getItem(key);
-      if (!storedData) return null;
-      
-      const parsedData = JSON.parse(storedData);
-      return {
-        data: parsedData.data,
-        timestamp: parsedData.timestamp,
-        isExpired: (new Date().getTime() - parsedData.timestamp) > CACHE_DURATION
-      };
-    } catch (error) {
-      console.error(`Error loading from localStorage (${key}):`, error);
-      return null;
-    }
-  };
-
-  // Fetch services from API
-  const fetchServices = async () => {
-    setFetchingData(prev => ({...prev, services: true}));
-    try {
-      const response = await axios.get(`${API_URL}/api/services/all`);
-      setServices(response.data);
-      saveToStorage(STORAGE_KEYS.SERVICES, response.data);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching services:", error);
-      toast.error("Failed to load services");
-      throw error;
-    } finally {
-      setFetchingData(prev => ({...prev, services: false}));
-    }
-  };
-
-  // Fetch personnel from API
-  const fetchPersonnel = async () => {
-    setFetchingData(prev => ({...prev, personnel: true}));
-    try {
-      const response = await axios.get(`${API_URL}/api/Personnel/matricules`);
-      setPersonnelList(response.data);
-      saveToStorage(STORAGE_KEYS.PERSONNEL, response.data);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching personnel:", error);
-      toast.error("Failed to load personnel data");
-      throw error;
-    } finally {
-      setFetchingData(prev => ({...prev, personnel: false}));
-    }
-  };
-
-  // Initial data loading
+  // Fetch all necessary data on component mount
   useEffect(() => {
-    const loadInitialData = async () => {
+    const fetchData = async () => {
+      setLoading(prev => ({...prev, fetch: true}));
       try {
-        // Load services
-        const cachedServices = loadFromStorage(STORAGE_KEYS.SERVICES);
-        if (cachedServices && !cachedServices.isExpired) {
-          setServices(cachedServices.data);
-        } else {
-          await fetchServices();
-        }
-
-        // Load personnel
-        const cachedPersonnel = loadFromStorage(STORAGE_KEYS.PERSONNEL);
-        if (cachedPersonnel && !cachedPersonnel.isExpired) {
-          setPersonnelList(cachedPersonnel.data);
-        } else {
-          await fetchPersonnel();
-        }
+        const [servicesRes, basicServicesRes, personnelRes] = await Promise.all([
+          axios.get(`${API_URL}/api/services/all`),
+          axios.get(`${API_URL}/api/services/basic`),
+          axios.get(`${API_URL}/api/Personnel/matricules`)
+        ]);
+        
+        setServices(servicesRes.data);
+        setBasicServices(basicServicesRes.data);
+        setPersonnelList(personnelRes.data);
       } catch (error) {
-        console.error("Initial data loading error:", error);
+        console.error("Error fetching data:", error);
+        toast.error("Failed to load data");
+      } finally {
+        setLoading(prev => ({...prev, fetch: false}));
       }
     };
 
-    loadInitialData();
+    fetchData();
   }, []);
 
-  // Refresh services when switching to list tab if data is stale
-  useEffect(() => {
-    if (activeTab === "list") {
-      const cachedServices = loadFromStorage(STORAGE_KEYS.SERVICES);
-      if (!cachedServices || cachedServices.isExpired) {
-        fetchServices();
-      }
-    }
-  }, [activeTab]);
-
-  // Handle click outside dropdown
+  // Handle click outside dropdowns
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Service dropdown
+      if (serviceDropdownRef.current && !serviceDropdownRef.current.contains(event.target)) {
+        setShowServiceDropdown(false);
+      }
+
+      // Chef dropdowns
       dropdownStates.forEach((state, index) => {
         if (dropdownRefs[index].current && 
-            !dropdownRefs[index].current.contains(event.target) && 
-            inputRefs[index].current !== event.target) {
+            !dropdownRefs[index].current.contains(event.target)) {
           const newDropdownStates = [...dropdownStates];
           newDropdownStates[index] = false;
           setDropdownStates(newDropdownStates);
@@ -182,10 +116,67 @@ const AjoutService = () => {
     document.documentElement.classList.replace(theme, newTheme);
     localStorage.setItem("theme", newTheme);
   };
-
-  const handleInputChange = (e) => {
+// In your data fetching code:
+const fetchPersonnel = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/api/Personnel/matricules`);
+    console.log('Fetched personnel data sample:', response.data[0]); // Verify structure
+    
+    // Ensure each personnel has an ID
+    const validatedPersonnel = response.data.map(p => ({
+      ...p,
+      _id: p._id || p.id // Standardize to _id
+    }));
+    
+    setPersonnelList(validatedPersonnel);
+  } catch (err) {
+    console.error('Failed to fetch personnel:', err);
+    toast.error('Failed to load personnel data');
+  }
+};
+  // Simple form handlers
+  const handleSimpleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setSimpleFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const validateSimpleForm = () => {
+    if (!simpleFormData.serviceName.trim()) {
+      toast.error("Service name is required");
+      return false;
+    }
+    return true;
+  };
+
+  const handleSimpleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateSimpleForm()) return;
+
+    setLoading(prev => ({...prev, createSimple: true}));
+    try {
+      const response = await axios.post(`${API_URL}/api/services/create`, {
+        serviceName: simpleFormData.serviceName
+      });
+
+      if ([200, 201].includes(response.status)) {
+        toast.success("Service created!");
+        setSimpleFormData({ serviceName: "" });
+        setBasicServices([...basicServices, response.data]);
+        setServices([...services, response.data]);
+        setActiveTab("list");
+      }
+    } catch (err) {
+      console.error("Creation error:", err);
+      toast.error(err.response?.data?.message || "Failed to create service");
+    } finally {
+      setLoading(prev => ({...prev, createSimple: false}));
+    }
+  };
+
+  // Assign chefs form handlers
+  const handleAssignChefsInputChange = (e) => {
+    const { name, value } = e.target;
+    setAssignChefsData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleChefSearchChange = (index, value) => {
@@ -200,30 +191,52 @@ const AjoutService = () => {
     setDropdownStates(newDropdownStates);
   };
 
-  const handleChefSelect = (index, personnel) => {
-    const newChefs = [...formData.chefs];
-    newChefs[index] = {
-      ...newChefs[index],
-      personnelId: personnel.id || "",
-      matricule: personnel.matricule,
-      nom: personnel.nom,
-      prenom: personnel.prenom,
-      role: personnel.role
-    };
-    setFormData(prev => ({ ...prev, chefs: newChefs }));
-    
-    const newDropdownStates = [...dropdownStates];
-    newDropdownStates[index] = false;
-    setDropdownStates(newDropdownStates);
+const handleChefSelect = (index, personnel) => {
+  console.group(`[DEBUG] Selecting chief ${index + 1}`);
+  console.log('Personnel object:', personnel);
+  
+  // First try to get the ID from common field names
+  const personnelId = personnel._id || personnel.id;
+  
+  if (!personnelId) {
+    console.error('Personnel object missing ID field! Available fields:', Object.keys(personnel));
+    toast.error('Selected personnel data is incomplete - missing ID');
+    return;
+  }
+
+  const newChefs = [...assignChefsData.chefs];
+  newChefs[index] = {
+    ...newChefs[index],
+    personnelId: personnelId, // Now guaranteed to have value
+    matricule: personnel.matricule,
+    nom: personnel.nom,
+    prenom: personnel.prenom,
+    role: personnel.role
+  };
+  
+  console.log('Updated chief data:', newChefs[index]);
+  setAssignChefsData(prev => ({ ...prev, chefs: newChefs }));
+  
+  console.groupEnd();
+};
+
+  const handleServiceSelect = (service) => {
+    setAssignChefsData(prev => ({
+      ...prev,
+      selectedServiceId: service.id,
+      serviceName: service.serviceName
+    }));
+    setShowServiceDropdown(false);
+    setServiceSearchTerm("");
   };
 
-  const validateForm = () => {
-    if (!formData.serviceName.trim()) {
-      toast.error("Service name is required");
+  const validateAssignChefsForm = () => {
+    if (!assignChefsData.selectedServiceId) {
+      toast.error("Please select a service");
       return false;
     }
     
-    const hasChef = formData.chefs.some(chef => chef.matricule);
+    const hasChef = assignChefsData.chefs.some(chef => chef.matricule);
     if (!hasChef) {
       toast.error("At least one chief is required");
       return false;
@@ -232,70 +245,201 @@ const AjoutService = () => {
     return true;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
+const handleAssignChefsSubmit = async (e) => {
+  e.preventDefault();
+    // Verify all selected chiefs have IDs
+  const invalidChiefs = assignChefsData.chefs
+    .filter(chef => chef.matricule && !chef.personnelId)
+    .map((_, i) => i + 1);
+    
+  if (invalidChiefs.length > 0) {
+    toast.error(`Chiefs at positions ${invalidChiefs.join(', ')} are missing IDs`);
+    return;
+  }
 
-    setLoading(true);
-    try {
-      const requestData = {
-        serviceName: formData.serviceName,
-        ...formData.chefs.reduce((acc, chef, index) => {
-          if (chef.matricule) {
-            acc[`chef${index + 1}`] = { 
-              matricule: chef.matricule,
-              poid: index + 1
-            };
-          }
-          return acc;
-        }, {})
-      };
+  console.group('[DEBUG] Chief Assignment Process');
+  console.log('=== STARTING CHIEF ASSIGNMENT ===');
+  console.log('Initial Form State:', JSON.parse(JSON.stringify(assignChefsData)));
 
-      const response = await axios.post(`${API_URL}/api/services/create`, requestData);
-      if ([200, 201].includes(response.status)) {
-        toast.success("Service created!");
-        setFormData({
-          serviceName: "",
-          chefs: [
-            { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
-            { personnelId: "", poid: 2, matricule: "", nom: "", prenom: "", role: "" },
-            { personnelId: "", poid: 3, matricule: "", nom: "", prenom: "", role: "" }
-          ]
+  try {
+    setLoading(prev => ({...prev, assignChefs: true}));
+
+    // 1. Validate and prepare chiefs data
+    console.log('\n[Step 1] Preparing chiefs data...');
+    const requestData = {};
+    let validChiefsCount = 0;
+
+    assignChefsData.chefs.forEach((chef, index) => {
+      const position = index + 1;
+      console.log(`Checking chief ${position}:`, chef);
+
+      if (chef.personnelId && chef.matricule) {
+        console.log(`✅ Valid chief ${position} found`, {
+          personnelId: chef.personnelId,
+          poid: chef.poid
         });
-        setSearchTerms(["", "", ""]);
-        const updatedServices = [...services, response.data.service];
-        setServices(updatedServices);
-        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
-        setActiveTab("list");
+
+        requestData[`chef${position}`] = {
+          personnelId: chef.personnelId,
+          poid: chef.poid || position // Default to position if poid missing
+        };
+        validChiefsCount++;
+      } else {
+        console.warn(`⚠️ Skipping chief ${position} - missing personnelId or matricule`);
       }
-    } catch (err) {
-      console.error("Creation error:", err);
-      toast.error(err.response?.data?.message || "Failed to create service");
-    } finally {
-      setLoading(false);
+    });
+
+    if (validChiefsCount === 0) {
+      console.error('❌ No valid chiefs selected - aborting');
+      throw new Error('Please select at least one valid chief');
     }
+
+    console.log('\n[Step 2] Final request payload:', JSON.stringify({
+      serviceId: assignChefsData.selectedServiceId,
+      chiefs: requestData
+    }, null, 2));
+
+    // 2. Make API call
+    console.log('\n[Step 3] Making API call to:', 
+      `${API_URL}/api/services/${assignChefsData.selectedServiceId}/assign-chefs`);
+
+    const response = await axios.put(
+      `${API_URL}/api/services/${assignChefsData.selectedServiceId}/assign-chefs`,
+      requestData,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        transformRequest: [(data) => {
+          console.log('Actual request payload being sent:', JSON.stringify(data));
+          return JSON.stringify(data);
+        }]
+      }
+    );
+
+    console.log('\n[Step 4] API Response:', response.data);
+
+    // 3. Handle success
+    console.log('\n[Step 5] Updating UI state...');
+    toast.success("Chiefs assigned successfully!");
+    
+    const updatedServices = services.map(s => 
+      s.id === assignChefsData.selectedServiceId ? response.data.service : s
+    );
+    setServices(updatedServices);
+    
+    setBasicServices(prev => 
+      prev.filter(s => s.id !== assignChefsData.selectedServiceId)
+    );
+    
+    console.log('UI state updated successfully');
+
+  } catch (err) {
+    console.error('\n[ERROR] Assignment failed:', {
+      error: err.message,
+      response: err.response?.data,
+      request: {
+        url: err.config?.url,
+        data: err.config?.data ? JSON.parse(err.config.data) : null,
+        headers: err.config?.headers
+      },
+      stack: err.stack
+    });
+
+    toast.error(
+      err.response?.data?.message || 
+      err.message || 
+      "Chief assignment failed. Check console for details."
+    );
+  } finally {
+    setLoading(prev => ({...prev, assignChefs: false}));
+    console.groupEnd();
+  }
+};
+
+  // Filter functions
+  const filteredBasicServices = basicServices.filter(service =>
+    service.serviceName.toLowerCase().includes(serviceSearchTerm.toLowerCase())
+  );
+
+  const filteredPersonnel = (index) => {
+    const term = searchTerms[index].toLowerCase();
+    if (!term) return personnelList;
+
+    return personnelList.filter(personnel => 
+      personnel.matricule.toLowerCase().includes(term) ||
+      personnel.nom.toLowerCase().includes(term) ||
+      personnel.prenom.toLowerCase().includes(term) ||
+      (personnel.role && personnel.role.toLowerCase().includes(term))
+    );
   };
 
-  const handleDelete = async (serviceId) => {
-    if (!serviceId) {
-      toast.error("Invalid service ID");
-      return;
-    }
+  // Render functions
+  const renderChefInputs = (chefs) => {
+    return chefs.map((chef, index) => (
+      <div className="chef-input-group" key={index}>
+        <label>Chief {index + 1} (Weight {index + 1}):</label>
+        <div className="matricule-dropdown-container">
+          <input
+            ref={inputRefs[index]}
+            type="text"
+            value={chef.matricule ? `${chef.matricule} - ${chef.nom} ${chef.prenom}${chef.role ? ` (${chef.role})` : ''}` : ""}
+            onChange={(e) => handleChefSearchChange(index, e.target.value)}
+            onFocus={() => {
+              const newStates = [...dropdownStates];
+              newStates[index] = true;
+              setDropdownStates(newStates);
+            }}
+            placeholder="Select chief"
+          />
+          <div className="dropdown-icon" onClick={() => toggleDropdown(index)}>
+            <FiChevronDown />
+          </div>
 
-    if (window.confirm("Delete this service?")) {
-      try {
-        await axios.delete(`${API_URL}/api/services/delete/${serviceId}`);
-        const updatedServices = services.filter(s => s.id !== serviceId);
-        setServices(updatedServices);
-        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
-        toast.success("Service deleted!");
-      } catch (error) {
-        console.error("Delete error:", error);
-        toast.error(error.response?.data?.message || "Delete failed");
-      }
-    }
+          {dropdownStates[index] && (
+            <div className="matricule-dropdown" ref={dropdownRefs[index]}>
+              <div className="dropdown-search">
+                <FiSearch className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search chief..."
+                  value={searchTerms[index]}
+                  onChange={(e) => handleChefSearchChange(index, e.target.value)}
+                />
+              </div>
+              <div className="dropdown-scroll">
+                {filteredPersonnel(index).length > 0 ? (
+                  filteredPersonnel(index).map((personnel) => (
+                    <div
+                      key={personnel.matricule}
+                      className={`dropdown-item ${
+                        chef.matricule === personnel.matricule ? "selected" : ""
+                      }`}
+                      onClick={() => handleChefSelect(index, personnel)}
+                    >
+                      <span className="matricule-number">{personnel.matricule}</span>
+                      <span className="chef-name">
+                        {personnel.nom} {personnel.prenom}{personnel.role ? ` (${personnel.role})` : ''}
+                      </span>
+                      {chef.matricule === personnel.matricule && <FiCheck className="selected-icon" />}
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-results">
+                    <FiX className="no-results-icon" />
+                    <span>No chiefs found</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    ));
   };
 
+  // Edit functionality
   const handleEdit = (service) => {
     if (!service?.id) {
       toast.error("Invalid service data");
@@ -305,7 +449,7 @@ const AjoutService = () => {
     const chefs = [
       service.chef1 ? { 
         personnelId: service.chef1.id, 
-        poid: 1,
+        poid: service.poid1 || 1,
         matricule: service.chef1.matricule,
         nom: service.chef1.nom,
         prenom: service.chef1.prenom,
@@ -313,7 +457,7 @@ const AjoutService = () => {
       } : { personnelId: "", poid: 1, matricule: "", nom: "", prenom: "", role: "" },
       service.chef2 ? { 
         personnelId: service.chef2.id, 
-        poid: 2,
+        poid: service.poid2 || 2,
         matricule: service.chef2.matricule,
         nom: service.chef2.nom,
         prenom: service.chef2.prenom,
@@ -321,7 +465,7 @@ const AjoutService = () => {
       } : { personnelId: "", poid: 2, matricule: "", nom: "", prenom: "", role: "" },
       service.chef3 ? { 
         personnelId: service.chef3.id, 
-        poid: 3,
+        poid: service.poid3 || 3,
         matricule: service.chef3.matricule,
         nom: service.chef3.nom,
         prenom: service.chef3.prenom,
@@ -350,17 +494,31 @@ const AjoutService = () => {
       return;
     }
 
+    setLoading(prev => ({...prev, update: true}));
     try {
       const requestData = {
         serviceName: editingService.serviceName
       };
 
-      editingService.chefs.forEach((chef, index) => {
-        if (chef.matricule) {
-          requestData[`chef${index + 1}Matricule`] = chef.matricule;
-          requestData[`poid${index + 1}`] = index + 1;
-        }
-      });
+      // Prepare chef assignments in the format the backend expects
+      if (editingService.chefs[0].matricule) {
+        requestData.chef1 = {
+          personnelId: editingService.chefs[0].personnelId,
+          poid: editingService.chefs[0].poid
+        };
+      }
+      if (editingService.chefs[1].matricule) {
+        requestData.chef2 = {
+          personnelId: editingService.chefs[1].personnelId,
+          poid: editingService.chefs[1].poid
+        };
+      }
+      if (editingService.chefs[2].matricule) {
+        requestData.chef3 = {
+          personnelId: editingService.chefs[2].personnelId,
+          poid: editingService.chefs[2].poid
+        };
+      }
 
       const response = await axios.put(
         `${API_URL}/api/services/update/${editingService.id}`,
@@ -369,109 +527,59 @@ const AjoutService = () => {
 
       if (response.status === 200) {
         const updatedServices = services.map(s => 
-          s.id === editingService.id ? response.data : s
+          s.id === editingService.id ? response.data.service : s
         );
         setServices(updatedServices);
-        saveToStorage(STORAGE_KEYS.SERVICES, updatedServices);
+        
+        // Update basic services list if needed
+        if (!response.data.chef1 && !response.data.chef2 && !response.data.chef3) {
+          const serviceExists = basicServices.some(s => s.id === editingService.id);
+          if (!serviceExists) {
+            setBasicServices([...basicServices, {
+              id: editingService.id,
+              serviceName: response.data.serviceName
+            }]);
+          }
+        } else {
+          setBasicServices(basicServices.filter(s => s.id !== editingService.id));
+        }
+        
         toast.success("Service updated!");
         setShowEditModal(false);
       }
     } catch (error) {
       console.error("Update error:", error);
       toast.error(error.response?.data?.message || "Update failed");
+    } finally {
+      setLoading(prev => ({...prev, update: false}));
     }
   };
 
-  const handleEditChefSelect = (index, personnel) => {
-    const newChefs = [...editingService.chefs];
-    newChefs[index] = {
-      ...newChefs[index],
-      personnelId: personnel.id || "",
-      matricule: personnel.matricule,
-      nom: personnel.nom,
-      prenom: personnel.prenom,
-      role: personnel.role
-    };
-    setEditingService(prev => ({ ...prev, chefs: newChefs }));
-  };
+  const handleDelete = async (serviceId) => {
+    if (!serviceId) {
+      toast.error("Invalid service ID");
+      return;
+    }
 
-  const filteredPersonnel = (index) => {
-    const term = searchTerms[index].toLowerCase();
-    if (!term) return personnelList;
-
-    return personnelList.filter(personnel => 
-      personnel.matricule.toLowerCase().includes(term) ||
-      personnel.nom.toLowerCase().includes(term) ||
-      personnel.prenom.toLowerCase().includes(term) ||
-      (personnel.role && personnel.role.toLowerCase().includes(term))
-    );
-  };
-
-  const renderChefInputs = (chefs, isEditing = false) => {
-    return chefs.map((chef, index) => (
-      <div className="chef-input-group" key={index}>
-        <label>Chief {index + 1} (Weight {index + 1}):</label>
-        <div className="matricule-dropdown-container">
-          <input
-            ref={inputRefs[index]}
-            type="text"
-            value={chef.matricule ? `${chef.matricule} - ${chef.nom} ${chef.prenom}${chef.role ? ` (${chef.role})` : ''}` : ""}
-            onChange={(e) => isEditing ? null : handleChefSearchChange(index, e.target.value)}
-            onFocus={() => {
-              const newStates = [...dropdownStates];
-              newStates[index] = true;
-              setDropdownStates(newStates);
-            }}
-            placeholder="Select chief"
-            readOnly={isEditing}
-          />
-          <div className="dropdown-icon" onClick={() => toggleDropdown(index)}>
-            <FiChevronDown />
-          </div>
-
-          {dropdownStates[index] && (
-            <div className="matricule-dropdown" ref={dropdownRefs[index]}>
-              <div className="dropdown-search">
-                <FiSearch className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Search chief..."
-                  value={searchTerms[index]}
-                  onChange={(e) => handleChefSearchChange(index, e.target.value)}
-                />
-              </div>
-              <div className="dropdown-scroll">
-                {filteredPersonnel(index).length > 0 ? (
-                  filteredPersonnel(index).map((personnel) => (
-                    <div
-                      key={personnel.matricule}
-                      className={`dropdown-item ${
-                        chef.matricule === personnel.matricule ? "selected" : ""
-                      }`}
-                      onClick={() => isEditing ? 
-                        handleEditChefSelect(index, personnel) : 
-                        handleChefSelect(index, personnel)
-                      }
-                    >
-                      <span className="matricule-number">{personnel.matricule}</span>
-                      <span className="chef-name">
-                        {personnel.nom} {personnel.prenom}{personnel.role ? ` (${personnel.role})` : ''}
-                      </span>
-                      {chef.matricule === personnel.matricule && <FiCheck className="selected-icon" />}
-                    </div>
-                  ))
-                ) : (
-                  <div className="no-results">
-                    <FiX className="no-results-icon" />
-                    <span>No chiefs found</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    ));
+    if (window.confirm("Delete this service?")) {
+      setLoading(prev => ({...prev, delete: true}));
+      try {
+        await axios.delete(`${API_URL}/api/services/delete/${serviceId}`);
+        
+        const updatedServices = services.filter(s => s.id !== serviceId);
+        setServices(updatedServices);
+        
+        const updatedBasicServices = basicServices.filter(s => s.id !== serviceId);
+        setBasicServices(updatedBasicServices);
+        
+        toast.success("Service deleted!");
+      } catch (error) {
+        console.error("Delete error:", error);
+        toast.error(error.response?.data?.message || "Delete failed");
+      } finally {
+        setLoading(prev => ({...prev, delete: false}));
+      }
+    }
   };
 
   return (
@@ -499,33 +607,131 @@ const AjoutService = () => {
 
             {activeTab === "add" && (
               <div className="ajout-service-container">
-                <h2>Add Service</h2>
-                <form onSubmit={handleSubmit}>
-                  <div className="form-group">
-                    <label>Service Name:</label>
-                    <input
-                      type="text"
-                      name="serviceName"
-                      value={formData.serviceName}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Service name"
-                    />
-                  </div>
-
-                  <div className="chefs-container">
-                    <h3>Service Chiefs</h3>
-                    <p className="helper-text">
-                      Select up to 3 chiefs for this service with fixed weights.
-                      Chief 1 has weight 1 (highest priority), Chief 2 has weight 2, and Chief 3 has weight 3.
-                    </p>
-                    {renderChefInputs(formData.chefs)}
-                  </div>
-
-                  <button type="submit" className="submit-button" disabled={loading}>
-                    {loading ? "Creating..." : "Create Service"}
+                <div className="create-mode-tabs">
+                  <button
+                    className={`create-mode-tab ${activeCreateMode === "simple" ? "active" : ""}`}
+                    onClick={() => setActiveCreateMode("simple")}
+                  >
+                    Create Service
                   </button>
-                </form>
+                  <button
+                    className={`create-mode-tab ${activeCreateMode === "advanced" ? "active" : ""}`}
+                    onClick={() => setActiveCreateMode("advanced")}
+                  >
+                    Assign Chiefs
+                  </button>
+                </div>
+
+                {activeCreateMode === "simple" ? (
+                  <div className="simple-create-form">
+                    <h2>Create New Service</h2>
+                    <form onSubmit={handleSimpleSubmit}>
+                      <div className="form-group">
+                        <label>Service Name:</label>
+                        <input
+                          type="text"
+                          name="serviceName"
+                          value={simpleFormData.serviceName}
+                          onChange={handleSimpleInputChange}
+                          required
+                          placeholder="Enter service name"
+                        />
+                      </div>
+                      <button 
+                        type="submit" 
+                        className="submit-button" 
+                        disabled={loading.createSimple}
+                      >
+                        {loading.createSimple ? "Creating..." : "Create Service"}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <div className="advanced-create-form">
+                    <h2>Assign Chiefs to Service</h2>
+                    <form onSubmit={handleAssignChefsSubmit}>
+                      <div className="form-group">
+                        <label>Select Service:</label>
+                        <div className="service-dropdown-container" ref={serviceDropdownRef}>
+                          <input
+                            type="text"
+                            value={assignChefsData.serviceName}
+                            onClick={() => setShowServiceDropdown(!showServiceDropdown)}
+                            onChange={(e) => {
+                              setAssignChefsData(prev => ({
+                                ...prev,
+                                selectedServiceId: "",
+                                serviceName: e.target.value
+                              }));
+                              setServiceSearchTerm(e.target.value);
+                              setShowServiceDropdown(true);
+                            }}
+                            placeholder="Search services without chiefs..."
+                          />
+                          <div 
+                            className="dropdown-icon" 
+                            onClick={() => setShowServiceDropdown(!showServiceDropdown)}
+                          >
+                            <FiChevronDown />
+                          </div>
+                          
+                          {showServiceDropdown && (
+                            <div className="service-dropdown">
+                              <div className="dropdown-search">
+                                <FiSearch className="search-icon" />
+                                <input
+                                  type="text"
+                                  placeholder="Search services..."
+                                  value={serviceSearchTerm}
+                                  onChange={(e) => setServiceSearchTerm(e.target.value)}
+                                  autoFocus
+                                />
+                              </div>
+                              <div className="dropdown-scroll">
+                                {filteredBasicServices.length > 0 ? (
+                                  filteredBasicServices.map((service) => (
+                                    <div
+                                      key={service.id}
+                                      className={`dropdown-item ${
+                                        assignChefsData.selectedServiceId === service.id ? "selected" : ""
+                                      }`}
+                                      onClick={() => handleServiceSelect(service)}
+                                    >
+                                      {service.serviceName}
+                                      {assignChefsData.selectedServiceId === service.id && <FiCheck className="selected-icon" />}
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="no-results">
+                                    <FiX className="no-results-icon" />
+                                    <span>No services found</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="chefs-container">
+                        <h3>Service Chiefs</h3>
+                        <p className="helper-text">
+                          Select up to 3 chiefs for this service with weights.
+                          Chief 1 has weight 1 (highest priority), Chief 2 has weight 2, and Chief 3 has weight 3.
+                        </p>
+                        {renderChefInputs(assignChefsData.chefs)}
+                      </div>
+
+                      <button 
+                        type="submit" 
+                        className="submit-button" 
+                        disabled={loading.assignChefs || !assignChefsData.selectedServiceId}
+                      >
+                        {loading.assignChefs ? "Assigning..." : "Assign Chiefs"}
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
             )}
 
@@ -535,28 +741,33 @@ const AjoutService = () => {
                   <h2><FiServer /> Services</h2>
                   <div className="action-buttons">
                     <button
-                      className="submit-button"
-                      onClick={fetchServices}
-                      disabled={fetchingData.services}
+                      className="refresh-button"
+                      onClick={() => {
+                        setLoading(prev => ({...prev, fetch: true}));
+                        Promise.all([
+                          axios.get(`${API_URL}/api/services/all`),
+                          axios.get(`${API_URL}/api/services/basic`)
+                        ])
+                          .then(([servicesRes, basicServicesRes]) => {
+                            setServices(servicesRes.data);
+                            setBasicServices(basicServicesRes.data);
+                          })
+                          .catch(err => toast.error("Failed to refresh data"))
+                          .finally(() => setLoading(prev => ({...prev, fetch: false})));
+                      }}
+                      disabled={loading.fetch}
                     >
-                      <FiRefreshCw /> Refresh Services
-                    </button>
-                    <button
-                      className="submit-button"
-                      onClick={fetchPersonnel}
-                      disabled={fetchingData.personnel}
-                    >
-                      <FiRefreshCw /> Refresh Chiefs
+                      <FiRefreshCw /> Refresh
                     </button>
                   </div>
                 </div>
 
-                {fetchingData.services ? (
+                {loading.fetch ? (
                   <div className="loading-container">
                     <div className="loading-spinner-large"></div>
                     <p>Loading services...</p>
                   </div>
-) : Array.isArray(services) && services.length > 0 ? (
+                ) : services.length > 0 ? (
                   <div className="services-table-container">
                     <table className="services-table">
                       <thead>
@@ -588,10 +799,18 @@ const AjoutService = () => {
                                 '-'}
                             </td>
                             <td className="actions">
-                              <button className="edit-button" onClick={() => handleEdit(service)}>
+                              <button 
+                                className="edit-button" 
+                                onClick={() => handleEdit(service)}
+                                disabled={loading.update || loading.delete}
+                              >
                                 <FiEdit /> Edit
                               </button>
-                              <button className="delete-button" onClick={() => handleDelete(service.id)}>
+                              <button 
+                                className="delete-button" 
+                                onClick={() => handleDelete(service.id)}
+                                disabled={loading.update || loading.delete}
+                              >
                                 <FiTrash2 /> Delete
                               </button>
                             </td>
@@ -615,7 +834,11 @@ const AjoutService = () => {
                 <div className="modal-container">
                   <div className="modal-header">
                     <h3>Edit Service</h3>
-                    <button className="modal-close" onClick={() => setShowEditModal(false)}>
+                    <button 
+                      className="modal-close" 
+                      onClick={() => setShowEditModal(false)}
+                      disabled={loading.update}
+                    >
                       <FiX />
                     </button>
                   </div>
@@ -627,23 +850,34 @@ const AjoutService = () => {
                           type="text"
                           name="serviceName"
                           value={editingService.serviceName}
-                          onChange={(e) => setEditingService({...editingService, serviceName: e.target.value})}
+                          onChange={(e) => setEditingService({
+                            ...editingService,
+                            serviceName: e.target.value
+                          })}
                           required
                         />
                       </div>
                       
                       <div className="chefs-container">
                         <h3>Service Chiefs</h3>
-                        {renderChefInputs(editingService.chefs, true)}
+                        {renderChefInputs(editingService.chefs)}
                       </div>
                     </form>
                   </div>
                   <div className="modal-footer">
-                    <button className="modal-cancel" onClick={() => setShowEditModal(false)}>
+                    <button 
+                      className="modal-cancel" 
+                      onClick={() => setShowEditModal(false)}
+                      disabled={loading.update}
+                    >
                       Cancel
                     </button>
-                    <button className="modal-save" onClick={handleEditSubmit}>
-                      Save
+                    <button 
+                      className="modal-save" 
+                      onClick={handleEditSubmit}
+                      disabled={loading.update}
+                    >
+                      {loading.update ? "Saving..." : "Save"}
                     </button>
                   </div>
                 </div>

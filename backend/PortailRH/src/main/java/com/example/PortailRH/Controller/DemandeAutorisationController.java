@@ -344,7 +344,7 @@ public class DemandeAutorisationController {
             @RequestBody Map<String, String> request) {
 
         try {
-            // 1. Validate inputs
+            // 1. Validation des entrées
             if (!ObjectId.isValid(chefId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -359,14 +359,11 @@ public class DemandeAutorisationController {
                 ));
             }
 
-            // 2. Find authorization request and its response
+            // 2. Recherche de la demande et de sa réponse
             DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
-            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
-            // 3. Check if request is already approved or rejected
+            // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -381,13 +378,18 @@ public class DemandeAutorisationController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Vérification que le validateur appartient au même service
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Récupération de la réponse
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Mise à jour selon le poids du validateur
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -428,26 +430,32 @@ public class DemandeAutorisationController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation invalide"
+                    ));
             }
 
-            // 6. Save validation response
+            // 6. Sauvegarde de la réponse
             responseChefsDemAutorisationRepository.save(response);
 
-            // 7. Check if all validations are complete
+            // 7. Vérification si toutes les validations sont complètes
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
                     && "O".equals(response.getResponseChef3());
 
-            // 8. Update main request status
+            // 8. Mise à jour du statut principal
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeAutorisationRepository.save(demande);
 
-            // 9. Notify employee
+            // 9. Notification de l'employé
             if (demande.getMatPers() != null) {
                 String message = tousValides
                         ? "Votre demande d'autorisation a été approuvée"
-                        : "Votre demande a reçu une validation (en attente d'autres validations)";
+                        : String.format("Validation reçue (Chef %d)", poidChef);
 
                 notificationService.createNotification(
                         message,
@@ -456,12 +464,12 @@ public class DemandeAutorisationController {
                 );
             }
 
-            // 10. Send SSE update
+            // 10. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
-                    "message", tousValides ? "Demande approuvée" : "Validation partielle enregistrée",
+                    "message", tousValides ? "Demande approuvée" : "Validation enregistrée",
                     "validationComplete", tousValides,
                     "poidValidateur", poidChef
             ));
@@ -480,6 +488,7 @@ public class DemandeAutorisationController {
         }
     }
 
+
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemandeAutorisation(
             @PathVariable String id,
@@ -487,7 +496,7 @@ public class DemandeAutorisationController {
             @RequestBody Map<String, String> request) {
 
         try {
-            // 1. Validate inputs
+            // 1. Validation des entrées
             if (!ObjectId.isValid(chefId)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -502,14 +511,11 @@ public class DemandeAutorisationController {
                 ));
             }
 
-            // 2. Find authorization request and its response
+            // 2. Recherche de la demande et de sa réponse
             DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
-            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
-            // 3. Check if request is already approved or rejected
+            // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -524,13 +530,18 @@ public class DemandeAutorisationController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Vérification que le validateur appartient au même service
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Récupération de la réponse
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Mise à jour selon le poids du validateur
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -571,18 +582,24 @@ public class DemandeAutorisationController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation invalide"
+                    ));
             }
 
-            // 6. Save refusal response
+            // 6. Sauvegarde du refus
             responseChefsDemAutorisationRepository.save(response);
 
-            // 7. Update main request status
+            // 7. Mise à jour du statut principal (refus immédiat)
             demande.setReponseChef(Reponse.N);
             demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeAutorisationRepository.save(demande);
 
-            // 8. Notify employee
+            // 8. Notification de l'employé
             if (demande.getMatPers() != null) {
                 notificationService.createNotification(
                         "Votre demande d'autorisation a été refusée",
@@ -591,7 +608,7 @@ public class DemandeAutorisationController {
                 );
             }
 
-            // 9. Send SSE update
+            // 9. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   FiCalendar,
@@ -87,11 +86,55 @@ const CalendrierConge = () => {
 
   const userId = getUserId();
 
+  // Transform leave data to consistent format
+  const transformLeaveData = (rawData) => {
+    // Handle both array and object with demandes property
+    const rawLeaves = Array.isArray(rawData) ? rawData : (rawData.demandes || []);
+    
+    return rawLeaves.map(leave => ({
+      id: leave.id || leave._id,
+      employeeName: `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
+      startDate: leave.dateDebut,
+      endDate: leave.dateFin,
+      type: "ANNUAL",
+      status: "ACCEPTED",
+      duration: calculateDuration(leave.dateDebut, leave.dateFin),
+      department: leave.matPers?.serviceName || "Unknown",
+      approvedBy: "Manager",
+      description: leave.texteDemande || "Congé annuel"
+    }));
+  };
+
   // Fetch approved leave data
   useEffect(() => {
     const fetchLeaveData = async () => {
       setLoading(true);
       setError(null);
+      
+      try {
+        // First check localStorage for cached data
+        const cachedData = localStorage.getItem("approvedCongesCalendar");
+        
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          setLeaveData(transformLeaveData(parsedData));
+          setLoading(false);
+          
+          // Still fetch fresh data in background
+          fetchFreshData();
+          return;
+        }
+        
+        // If no cached data, fetch from API
+        await fetchFreshData();
+      } catch (error) {
+        console.error("Error fetching leave data:", error);
+        setError(error.message);
+        setLoading(false);
+      }
+    };
+
+    const fetchFreshData = async () => {
       try {
         const token = localStorage.getItem("authToken");
         
@@ -107,26 +150,15 @@ const CalendrierConge = () => {
 
         const data = await response.json();
         
-        // Handle both array and object with demandes property
-        const rawLeaves = Array.isArray(data) ? data : (data.demandes || []);
-        
-        const transformedData = rawLeaves.map(leave => ({
-          id: leave.id || leave._id,
-          employeeName: `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
-          startDate: leave.dateDebut,
-          endDate: leave.dateFin,
-          type: "ANNUAL",
-          status: "ACCEPTED",
-          duration: calculateDuration(leave.dateDebut, leave.dateFin),
-          department: leave.matPers?.serviceName || "Unknown",
-          approvedBy: "Manager",
-          description: leave.texteDemande || "Congé annuel"
-        }));
-
+        // Transform and set data
+        const transformedData = transformLeaveData(data);
         setLeaveData(transformedData);
+        
+        // Cache the data in localStorage
+        localStorage.setItem("approvedCongesCalendar", JSON.stringify(data));
       } catch (error) {
-        console.error("Error fetching leave data:", error);
-        setError(error.message);
+        console.error("Error fetching fresh leave data:", error);
+        // Don't set error state here to avoid overwriting cached data display
       } finally {
         setLoading(false);
       }
@@ -144,7 +176,7 @@ const CalendrierConge = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  // Calendar helper functions
+  // Fonctions du calendrier...
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
@@ -152,7 +184,7 @@ const CalendrierConge = () => {
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const goToToday = () => setCurrentDate(new Date());
 
-  // Filter functions
+  // Filtres...
   const toggleFilters = () => setShowFilters(prev => !prev);
 
   const handleFilterChange = (e) => {
@@ -199,17 +231,14 @@ const CalendrierConge = () => {
 
     const days = [];
 
-    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
 
-    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateString = date.toISOString().split('T')[0];
 
-      // Find leaves for this day
       const leavesOnDay = leaveData.filter(leave => {
         const leaveStart = new Date(leave.startDate).toISOString().split('T')[0];
         const leaveEnd = new Date(leave.endDate).toISOString().split('T')[0];

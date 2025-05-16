@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, Download, FileText, FileClock, FileCheck, Filter, Calendar, Star, Clock, Share2 } from 'lucide-react';
-import "./Documents.css";
+import { Search, Download, FileText, FileClock, FileCheck, Filter, Calendar, Star, Clock, Mail } from 'lucide-react';
+import { toast } from 'react-toastify';
+import './Documents.css';
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
 
 export default function EmployeeDocumentsPage() {
   const [activeCategory, setActiveCategory] = useState("all");
@@ -13,6 +16,12 @@ export default function EmployeeDocumentsPage() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [previewState, setPreviewState] = useState({
+    fileId: null,
+    url: null,
+    isLoading: false,
+    error: null
+  });
 
   // Theme management
   useEffect(() => {
@@ -44,7 +53,11 @@ export default function EmployeeDocumentsPage() {
           throw new Error("User ID not found in local storage");
         }
 
-        const response = await fetch(`http://localhost:8080/api/demande-document/personnel/${userId}/files-reponse`);
+        const response = await fetch(`${API_URL}/api/demande-document/personnel/${userId}/files-reponse`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -52,17 +65,16 @@ export default function EmployeeDocumentsPage() {
 
         const data = await response.json();
         
-        // Transform the API data to match your expected format
         const transformedDocuments = data.map(doc => ({
-          id: doc.id || doc.documentId, // Use whichever field your API provides
-          title: doc.title || doc.fileName,
-          category: doc.category || "uncategorized", // Default category if not provided
+          id: doc.fileId || doc.documentId || Math.random().toString(36).substr(2, 9),
+          title: doc.title || doc.filename || "Untitled Document",
+          category: doc.category || "uncategorized",
           date: doc.date || doc.uploadDate || new Date().toISOString().split('T')[0],
-          status: doc.status || "available", // Default status if not provided
-          fileType: doc.fileType || doc.fileName.split('.').pop().toUpperCase(),
+          status: doc.status || "available",
+          fileType: doc.fileType || (doc.filename ? doc.filename.split('.').pop().toUpperCase() : "UNK"),
           size: doc.size || "N/A",
           isStarred: doc.isStarred || false,
-          downloadUrl: doc.downloadUrl || doc.fileUrl // Add download URL if available
+          downloadUrl: doc.downloadUrl || doc.fileUrl || "#"
         }));
 
         setDocuments(transformedDocuments);
@@ -91,97 +103,230 @@ export default function EmployeeDocumentsPage() {
     window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
   };
 
-  // Filter documents based on active category and search query
+  // File download function
+  const handleDownload = async (fileId, filename = "document") => {
+    if (!fileId) {
+      toast.warning("No file selected");
+      return;
+    }
+
+    const toastId = toast.loading("Preparing download...");
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error: ${response.status}`);
+      }
+
+      // Get filename from content-disposition header or use the provided one
+      const contentDisposition = response.headers.get('content-disposition');
+      let actualFilename = filename;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          actualFilename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = actualFilename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.update(toastId, {
+        render: "Download started!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.update(toastId, {
+        render: `Download failed: ${err.message}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
+    }
+  };
+
+  // File preview function
+  const handlePreview = async (fileId) => {
+    if (!fileId) {
+      toast.warning("No file selected");
+      return;
+    }
+
+    if (previewState.fileId === fileId) {
+      cleanupPreview();
+      return;
+    }
+
+    setPreviewState({
+      fileId,
+      url: null,
+      isLoading: true,
+      error: null
+    });
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      setPreviewState({
+        fileId,
+        url,
+        isLoading: false,
+        error: null
+      });
+    } catch (err) {
+      console.error("Preview error:", err);
+      setPreviewState({
+        fileId: null,
+        url: null,
+        isLoading: false,
+        error: err.message
+      });
+      toast.error(`Preview failed: ${err.message}`);
+    }
+  };
+
+  const cleanupPreview = () => {
+    if (previewState.url) {
+      URL.revokeObjectURL(previewState.url);
+    }
+    setPreviewState({
+      fileId: null,
+      url: null,
+      isLoading: false,
+      error: null
+    });
+  };
+
+  useEffect(() => {
+    return () => cleanupPreview();
+  }, []);
+
+  // Simple share function using mailto:
+
+
+
+  // Document filtering and sorting
   const filteredDocuments = documents.filter((doc) => {
     const matchesCategory = activeCategory === "all" || doc.category === activeCategory;
-    const matchesSearch = doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = doc.title && doc.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
-  // Sort documents
   const sortedDocuments = [...filteredDocuments].sort((a, b) => {
-    if (sortBy === "date") {
-      return new Date(b.date) - new Date(a.date);
-    } else if (sortBy === "name") {
-      return a.title.localeCompare(b.title);
-    } else if (sortBy === "type") {
-      return a.fileType.localeCompare(b.fileType);
-    } else if (sortBy === "status") {
-      return a.status.localeCompare(b.status);
-    }
+    if (sortBy === "date") return new Date(b.date) - new Date(a.date);
+    if (sortBy === "name") return a.title.localeCompare(b.title);
+    if (sortBy === "type") return a.fileType.localeCompare(b.fileType);
+    if (sortBy === "status") return a.status.localeCompare(b.status);
     return 0;
   });
 
-  // Get unique categories for the filter
-  const categories = ["all", ...new Set(documents.map((doc) => doc.category))];
+  const categories = ["all", ...new Set(documents.map((doc) => doc.category).filter(Boolean))];
 
-  // Handle document download
-  const handleDownload = async (documentId, downloadUrl) => {
-    try {
-      if (downloadUrl) {
-        // If the API provides direct download URLs
-        window.open(downloadUrl, '_blank');
-      } else {
-        // If you need to call a separate download endpoint
-        const response = await fetch(`http://localhost:8080/api/documents/${documentId}/download`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        
-        if (!response.ok) throw new Error('Download failed');
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        
-        const document = documents.find(doc => doc.id === documentId);
-        link.download = document?.title || `document-${documentId}`;
-        
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      console.error('Download error:', err);
-      alert('Failed to download document');
-    }
-  };
-
-  // Handle document preview (simulated)
-  const handlePreview = (documentId) => {
-    console.log(`Previewing document with ID: ${documentId}`);
-    // In a real application, this would open a preview modal
-    alert(`Document preview opened!`);
-  };
-
-  // Handle document share (simulated)
-  const handleShare = (documentId) => {
-    console.log(`Sharing document with ID: ${documentId}`);
-    // In a real application, this would open a share modal
-    alert(`Document share dialog opened!`);
-  };
-
-  // Get document icon based on status
+  // Document icon helper
   const getDocumentIcon = (status, size = 24) => {
     switch (status) {
-      case "pending":
-        return <FileClock size={size} />;
+      case "pending": return <FileClock size={size} />;
       case "signed":
       case "completed":
-      case "active":
-        return <FileCheck size={size} />;
-      default:
-        return <FileText size={size} />;
+      case "active": return <FileCheck size={size} />;
+      default: return <FileText size={size} />;
     }
   };
 
-  // Format date for better display
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  // Preview component
+  const FilePreview = () => {
+    if (previewState.isLoading) return (
+      <div className="preview-loading">
+        <div className="spinner"></div>
+        <p>Loading preview...</p>
+      </div>
+    );
+
+    if (previewState.error) return (
+      <div className="preview-error">
+        <p>Error: {previewState.error}</p>
+      </div>
+    );
+
+    if (!previewState.url) return null;
+
+    return (
+      <div className="file-preview-modal">
+        <div className="file-preview-content">
+          <div className="file-preview-header">
+            <h3>File Preview</h3>
+            <button 
+              className="close-preview"
+              onClick={cleanupPreview}
+            >
+              X
+            </button>
+          </div>
+          <div className="file-preview-container">
+            <iframe 
+              src={previewState.url} 
+              title="File Preview"
+              className="file-iframe"
+            />
+          </div>
+          <div className="file-preview-footer">
+            <button 
+              className="btn-download"
+              onClick={() => handleDownload(previewState.fileId)}
+            >
+              <Download size={16} /> Download
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -222,12 +367,10 @@ export default function EmployeeDocumentsPage() {
         <div className="documents-page">
           <header className="header">
             <div className="header-content">
-
               <div className="view-options">
                 <button 
                   className={`view-option-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   onClick={() => setViewMode('grid')}
-                  aria-label="Grid view"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
@@ -239,7 +382,6 @@ export default function EmployeeDocumentsPage() {
                 <button 
                   className={`view-option-btn ${viewMode === 'list' ? 'active' : ''}`}
                   onClick={() => setViewMode('list')}
-                  aria-label="List view"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M8 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -311,6 +453,9 @@ export default function EmployeeDocumentsPage() {
               ))}
             </div>
 
+            {/* File Preview Section */}
+            <FilePreview />
+
             <div className={`documents-container ${viewMode}`}>
               {sortedDocuments.length > 0 ? (
                 sortedDocuments.map((doc) => (
@@ -339,26 +484,16 @@ export default function EmployeeDocumentsPage() {
                       <button 
                         className="action-btn preview-btn"
                         onClick={() => handlePreview(doc.id)}
-                        aria-label={`Preview ${doc.title}`}
                       >
                         <FileText size={18} />
-                        <span className="action-text">Preview</span>
-                      </button>
-                      <button 
-                        className="action-btn share-btn"
-                        onClick={() => handleShare(doc.id)}
-                        aria-label={`Share ${doc.title}`}
-                      >
-                        <Share2 size={18} />
-                        <span className="action-text">Share</span>
+                        <span>Preview</span>
                       </button>
                       <button 
                         className="action-btn download-btn"
-                        onClick={() => handleDownload(doc.id, doc.downloadUrl)}
-                        aria-label={`Download ${doc.title}`}
+                        onClick={() => handleDownload(doc.id, doc.title)}
                       >
                         <Download size={18} />
-                        <span className="action-text">Download</span>
+                        <span>Download</span>
                       </button>
                     </div>
                   </div>

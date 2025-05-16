@@ -431,10 +431,6 @@ public class DemandeCongeController {
             DemandeConge demande = demandeCongeRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de congé non trouvée"));
 
-            // Get the response from repository instead of from demande object
-            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
             // 3. Check if request is already approved or rejected
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -450,13 +446,18 @@ public class DemandeCongeController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Verify validator belongs to same service as employee
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Get the response from repository
+            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Update based on validator's weight in the service
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -497,6 +498,12 @@ public class DemandeCongeController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation non reconnu"
+                    ));
             }
 
             // 6. Save validation response
@@ -509,7 +516,7 @@ public class DemandeCongeController {
 
             // 8. Update main request status
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
 
             // 9. Notify employee
@@ -572,9 +579,6 @@ public class DemandeCongeController {
             DemandeConge demande = demandeCongeRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de congé non trouvée"));
 
-            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
             // 3. Check if request is already approved or rejected
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -590,13 +594,18 @@ public class DemandeCongeController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Verify validator belongs to same service as employee
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Get the response from repository
+            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Update based on validator's weight in the service
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -637,15 +646,21 @@ public class DemandeCongeController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation non reconnu"
+                    ));
             }
 
             // 6. Save refusal response
             responseChefsDemCongeRepository.save(response);
 
-            // 7. Update main request status
+            // 7. Update main request status (immediate rejection)
             demande.setReponseChef(Reponse.N);
             demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
 
             // 8. Notify employee
@@ -729,6 +744,7 @@ public class DemandeCongeController {
             );
         }
     }
+
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getDemandesCongeByService(@PathVariable String chefserviceid) {
         try {
@@ -1009,6 +1025,103 @@ public class DemandeCongeController {
             ));
         }
     }
+
+    @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
+    public ResponseEntity<?> getDemandesApprovedByChef1ForService(@PathVariable String chefserviceid) {
+        try {
+            // 1. Validate ID format
+            if (!ObjectId.isValid(chefserviceid)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "ID invalide",
+                                "providedId", chefserviceid
+                        ));
+            }
+
+            ObjectId chefId = new ObjectId(chefserviceid);
+
+            // 2. Get chef information
+            Personnel chef = mongoTemplate.findOne(
+                    new Query(Criteria.where("_id").is(chefId)),
+                    Personnel.class
+            );
+            if (chef == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 3. Find services where chef is validator with weight 1
+            List<Validator> chefValidators = mongoTemplate.find(
+                    new Query(Criteria.where("chef.$id").is(chefId).and("poid").is(1)),
+                    Validator.class
+            );
+
+            if (chefValidators.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Ce chef n'est pas validateur de poids 1 pour aucun service",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 4. Get service IDs
+            List<ObjectId> serviceIds = chefValidators.stream()
+                    .map(v -> v.getService())
+                    .filter(Objects::nonNull)
+                    .map(s -> new ObjectId(s.getId()))
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 5. Get all personnel in these services (excluding current chef)
+            List<Personnel> servicePersonnel = mongoTemplate.find(
+                    new Query(Criteria.where("service.$id").in(serviceIds)
+                            .and("_id").ne(chefId)),
+                    Personnel.class
+            );
+
+            // 6. Get demandes for these personnel that are approved by chef1
+            List<ObjectId> personnelIds = servicePersonnel.stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            // First find all responses approved by chef1
+            List<Response_chefs_dem_conge> approvedResponses = responseChefsDemCongeRepository.findByResponseChef1("O");
+
+            // Then get the demandes that:
+            // 1. Belong to personnel in the service
+            // 2. Have responses approved by chef1
+            List<DemandeConge> approvedDemandes = mongoTemplate.find(
+                    new Query(Criteria.where("matPers.$id").in(personnelIds)
+                            .and("_id").in(approvedResponses.stream()
+                                    .map(r -> new ObjectId(r.getDemandeId()))
+                                    .collect(Collectors.toList()))
+                    ).with(Sort.by(Sort.Direction.DESC, "dateDemande")),
+                    DemandeConge.class
+            );
+
+            // 7. Prepare response
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "chef", buildPersonnelMap(chef),
+                    "services", buildServiceList(chefValidators),
+                    "statistics", Map.of(
+                            "totalPersonnel", servicePersonnel.size(),
+                            "approvedDemandes", approvedDemandes.size()
+                    ),
+                    "demandes", buildDemandeList(approvedDemandes)
+            ));
+
+        } catch (Exception e) {
+            log.error("Error in getDemandesApprovedByChef1ForService: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
 
  /*   @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
     public ResponseEntity<?> getDemandesCongeApprovedByCollaborateursService(

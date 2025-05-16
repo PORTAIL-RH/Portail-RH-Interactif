@@ -149,6 +149,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/services/by-chef/{chefId}") ||
                 requestURI.startsWith("/api/services/update/{id}") ||
                 requestURI.startsWith("/api/services/delete/{id}") ||
+                requestURI.startsWith("/api/services/{serviceId}/assign-chefs") ||
+                requestURI.startsWith("/api/services/basic") ||
 
 
 
