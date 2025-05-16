@@ -16,10 +16,9 @@ const Notifications = () => {
   // Get user data from localStorage
   const userRole = localStorage.getItem("userRole") || "Collaborateur"
   const userId = localStorage.getItem("userId")
-  const userServiceId = localStorage.getItem("userServiceId")
 
   // Use the notifications hook
-  const { notifications, loading, error, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(userRole,userServiceId)
+  const { notifications, loading, error, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(userRole,userId)
 
   // Sort notifications by timestamp (newest first)
   const sortedNotifications = [...notifications]

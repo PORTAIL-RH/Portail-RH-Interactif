@@ -11,18 +11,15 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
 
   // Get user data from localStorage
   const userData = JSON.parse(localStorage.getItem("userData") || "{}")
-  const role = userData.role || "RH" // Défaut à "RH" pour cette version
+  const role = userData.role || "RH"
   const serviceId = userData.service?.$id?.$oid || 
-  localStorage.getItem('userServiceId') || 
-  userData.serviceId;
+    localStorage.getItem('userServiceId') || 
+    userData.serviceId;
 
   const { 
     notifications, 
     unviewedCount, 
-    fetchNotifications, 
-    markAsRead, 
-    markAllAsRead,
-    setUnviewedCount
+    markAllAsRead
   } = useNotifications(role, serviceId)
 
   useEffect(() => {
@@ -38,19 +35,11 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
     setIsNotificationsOpen((prev) => !prev)
   }
 
-  const handleMarkAsRead = async (id) => {
-    await markAsRead(id)
-    fetchNotifications()
-    if (unviewedCount > 0) {
-      setUnviewedCount(prev => prev - 1)
-    }
-  }
-
   const handleMarkAllAsRead = async () => {
-    const success = await markAllAsRead()
-    if (success) {
-      setUnviewedCount(0)
-      fetchNotifications()
+    try {
+      await markAllAsRead()
+    } catch (error) {
+      console.error("Failed to mark all as read:", error)
     }
   }
 
@@ -67,16 +56,7 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("userId")
-    localStorage.removeItem("userRole")
-    localStorage.removeItem("usermatricule")
-    localStorage.removeItem("dashboardStats")
-    localStorage.removeItem("personnelData")
-    localStorage.removeItem("rolesData")
-    localStorage.removeItem("servicesData")
-    localStorage.removeItem("roleDistribution")
-    localStorage.removeItem("authToken")
-    localStorage.removeItem("userData")
+    localStorage.clear()
     window.location.href = "/"
   }
 
@@ -125,8 +105,6 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
               onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
               unviewedCount={unviewedCount}
-              markAsRead={handleMarkAsRead}
-              markAllAsRead={handleMarkAllAsRead}
             />
           )}
         </div>

@@ -93,28 +93,14 @@ public class DemandePreAvanceController {
             Optional<Personnel> personnelOptional = personnelRepository.findById(matPersId);
             if (personnelOptional.isPresent()) {
                 Personnel personnelDetails = personnelOptional.get();
+                //Service servicePersonnel = personnelDetails.getService();
                 Service servicePersonnel = personnelDetails.getService();
 
                 // Send a notification to RH
-                String notificationMessageRH = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
-                notificationService.createNotification(notificationMessageRH, "RH", null);
+                String notificationMessageRH = "Nouvelle demande de pre avanse ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
+                notificationService.createNotification(notificationMessageRH, "RH", null, servicePersonnel.getId(),personnelDetails.getCode_soc());
 
-                // Check if the personnel has a service and if the chef hiérarchique is in the same service
-                if (servicePersonnel != null) {
-                    Personnel chefHierarchique = servicePersonnel.getChef1();
 
-                    if (chefHierarchique != null) {
-                        // Send a notification to the chef hiérarchique
-                        String notificationMessageChef = "Nouvelle demande d'autorisation ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom() + " (Service: " + servicePersonnel.getServiceName() + ")";
-
-                        // Create a notification with role and serviceId
-                        notificationService.createNotification(notificationMessageChef, "Chef Hiérarchique", servicePersonnel.getId());
-                    } else {
-                        System.out.println("Chef Hiérarchique not found for service: " + servicePersonnel.getServiceName());
-                    }
-                } else {
-                    System.out.println("Service not found for personnel: " + personnelDetails.getNom() + " " + personnelDetails.getPrenom());
-                }
             }
 
             // Save the demandePreAvance to the database
@@ -122,7 +108,7 @@ public class DemandePreAvanceController {
             sseController.sendUpdate("created", savedDemande);
 
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "message", "Demande de congé créée avec succès",
+                    "message", "Demande de pre avance créée avec succès",
                     "demandeId", savedDemande.getId()
             ));
         } catch (MontantDepasseException e) {
@@ -213,10 +199,14 @@ public class DemandePreAvanceController {
 
                         // Send notification
                         notificationService.createNotification(
-                                updatedDemande.getMatPers().getId(),
-                                "Votre demande de pré-avance a été mise à jour",
-                                "/demande-pre-avance/" + updatedDemande.getId()
+                                "Demande de pré-avance de personnel %s a été mise à jour",
+                                "RH",
+                                updatedDemande.getMatPers().getMatricule(),
+                                updatedDemande.getMatPers().getServiceId(),
+                                updatedDemande.getCodeSoc()
                         );
+
+
 
                         return ResponseEntity.ok(Map.of(
                                 "message", "Demande de pré-avance mise à jour avec succès",
@@ -271,10 +261,10 @@ public class DemandePreAvanceController {
 
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de Autorisation a été validée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+           // String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande validée avec succès");
 
@@ -304,10 +294,10 @@ public class DemandePreAvanceController {
 
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de Autorisation a été refusée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+            //String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande refusée avec succès");
 
@@ -333,10 +323,10 @@ public class DemandePreAvanceController {
             }
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de Autorisation a été traiter.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+           // String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null , collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());

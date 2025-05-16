@@ -182,6 +182,8 @@ public class PersonnelController {
                     notificationService.createNotification(
                             "Compte verrouillé: " + personnel.getMatricule(),
                             "Admin",
+                            null,
+                            null,
                             null
                     );
 
@@ -201,6 +203,8 @@ public class PersonnelController {
                 notificationService.createNotification(
                         "Enregistrement réussi d'un nouveau personnel avec le matricule -> " + personnel.getMatricule(),
                         "Admin",
+                        null,
+                        null,
                         null
                 );
 
@@ -215,6 +219,8 @@ public class PersonnelController {
                     notificationService.createNotification(
                             "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
                             "Admin",
+                            null,
+                            null,
                             null
                     );
                 }
@@ -264,13 +270,14 @@ public class PersonnelController {
             notificationService.createNotification(
                     "Enregistrement réussi d'un nouveau personnel avec le matricule : " + newPersonnel.getMatricule(),
                     "Admin",
+                    null,
+                    null,
                     null
             );
 
 
 
             sendWelcomeEmail(newPersonnel);
-            createSystemNotification(newPersonnel);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Registration successful. Account pending activation.",
@@ -752,6 +759,8 @@ public class PersonnelController {
             notificationService.createNotification(
                     "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
                     "Admin",
+                    null,
+                    null,
                     null
             );
 
@@ -1366,11 +1375,5 @@ public class PersonnelController {
         }
     }
 
-    private void createSystemNotification(Personnel personnel) {
-        notificationService.createNotification(
-                "New personnel registered: " + personnel.getMatricule(),
-                "System",
-                personnel.getId()
-        );
-    }
+
 }

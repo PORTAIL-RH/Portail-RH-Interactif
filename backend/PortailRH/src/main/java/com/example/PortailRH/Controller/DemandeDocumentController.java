@@ -74,18 +74,9 @@ public class DemandeDocumentController {
 
             // Send notifications
             String notificationMessage = "New request from " + personnel.getNom() + " " + personnel.getPrenom();
-            notificationService.createNotification(notificationMessage, "RH", null);
+            notificationService.createNotification(notificationMessage, "RH", null,personnel.getService().getId(),personnel.getCode_soc());
 
-            if (personnel.getService() != null) {
-                Personnel chef = personnel.getService().getChef1();
-                if (chef != null) {
-                    notificationService.createNotification(
-                            notificationMessage + " (Service: " + personnel.getService().getServiceName() + ")",
-                            "Chef Hiérarchique",
-                            personnel.getService().getId()
-                    );
-                }
-            }
+
 
             DemandeDocument savedDemande = demandeDocumentRepository.save(demandeDocument);
             sseController.sendUpdate("created", savedDemande);
@@ -221,6 +212,16 @@ public class DemandeDocumentController {
                         existingDemande.setDateDemande(new Date()); // Sets to current time
 
                         DemandeDocument updated = demandeDocumentRepository.save(existingDemande);
+
+                        // Send notification
+                        notificationService.createNotification(
+                                "Demande de formation de personnel %s a été mise à jour",
+                                "RH",
+                                demandeDetails.getMatPers().getMatricule(),
+                                demandeDetails.getMatPers().getServiceId(),
+                                demandeDetails.getCodeSoc()
+                        );
+
                         return ResponseEntity.ok(updated);
                     })
                     .orElse(ResponseEntity.notFound().build());
@@ -259,10 +260,10 @@ public class DemandeDocumentController {
 
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de document a été validée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+           // String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande validée avec succès");
 
@@ -293,10 +294,10 @@ public class DemandeDocumentController {
 
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de document a été refusée.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+            //String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande refusée avec succès");
 
@@ -325,10 +326,10 @@ public class DemandeDocumentController {
             }
             String collaborateurId = collaborateur.getId();
             String message = "Votre demande de Document a été traiter.";
-            String role = "collaborateur"; // Make sure this matches your role naming convention
+            //String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             sseController.sendUpdate("updated", updated);
 

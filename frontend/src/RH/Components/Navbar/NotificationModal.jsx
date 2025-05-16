@@ -5,13 +5,16 @@ import "./NotificationModal.css"
 import { FiBell, FiCheckCircle } from "react-icons/fi"
 
 const NotificationModal = ({ onClose, notifications = [], unviewedCount = 0 }) => {
-  const role = "RH"
   const navigate = useNavigate()
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "Date inconnue"
-    const date = new Date(timestamp)
-    return isNaN(date.getTime()) ? "Date inconnue" : format(date, "dd/MM/yyyy HH:mm")
+    try {
+      const date = new Date(timestamp)
+      return isNaN(date.getTime()) ? "Date inconnue" : format(date, "dd/MM/yyyy HH:mm")
+    } catch {
+      return "Date inconnue"
+    }
   }
 
   const handleViewMore = () => {
@@ -19,17 +22,17 @@ const NotificationModal = ({ onClose, notifications = [], unviewedCount = 0 }) =
     if (onClose) onClose()
   }
 
-
   const sortedNotifications = [...notifications]
-    .filter((n) => n.role === role)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 5) // Limit to 5 notifications in the dropdown
+    .slice(0, 5)
 
   return (
     <div className="notification-modal">
       <div className="notification-modal-header">
         <h2>Notifications</h2>
-        
+        {unviewedCount > 0 && (
+          <span className="notification-count-badge">{unviewedCount} non lues</span>
+        )}
       </div>
 
       {sortedNotifications.length > 0 ? (

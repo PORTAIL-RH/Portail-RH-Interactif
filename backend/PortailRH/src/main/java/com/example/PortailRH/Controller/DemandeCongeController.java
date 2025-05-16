@@ -239,13 +239,14 @@ public class DemandeCongeController {
                     personnel.getNom(), personnel.getPrenom(), nbrJours
             );
 
-            notificationService.createNotification(notificationMessage, "RH", null);
 
-            if (service != null && service.getChef1() != null) {
+            if (service != null ) {
                 notificationService.createNotification(
                         notificationMessage + " - Service: " + service.getServiceName(),
                         "Chef Hiérarchique",
-                        service.getId()
+                        null,
+                        service.getId(),
+                        personnel.getCode_soc()
                 );
             }
 
@@ -328,6 +329,15 @@ public class DemandeCongeController {
 
                 // Save the updated demande
                 DemandeConge updatedDemande = demandeCongeRepository.save(existingDemande);
+
+                // Send notification
+                notificationService.createNotification(
+                        "Demande de congé de personnel %s a été mise à jour"+ updatedDemande.getMatPers().getNom(),
+                        "Chef Hiérarchique",
+                        updatedDemande.getMatPers().getId(),
+                        updatedDemande.getMatPers().getServiceId(),
+                        updatedDemande.getCodeSoc()
+                );
 
                 return ResponseEntity.ok(Map.of(
                         "message", "Demande de congé mise à jour avec succès",
@@ -431,10 +441,6 @@ public class DemandeCongeController {
             DemandeConge demande = demandeCongeRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de congé non trouvée"));
 
-            // Get the response from repository instead of from demande object
-            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
             // 3. Check if request is already approved or rejected
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -450,13 +456,18 @@ public class DemandeCongeController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Verify validator belongs to same service as employee
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Get the response from repository
+            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Update based on validator's weight in the service
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -497,6 +508,12 @@ public class DemandeCongeController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation non reconnu"
+                    ));
             }
 
             // 6. Save validation response
@@ -509,19 +526,21 @@ public class DemandeCongeController {
 
             // 8. Update main request status
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
 
             // 9. Notify employee
             if (demande.getMatPers() != null) {
                 String message = tousValides
-                        ? "Votre demande de congé a été approuvée"
-                        : "Votre demande a reçu une validation (en attente d'autres validations)";
+                        ? "Votre demande de congé a été approuvée (en attente validations RH)"
+                        : String.format("Validation reçue (Chef %d)", poidChef);
 
                 notificationService.createNotification(
                         message,
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -545,6 +564,7 @@ public class DemandeCongeController {
             ));
         }
     }
+
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemandeConge(
@@ -572,9 +592,6 @@ public class DemandeCongeController {
             DemandeConge demande = demandeCongeRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de congé non trouvée"));
 
-            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
-                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
-
             // 3. Check if request is already approved or rejected
             if (demande.getReponseChef() == Reponse.N) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -590,13 +607,18 @@ public class DemandeCongeController {
                 ));
             }
 
-            // 4. Verify validator
+            // 4. Verify validator belongs to same service as employee
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
+                    .filter(v -> v.getService().getId().equals(demande.getMatPers().getService().getId()))
                     .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur"));
+                    .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
-            // 5. Update based on validator's weight
+            // Get the response from repository
+            Response_chefs_dem_conge response = responseChefsDemCongeRepository.findByDemandeId(id)
+                    .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
+
+            // 5. Update based on validator's weight in the service
             int poidChef = validationInfo.getPoid();
             String observation = request.get("observation");
             String dateValidation = LocalDateTime.now().toString();
@@ -637,23 +659,31 @@ public class DemandeCongeController {
                     response.setObservationChef3(observation);
                     response.setDateChef3(dateValidation);
                     break;
+
+                default:
+                    return ResponseEntity.badRequest().body(Map.of(
+                            "status", "error",
+                            "message", "Poids de validation non reconnu"
+                    ));
             }
 
             // 6. Save refusal response
             responseChefsDemCongeRepository.save(response);
 
-            // 7. Update main request status
+            // 7. Update main request status (immediate rejection)
             demande.setReponseChef(Reponse.N);
             demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
-            demande.setResponseChefs(response); // Ensure the link is maintained
+            demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
 
             // 8. Notify employee
-            if (demande.getMatPers() != null) {
+            if (demande.getMatPers().getRole() == "RH") {
                 notificationService.createNotification(
-                        "Votre demande de congé a été refusée",
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        "Votre demande de congé a été refusé par RH",
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -677,7 +707,6 @@ public class DemandeCongeController {
         }
     }
 
-
     @PutMapping("/traiter/{id}")
     public ResponseEntity<String> traiterDemande(
             @PathVariable String id,
@@ -697,7 +726,7 @@ public class DemandeCongeController {
             String role = "collaborateur"; // Make sure this matches your role naming convention
 
             // Create and send the notification
-            notificationService.createNotification(message, role, collaborateurId);
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());

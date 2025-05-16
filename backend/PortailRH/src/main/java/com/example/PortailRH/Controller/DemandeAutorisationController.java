@@ -1,14 +1,12 @@
 package com.example.PortailRH.Controller;
 
+import com.example.PortailRH.DTO.PersonnelDTO;
 import com.example.PortailRH.Model.*;
 import com.example.PortailRH.Repository.*;
-import com.example.PortailRH.Service.DemandeFormationService;
 import com.example.PortailRH.Service.FichierJointService;
 import com.example.PortailRH.Service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -25,65 +23,49 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/demande-formation")
+@RequestMapping("/api/demande-autorisation")
 @Slf4j
-public class DemandeFormationController {
-    private static final Logger logger = LoggerFactory.getLogger(DemandeFormationController.class);
+public class DemandeAutorisationController {
 
+    @Autowired
+    private DemandeAutorisationRepository demandeAutorisationRepository;
     @Autowired
     private ValidatorRepository validatorRepository;
-    @Autowired
-    private ResponseChefsFormationRepository responseChefsRepository;
 
     @Autowired
-    private TitreRepository titreRepository;
+    private ResponseChefsAutorisationRepository responseChefsDemAutorisationRepository;
 
-    @Autowired
-    private ResponseChefsFormationRepository responseChefsFormationRepository;
-
-    @Autowired
-    private TypeRepository typeRepository;
-
-    @Autowired
-    private ThemeRepository themeRepository;
-    @Autowired
-    private ServiceRepository serviceRepository;
-    @Autowired
-    private DemandeFormationService demandeFormationService;
-    @Autowired
-    private FichierJointRepository fichierJointRepository;
     @Autowired
     private FichierJointService fichierJointService;
-    @Autowired
-    private DemandeFormationRepository demandeFormationRepository;
+
     @Autowired
     private NotificationService notificationService;
     @Autowired
     private PersonnelRepository personnelRepository;
     @Autowired
-    private SimpMessagingTemplate messagingTemplate; // Inject SimpMessagingTemplate
+    private ServiceRepository serviceRepository;
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
     @Autowired
     private SseController sseController;
-    @GetMapping
-    public ResponseEntity<List<DemandeFormation>> getAllDemandes() {
-        List<DemandeFormation> demandes = demandeFormationRepository.findAll();
-        return ResponseEntity.ok(demandes);
-    }
+    @Autowired
+    private FichierJointRepository fichierJointRepository;
+
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> createDemandeFormation(
+    public ResponseEntity<Map<String, Object>> createDemandeAutorisation(
             @RequestParam("dateDebut") String dateDebutStr,
-            @RequestParam("typeDemande") String typeDemande,
             @RequestParam("texteDemande") String texteDemande,
-            @RequestParam("titre") String titreId,
-            @RequestParam("type") String typeId,
-            @RequestParam("theme") String themeId,
-            @RequestParam("annee_f") String annee_f,
+            @RequestParam("heureSortie") String heureSortieStr,
+            @RequestParam("heureRetour") String heureRetourStr,
+            @RequestParam("codAutorisation") String codAutorisation,
             @RequestParam("codeSoc") String codeSoc,
-            @RequestParam("nbrJours") String nbrJoursStr,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam("matPersId") String matPersId) {
 
@@ -98,36 +80,22 @@ public class DemandeFormationController {
             }
             Personnel personnel = personnelOptional.get();
 
-            // 2. Validate date format
+            // 2. Validate and parse date and times
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-            Date dateDebut;
-            try {
-                dateDebut = dateFormat.parse(dateDebutStr);
-            } catch (ParseException e) {
+            Date dateDebut = dateFormat.parse(dateDebutStr);
+
+            DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+            LocalTime heureSortie = LocalTime.parse(heureSortieStr, timeFormatter);
+            LocalTime heureRetour = LocalTime.parse(heureRetourStr, timeFormatter);
+
+            if (heureSortie.isAfter(heureRetour)) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
-                        "message", "Format de date invalide. Utilisez YYYY-MM-DD"
+                        "message", "Exit time must be before return time"
                 ));
             }
 
-            // 3. Validate number of days
-            int nbrJours;
-            try {
-                nbrJours = Integer.parseInt(nbrJoursStr);
-                if (nbrJours <= 0) {
-                    return ResponseEntity.badRequest().body(Map.of(
-                            "status", "error",
-                            "message", "Le nombre de jours doit être positif"
-                    ));
-                }
-            } catch (NumberFormatException e) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "status", "error",
-                        "message", "Nombre de jours invalide"
-                ));
-            }
-
-            // 4. Handle file upload
+            // 3. Handle file upload
             Fichier_joint fichierJoint = null;
             if (file != null && !file.isEmpty()) {
                 try {
@@ -140,16 +108,8 @@ public class DemandeFormationController {
                 }
             }
 
-            // 5. Fetch related entities
-            com.example.PortailRH.Model.titre titre = titreRepository.findById(titreId)
-                    .orElseThrow(() -> new RuntimeException("Titre not found with ID: " + titreId));
-            com.example.PortailRH.Model.type type = typeRepository.findById(typeId)
-                    .orElseThrow(() -> new RuntimeException("Type not found with ID: " + typeId));
-            com.example.PortailRH.Model.theme theme = themeRepository.findById(themeId)
-                    .orElseThrow(() -> new RuntimeException("Theme not found with ID: " + themeId));
-
-            // 6. Create and save chefs' responses first
-            Response_chefs_dem_formation responseChefs = new Response_chefs_dem_formation();
+            // 4. Create and save chefs' responses first
+            Response_chefs_dem_autorisation responseChefs = new Response_chefs_dem_autorisation();
             responseChefs.setResponseChef1("I");
             responseChefs.setResponseChef2("I");
             responseChefs.setResponseChef3("I");
@@ -160,20 +120,20 @@ public class DemandeFormationController {
             responseChefs.setDateChef2("");
             responseChefs.setDateChef3("");
 
-            Response_chefs_dem_formation savedResponse = responseChefsRepository.save(responseChefs);
+            Response_chefs_dem_autorisation savedResponse = responseChefsDemAutorisationRepository.save(responseChefs);
 
-            // 7. Create and save formation request
-            DemandeFormation demande = new DemandeFormation();
-            demande.setDateDebut(dateDebutStr);
-            demande.setTypeDemande(typeDemande);
+            // 5. Create and save authorization request
+            DemandeAutorisation demande = new DemandeAutorisation();
+            demande.setDateDebut(dateDebut);
             demande.setTexteDemande(texteDemande);
-            demande.setTitre(titre);
-            demande.setType(type);
-            demande.setTheme(theme);
-            demande.setAnnee_f(annee_f);
-            demande.setCodeSoc(codeSoc);
-            demande.setNbrJours(String.valueOf(nbrJours));
+            demande.setHoraireSortie(heureSortie.getHour());
+            demande.setMinuteSortie(heureSortie.getMinute());
+            demande.setHoraireRetour(heureRetour.getHour());
+            demande.setMinuteRetour(heureRetour.getMinute());
+            demande.setCodAutorisation(codAutorisation);
+            demande.setTypeDemande("autorisation");
             demande.setMatPers(personnel);
+            demande.setCodeSoc(codeSoc);
             demande.setReponseChef(Reponse.I);
             demande.setReponseRH(Reponse.I);
             demande.setResponseChefs(savedResponse); // Set the response reference
@@ -182,19 +142,18 @@ public class DemandeFormationController {
                 demande.setFiles(List.of(fichierJoint));
             }
 
-            DemandeFormation savedDemande = demandeFormationRepository.save(demande);
+            DemandeAutorisation savedDemande = demandeAutorisationRepository.save(demande);
 
-            // 8. Update response with demande ID
+            // 6. Update response with demande ID
             savedResponse.setDemandeId(savedDemande.getId());
-            responseChefsRepository.save(savedResponse);
+            responseChefsDemAutorisationRepository.save(savedResponse);
 
-            // 9. Send notifications
+            // 7. Send notifications
             Service service = personnel.getService();
             String notificationMessage = String.format(
-                    "Nouvelle demande de formation de %s %s (%s jours)",
-                    personnel.getNom(), personnel.getPrenom(), nbrJoursStr
+                    "Nouvelle demande d'autorisation de %s %s (Sortie: %s, Retour: %s)",
+                    personnel.getNom(), personnel.getPrenom(), heureSortieStr, heureRetourStr
             );
-
 
             if (service != null ) {
                 notificationService.createNotification(
@@ -206,24 +165,31 @@ public class DemandeFormationController {
                 );
             }
 
+            // 8. Send SSE update
+            sseController.sendUpdate("created", savedDemande);
 
-            // 11. Return response
+            // 9. Return response
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                     "status", "success",
-                    "message", "Demande de formation créée avec succès",
+                    "message", "Demande d'autorisation créée avec succès",
                     "data", Map.of(
                             "demandeId", savedDemande.getId(),
                             "responseId", savedResponse.getId()
                     )
             ));
 
-        } catch (RuntimeException e) {
+        } catch (ParseException e) {
             return ResponseEntity.badRequest().body(Map.of(
                     "status", "error",
-                    "message", e.getMessage()
+                    "message", "Format de date invalide. Utilisez YYYY-MM-DD"
+            ));
+        } catch (DateTimeParseException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "status", "error",
+                    "message", "Format d'heure invalide. Utilisez HH:mm"
             ));
         } catch (Exception e) {
-            log.error("Error creating demande formation: ", e);
+            log.error("Error creating demande autorisation: ", e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "status", "error",
                     "message", "Erreur interne du serveur"
@@ -232,71 +198,158 @@ public class DemandeFormationController {
     }
 
 
-    @GetMapping("/personnel/{matPersId}")
-    public ResponseEntity<List<DemandeFormation>> getDemandesFormationByPersonnelId(@PathVariable String matPersId) {
-        List<DemandeFormation> demandes = demandeFormationRepository.findByMatPersId(matPersId);
-        if (demandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
+    @GetMapping
+    public ResponseEntity<List<DemandeAutorisation>> getAllDemandes() {
+        List<DemandeAutorisation> demandes = demandeAutorisationRepository.findAll();
         return ResponseEntity.ok(demandes);
     }
 
-    @GetMapping("/personnel/{matPersId}/approved")
-    public ResponseEntity<List<DemandeFormation>> getApprovedDemandesFormationByPersonnelId(
-            @PathVariable String matPersId) {
-
-
-        // check that looks at all chef approvals
-        List<DemandeFormation> allDemandes = demandeFormationRepository.findByMatPersId(matPersId);
-
-        List<DemandeFormation> approvedDemandes = allDemandes.stream()
-                .filter(demande -> {
-                    // Check if any chef has approved (O)
-                    Response_chefs_dem_formation response = demande.getResponseChefs();
-                    if (response == null) return false;
-
-                    return "O".equals(response.getResponseChef1()) ||
-                            "O".equals(response.getResponseChef2()) ||
-                            "O".equals(response.getResponseChef3());
-                })
-                .collect(Collectors.toList());
-
-        if (approvedDemandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-
-        return ResponseEntity.ok(approvedDemandes);
+    @GetMapping("/{id}")
+    public ResponseEntity<DemandeAutorisation> getDemandeById(@PathVariable String id) {
+        Optional<DemandeAutorisation> demande = demandeAutorisationRepository.findById(id);
+        return demande.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    @GetMapping("/personnel/{matPersId}/approved-by-chef1")
-    public ResponseEntity<List<DemandeFormation>> getDemandesApprovedByChef1(
-            @PathVariable String matPersId) {
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateDemande(
+            @PathVariable String id,
+            @RequestBody Map<String, Object> requestData) {
 
-        // 1. Récupérer toutes les demandes du personnel
-        List<DemandeFormation> allDemandes = demandeFormationRepository.findByMatPersId(matPersId);
+        return demandeAutorisationRepository.findById(id).map(existingDemande -> {
+            try {
+                // Update common fields
+                if (requestData.containsKey("texteDemande")) {
+                    existingDemande.setTexteDemande((String) requestData.get("texteDemande"));
+                }
 
-        if (allDemandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
+                // Update date fields
+                if (requestData.containsKey("dateDebut")) {
+                    existingDemande.setDateDebut(parseDateFromRequest(requestData.get("dateDebut")));
+                }
+
+                // Handle time fields conversion
+                handleTimeFields(requestData, existingDemande);
+
+                // Save the updated demande
+                DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(existingDemande);
+
+
+                // Send notification
+                notificationService.createNotification(
+                        "Demande de formation de personnel %s a été mise à jour"+ updatedDemande.getMatPers().getNom(),
+                        "Chef Hiérarchique",
+                        updatedDemande.getMatPers().getId(),
+                        updatedDemande.getMatPers().getServiceId(),
+                        updatedDemande.getCodeSoc()
+                );
+
+
+                return ResponseEntity.ok(Map.of(
+                        "message", "Demande d'autorisation mise à jour avec succès",
+                        "demandeId", updatedDemande.getId()
+                ));
+
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(e.getMessage());
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body("Erreur serveur lors de la mise à jour");
+            }
+        }).orElse(ResponseEntity.notFound().build());
+    }
+
+    private void handleTimeFields(Map<String, Object> requestData, DemandeAutorisation demande) {
+        // Heure de sortie
+        if (requestData.containsKey("heureSortie")) {
+            Object heureSortie = requestData.get("heureSortie");
+            if (heureSortie != null) {
+                demande.setHeureSortie(parseTimeValue(heureSortie, "heureSortie"));
+            }
         }
 
-        // 2. Filtrer celles approuvées par le chef de poids 1
-        List<DemandeFormation> approvedByChef1 = allDemandes.stream()
-                .filter(demande -> {
-                    Response_chefs_dem_formation response = demande.getResponseChefs();
-                    return response != null && "O".equals(response.getResponseChef1());
-                })
-                .collect(Collectors.toList());
-
-        if (approvedByChef1.isEmpty()) {
-            return ResponseEntity.noContent().build();
+        // Minute de sortie
+        if (requestData.containsKey("minuteSortie")) {
+            Object minuteSortie = requestData.get("minuteSortie");
+            if (minuteSortie != null) {
+                demande.setMinuteSortie(parseTimeValue(minuteSortie, "minuteSortie"));
+            }
         }
 
-        return ResponseEntity.ok(approvedByChef1);
+        // Heure de retour
+        if (requestData.containsKey("heureRetour")) {
+            Object heureRetour = requestData.get("heureRetour");
+            if (heureRetour != null) {
+                demande.setHeureRetour(parseTimeValue(heureRetour, "heureRetour"));
+            }
+        }
+
+        // Minute de retour
+        if (requestData.containsKey("minuteRetour")) {
+            Object minuteRetour = requestData.get("minuteRetour");
+            if (minuteRetour != null) {
+                demande.setMinuteRetour(parseTimeValue(minuteRetour, "minuteRetour"));
+            }
+        }
+    }
+
+    private int parseTimeValue(Object value, String fieldName) {
+        try {
+            if (value instanceof Integer) {
+                return (Integer) value;
+            } else if (value instanceof String) {
+                return Integer.parseInt((String) value);
+            } else if (value instanceof Number) {
+                return ((Number) value).intValue();
+            }
+            throw new IllegalArgumentException("Format invalide pour " + fieldName + ": doit être un nombre");
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Format invalide pour " + fieldName + ": doit être un nombre valide");
+        }
+    }
+
+    private Date parseDateFromRequest(Object dateInput) {
+        if (dateInput == null) {
+            return null;
+        }
+
+        if (dateInput instanceof Date) {
+            return (Date) dateInput;
+        } else if (dateInput instanceof String) {
+            try {
+                // Essayez d'abord le format ISO
+                return new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSX").parse((String) dateInput);
+            } catch (ParseException e1) {
+                try {
+                    // Essayez le format simple
+                    return new SimpleDateFormat("yyyy-MM-dd").parse((String) dateInput);
+                } catch (ParseException e2) {
+                    throw new IllegalArgumentException("Format de date invalide. Utilisez le format 'yyyy-MM-dd' ou 'yyyy-MM-ddTHH:mm:ss.SSSZ'");
+                }
+            }
+        }
+        throw new IllegalArgumentException("Type de date non supporté");
+    }
+
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteDemande(@PathVariable String id) {
+        if (!demandeAutorisationRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        demandeAutorisationRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/personnel/{matPersId}")
+    public ResponseEntity<List<DemandeAutorisation>> getDemandesByPersonnelId(@PathVariable String matPersId) {
+        List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
+        return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
     }
 
 
     @PutMapping("/valider/{id}")
-    public ResponseEntity<?> validerDemandeFormation(
+    public ResponseEntity<?> validerDemandeAutorisation(
             @PathVariable String id,
             @RequestParam String chefId,
             @RequestBody Map<String, String> request) {
@@ -318,8 +371,8 @@ public class DemandeFormationController {
             }
 
             // 2. Recherche de la demande et de sa réponse
-            DemandeFormation demande = demandeFormationRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Demande de formation non trouvée"));
+            DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
             // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
@@ -344,7 +397,7 @@ public class DemandeFormationController {
                     .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
             // Récupération de la réponse
-            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
                     .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
 
             // 5. Mise à jour selon le poids du validateur
@@ -397,7 +450,7 @@ public class DemandeFormationController {
             }
 
             // 6. Sauvegarde de la réponse
-            responseChefsRepository.save(response);
+            responseChefsDemAutorisationRepository.save(response);
 
             // 7. Vérification si toutes les validations sont complètes
             boolean tousValides = "O".equals(response.getResponseChef1())
@@ -407,20 +460,23 @@ public class DemandeFormationController {
             // 8. Mise à jour du statut principal
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
             demande.setResponseChefs(response);
-            demandeFormationRepository.save(demande);
+            demandeAutorisationRepository.save(demande);
 
-            // 9. Notify employee
-            String message = tousValides
-                    ? String.format("Demande de formation de personnel %s a été approuvée", demande.getMatPers().getNom())
+            // 9. Notification de l'employé
+            if (demande.getMatPers() != null) {
+                String message = tousValides
+                    ? String.format("Demande d'autorisation de personnel %s a été approuvée", demande.getMatPers().getNom())
                     : String.format("Validation reçue (Chef %d)", poidChef);
 
-            notificationService.createNotification(
-                    message,
-                    null,
-                    demande.getMatPers().getId(),
-                    null,
-                    null
-            );
+
+                notificationService.createNotification(
+                        message,
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
+                );
+            }
 
             // 10. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
@@ -448,7 +504,7 @@ public class DemandeFormationController {
 
 
     @PutMapping("/refuser/{id}")
-    public ResponseEntity<?> refuserDemandeFormation(
+    public ResponseEntity<?> refuserDemandeAutorisation(
             @PathVariable String id,
             @RequestParam String chefId,
             @RequestBody Map<String, String> request) {
@@ -470,8 +526,8 @@ public class DemandeFormationController {
             }
 
             // 2. Recherche de la demande et de sa réponse
-            DemandeFormation demande = demandeFormationRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Demande de formation non trouvée"));
+            DemandeAutorisation demande = demandeAutorisationRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Demande d'autorisation non trouvée"));
 
             // 3. Vérification du statut actuel
             if (demande.getReponseChef() == Reponse.N) {
@@ -496,7 +552,7 @@ public class DemandeFormationController {
                     .orElseThrow(() -> new RuntimeException("Ce chef n'est pas validateur pour le service de l'employé"));
 
             // Récupération de la réponse
-            Response_chefs_dem_formation response = responseChefsRepository.findByDemandeId(id)
+            Response_chefs_dem_autorisation response = responseChefsDemAutorisationRepository.findByDemandeId(id)
                     .orElseThrow(() -> new RuntimeException("Réponse de validation non trouvée pour cette demande"));
 
             // 5. Mise à jour selon le poids du validateur
@@ -549,25 +605,24 @@ public class DemandeFormationController {
             }
 
             // 6. Sauvegarde du refus
-            responseChefsRepository.save(response);
+            responseChefsDemAutorisationRepository.save(response);
 
             // 7. Mise à jour du statut principal (refus immédiat)
             demande.setReponseChef(Reponse.N);
             demande.setObservation("Refusé par chef poids " + poidChef + ": " + observation);
             demande.setResponseChefs(response);
-            demandeFormationRepository.save(demande);
+            demandeAutorisationRepository.save(demande);
 
-            // 8. Notify employee
+            // 8. Notification de l'employé
             if (demande.getMatPers().getRole() == "RH") {
                 notificationService.createNotification(
-                        "Votre demande de formation a été refusé par RH",
+                        "Votre demande d'autorisation a été refusé par RH",
                         null,
                         demande.getMatPers().getId(),
                         null,
                         null
                 );
             }
-
             // 9. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
@@ -591,33 +646,14 @@ public class DemandeFormationController {
         }
     }
 
-
     @PutMapping("/traiter/{id}")
-    public ResponseEntity<?> traiterDemande(
+    public ResponseEntity<String> traiterDemande(
             @PathVariable String id,
-            @RequestBody(required = false) TraitementDemandeRequest request) {
-
-        return demandeFormationRepository.findById(id).map(demande -> {
-            // Vérifier si la demande est déjà traitée
-            if (demande.getReponseRH() != Reponse.I) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "status", "error",
-                        "message", "La demande a déjà été traitée"
-                ));
-            }
-
-            // Traiter la demande (T)
+            @RequestParam(value = "observation", required = false) String observation) {
+        return demandeAutorisationRepository.findById(id).map(demande -> {
             demande.setReponseRH(Reponse.T);
-
-            // Ajouter une observation si elle est fournie
-            if (request != null && request.getObservation() != null && !request.getObservation().trim().isEmpty()) {
-                demande.setObservation(request.getObservation().trim());
-            } else {
-                demande.setObservation(null); // Effacer l'observation si elle n'est pas fournie
-            }
-
-            // Sauvegarder la demande mise à jour
-            DemandeFormation updatedDemande = demandeFormationRepository.save(demande);
+            demande.setObservation(observation); // Set observation if provided
+            demandeAutorisationRepository.save(demande);
 
             // Get the collaborateur ID from the associated Personnel object
             Personnel collaborateur = demande.getMatPers();
@@ -625,194 +661,19 @@ public class DemandeFormationController {
                 return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
             }
             String collaborateurId = collaborateur.getId();
-            String message = "Votre demande de Formation a été traiter.";
+            String message = "Votre demande d'autorisation a été traiter.";
 
             // Create and send the notification
             notificationService.createNotification(message, null, collaborateurId,null,null);
 
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande traitée avec succès",
-                    "observation", updatedDemande.getObservation() != null ? updatedDemande.getObservation() : ""
-            ));
+            return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateDemandeFormation(@PathVariable String id, @RequestBody Map<String, Object> demandeData) {
-        return demandeFormationRepository.findById(id)
-                .map(existingDemande -> {
-                    try {
-                        // Preserve the DBRef fields
-                        Personnel existingMatPers = existingDemande.getMatPers();
-                        Collection<Fichier_joint> existingFiles = existingDemande.getFiles();
-                        titre existingTitre = existingDemande.getTitre();
-                        type existingType = existingDemande.getType();
-                        theme existingTheme = existingDemande.getTheme();
-
-                        // Update fields from the incoming data
-                        if (demandeData.containsKey("typeDemande")) {
-                            existingDemande.setTypeDemande((String) demandeData.get("typeDemande"));
-                        }
-
-                        // Handle date fields
-                        if (demandeData.containsKey("dateDemande")) {
-                            existingDemande.setDateDemande(demandeData.get("dateDemande"));
-                        }
-                        if (demandeData.containsKey("dateDebut")) {
-                            existingDemande.setDateDebut(demandeData.get("dateDebut"));
-                        }
-
-                        // Handle personnel reference
-                        if (demandeData.containsKey("matPers")) {
-                            Object matPersData = demandeData.get("matPers");
-                            if (matPersData instanceof Map) {
-                                Map<String, String> matPersMap = (Map<String, String>) matPersData;
-                                Optional<Personnel> personnel = personnelRepository.findById(matPersMap.get("id"));
-                                personnel.ifPresent(existingDemande::setMatPers);
-                            }
-                        } else {
-                            existingDemande.setMatPers(existingMatPers);
-                        }
-
-                        if (demandeData.containsKey("codeSoc")) {
-                            existingDemande.setCodeSoc((String) demandeData.get("codeSoc"));
-                        }
-                        if (demandeData.containsKey("nbrJours")) {
-                            existingDemande.setNbrJours((String) demandeData.get("nbrJours"));
-                        }
-                        if (demandeData.containsKey("texteDemande")) {
-                            existingDemande.setTexteDemande((String) demandeData.get("texteDemande"));
-                        }
-                        if (demandeData.containsKey("reponseChef")) {
-                            existingDemande.setReponseChef(Reponse.valueOf((String) demandeData.get("reponseChef")));
-                        }
-                        if (demandeData.containsKey("reponseRH")) {
-                            existingDemande.setReponseRH(Reponse.valueOf((String) demandeData.get("reponseRH")));
-                        }
-
-                        // Handle files
-                        if (demandeData.containsKey("Files") && demandeData.get("Files") != null) {
-                            // You might need custom logic here to handle file updates
-                        } else {
-                            existingDemande.setFiles(existingFiles);
-                        }
-
-                        // Handle titre reference
-                        if (demandeData.containsKey("titre")) {
-                            Object titreData = demandeData.get("titre");
-                            if (titreData instanceof Map) {
-                                Map<String, String> titreMap = (Map<String, String>) titreData;
-                                Optional<titre> titre = titreRepository.findById(titreMap.get("id"));
-                                titre.ifPresent(existingDemande::setTitre);
-                            }
-                        } else {
-                            existingDemande.setTitre(existingTitre);
-                        }
-
-                        // Handle type reference
-                        if (demandeData.containsKey("type")) {
-                            Object typeData = demandeData.get("type");
-                            if (typeData instanceof Map) {
-                                Map<String, String> typeMap = (Map<String, String>) typeData;
-                                Optional<type> type = typeRepository.findById(typeMap.get("id"));
-                                type.ifPresent(existingDemande::setType);
-                            }
-                        } else {
-                            existingDemande.setType(existingType);
-                        }
-
-                        // Handle theme reference
-                        if (demandeData.containsKey("theme")) {
-                            Object themeData = demandeData.get("theme");
-                            if (themeData instanceof Map) {
-                                Map<String, String> themeMap = (Map<String, String>) themeData;
-                                Optional<theme> theme = themeRepository.findById(themeMap.get("id"));
-                                theme.ifPresent(existingDemande::setTheme);
-                            }
-                        } else {
-                            existingDemande.setTheme(existingTheme);
-                        }
-
-                        if (demandeData.containsKey("annee_f")) {
-                            existingDemande.setAnnee_f((String) demandeData.get("annee_f"));
-                        }
-
-                        DemandeFormation updatedDemande = demandeFormationRepository.save(existingDemande);
-
-                      /*  // Send notification if status changed
-                        if (demandeData.containsKey("reponseChef") || demandeData.containsKey("reponseRH")) {
-                            notificationService.createNotification(
-                                    "Votre demande de formation a été mise à jour",
-                                    "/demande-formation/" + updatedDemande.getId(),
-                                    updatedDemande.getMatPers().getId(),
-                                    null
-                            );
-                        }*/
-
-
-                        // Send notification
-                        notificationService.createNotification(
-                                "Demande de formation de personnel %s a été mise à jour" + updatedDemande.getMatPers().getNom(),
-                                "Chef Hiérarchique",
-                                updatedDemande.getMatPers().getId(),
-                                updatedDemande.getMatPers().getServiceId(),
-                                updatedDemande.getCodeSoc()
-                        );
-
-
-                        return ResponseEntity.ok(updatedDemande);
-                    } catch (Exception e) {
-                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                                .body("Error updating demande: " + e.getMessage());
-                    }
-                })
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteDemandeFormation(@PathVariable String id) {
-        try {
-            // Check if the demande exists
-            Optional<DemandeFormation> demandeOpt = demandeFormationRepository.findById(id);
-            if (demandeOpt.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            DemandeFormation demande = demandeOpt.get();
-
-            // Delete associated files first
-            if (demande.getFiles() != null && !demande.getFiles().isEmpty()) {
-                fichierJointRepository.deleteAll(demande.getFiles());
-            }
-
-            // Then delete the demande
-            demandeFormationRepository.deleteById(id);
-
-            // Send SSE notification
-            sseController.sendUpdate("deleted", id);
-
-            return ResponseEntity.ok(Map.of(
-                    "status", "success",
-                    "message", "Demande de formation supprimée avec succès",
-                    "deletedId", id
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
-                    "status", "error",
-                    "message", "Erreur lors de la suppression de la demande de formation",
-                    "error", e.getMessage()
-            ));
-        }
     }
     @Autowired
     private MongoTemplate mongoTemplate;
 
-
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
-    public ResponseEntity<?> getDemandesFormationByService(@PathVariable String chefserviceid) {
+    public ResponseEntity<?> getDemandesAutorisationByService(@PathVariable String chefserviceid) {
         try {
             // 1. Validate ID format
             if (!ObjectId.isValid(chefserviceid)) {
@@ -870,10 +731,10 @@ public class DemandeFormationController {
                     .map(p -> new ObjectId(p.getId()))
                     .collect(Collectors.toList());
 
-            List<DemandeFormation> demandes = mongoTemplate.find(
+            List<DemandeAutorisation> demandes = mongoTemplate.find(
                     new Query(Criteria.where("matPers.$id").in(personnelIds))
                             .with(Sort.by(Sort.Direction.DESC, "dateDemande")),
-                    DemandeFormation.class
+                    DemandeAutorisation.class
             );
 
             // 7. Prepare response
@@ -881,13 +742,13 @@ public class DemandeFormationController {
                     "status", "success",
                     "chef", buildPersonnelMap(chef),
                     "services", buildServiceList(chefValidators),
-                    "statistics", buildFormationStatistics(servicePersonnel, demandes),
-                    "demandes", buildDemandeFormationList(demandes),
+                    "statistics", buildAutorisationStatistics(servicePersonnel, demandes),
+                    "demandes", buildDemandeAutorisationList(demandes),
                     "debug", buildDebugInfo(serviceIds)
             ));
 
         } catch (Exception e) {
-            log.error("Error in getDemandesFormationByService: {}", e.getMessage(), e);
+            log.error("Error in getDemandesAutorisationByService: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "status", "error",
                     "message", "Erreur technique",
@@ -896,11 +757,11 @@ public class DemandeFormationController {
         }
     }
 
-    // Specific method for formation statistics
-    private Map<String, Object> buildFormationStatistics(List<Personnel> personnel, List<DemandeFormation> demandes) {
+    // Specific statistics method for DemandeAutorisation
+    private Map<String, Object> buildAutorisationStatistics(List<Personnel> personnel, List<DemandeAutorisation> demandes) {
         return Map.of(
                 "totalPersonnel", personnel.size(),
-                "demandesFormation", demandes.size(),
+                "demandesAutorisation", demandes.size(),
                 "roles", personnel.stream()
                         .collect(Collectors.groupingBy(
                                 Personnel::getRole,
@@ -910,36 +771,36 @@ public class DemandeFormationController {
                         "enAttente", demandes.stream().filter(d -> "En attente".equals(d.getReponseChef())).count(),
                         "approuvees", demandes.stream().filter(d -> "Approuvé".equals(d.getReponseChef())).count(),
                         "refusees", demandes.stream().filter(d -> "Refusé".equals(d.getReponseChef())).count()
-                ),
-                "typesFormation", demandes.stream()
-                        .collect(Collectors.groupingBy(
-                                DemandeFormation::getType,
-                                Collectors.counting()
-                        ))
+                )
         );
     }
 
-    private List<Map<String, Object>> buildDemandeFormationList(List<DemandeFormation> demandes) {
+    private List<Map<String, Object>> buildDemandeAutorisationList(List<DemandeAutorisation> demandes) {
         return demandes.stream()
-                .map(this::convertDemandeFormationToMap)
+                .map(this::convertDemandeAutorisationToMap)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
-    private Map<String, Object> convertDemandeFormationToMap(DemandeFormation d) {
+    private Map<String, Object> convertDemandeAutorisationToMap(DemandeAutorisation d) {
         try {
             Map<String, Object> map = new LinkedHashMap<>();
 
             // Basic fields
-            map.put("id_libre_demande", d.getId());
+            map.put("id", d.getId());
             map.put("dateDemande", d.getDateDemande());
             map.put("typeDemande", d.getTypeDemande());
-            map.put("titre", d.getTitre());
-            map.put("type", d.getType());
-            map.put("theme", d.getTheme());
+            map.put("codeSoc", d.getCodeSoc());
             map.put("dateDebut", d.getDateDebut());
-            map.put("nbrJours", d.getNbrJours());
             map.put("reponseChef", d.getResponseChefs());
+            map.put("reponseRH", d.getReponseRH());
+            map.put("heureSortie", d.getHeureSortie());
+            map.put("heureRetour", d.getHeureRetour());
+            map.put("horaireSortie", d.getHoraireSortie());
+            map.put("horaireRetour", d.getHoraireRetour());
+            map.put("minuteSortie", d.getMinuteSortie());
+            map.put("minuteRetour", d.getMinuteRetour());
+            map.put("codAutorisation", d.getCodAutorisation());
 
             // Optional fields
             Optional.ofNullable(d.getTexteDemande()).ifPresent(v -> map.put("texteDemande", v));
@@ -972,12 +833,12 @@ public class DemandeFormationController {
 
             return map;
         } catch (Exception e) {
-            log.error("Error converting demande formation {} to map: {}", d.getId(), e.getMessage());
+            log.error("Error converting demande autorisation {} to map: {}", d.getId(), e.getMessage());
             return null;
         }
     }
 
-    // Reuse these existing helper methods from the previous implementation
+    // Shared helper methods
     private Map<String, Object> buildPersonnelMap(Personnel personnel) {
         return Map.of(
                 "id", personnel.getId(),
@@ -1014,154 +875,147 @@ public class DemandeFormationController {
     private String defaultIfNull(String value, String defaultValue) {
         return value != null ? value : defaultValue;
     }
-    private Map<String, Object> convertDemandeToSafeResponse(DemandeFormation demande) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", demande.getId());
-        response.put("typeDemande", demande.getTypeDemande());
-        response.put("dateDemande", demande.getDateDemande());
-        response.put("dateDebut", demande.getDateDebut());
-        response.put("nbrJours", demande.getNbrJours());
-        response.put("texteDemande", demande.getTexteDemande());
-        response.put("reponseChef", demande.getReponseChef());
-        response.put("observation", demande.getObservation());
+    private PersonnelDTO convertPersonnelToSafeDto(Personnel personnel) {
+        System.out.println("27. [DEBUG] Converting personnel to safe DTO: " + personnel.getId());
 
-        // Handle personnel safely
-        if (demande.getMatPers() != null) {
-            Map<String, Object> personnel = new HashMap<>();
-            personnel.put("id", demande.getMatPers().getId());
-            personnel.put("nom", demande.getMatPers().getNom());
-            personnel.put("prenom", demande.getMatPers().getPrenom());
-            personnel.put("matricule", demande.getMatPers().getMatricule());
-            personnel.put("email", demande.getMatPers().getEmail());
-            response.put("personnel", personnel);
+        PersonnelDTO dto = new PersonnelDTO();
+        try {
+            // Set basic fields
+            dto.setId(personnel.getId());
+            dto.setMatricule(personnel.getMatricule());
+            dto.setNom(personnel.getNom());
+            dto.setPrenom(personnel.getPrenom());
+            dto.setEmail(personnel.getEmail());
+
+            // Handle service reference safely
+            if (personnel.getService() != null) {
+                System.out.println("28. [DEBUG] Adding service reference");
+                dto.setServiceId(personnel.getService().getId());
+                dto.setServiceName(personnel.getService().getServiceName());
+            }
+
+            // Handle chef reference safely
+            if (personnel.getChefHierarchique() != null) {
+                System.out.println("29. [DEBUG] Adding chef reference");
+                Personnel chef = personnel.getChefHierarchique();
+                dto.setChefHierarchiqueId(chef.getId());
+                dto.setChefHierarchiqueNom(chef.getNom());
+                dto.setChefHierarchiquePrenom(chef.getPrenom());
+            }
+        } catch (Exception e) {
+            System.out.println("30. [ERROR] Error converting personnel to DTO: " + e.getMessage());
         }
 
-        // Handle files safely
-        if (demande.getFiles() != null) {
-            response.put("files", demande.getFiles().stream()
-                    .map(f -> Map.of(
-                            "id", f.getId(),
-                            "fileId", f.getFileId(),
-
-                            "filename", f.getFilename(),
-                            "fileType", f.getFileType()
-                    ))
-                    .collect(Collectors.toList()));
-        }
-
-        // Handle formation details safely
-        if (demande.getTitre() != null) {
-            response.put("titre", Map.of(
-                    "id", demande.getTitre().getId(),
-                    "name", demande.getTitre().getTitre()
-            ));
-        }
-
-        if (demande.getType() != null) {
-            response.put("type", Map.of(
-                    "id", demande.getType().getId(),
-                    "name", demande.getType().getType()
-            ));
-        }
-
-        if (demande.getTheme() != null) {
-            response.put("theme", Map.of(
-                    "id", demande.getTheme().getId(),
-                    "name", demande.getTheme().getTheme()
-            ));
-        }
-
-        return response;
+        return dto;
     }
 
-    private Map<String, Object> mapDemandeToResponse(DemandeFormation demande) {
-        Map<String, Object> demandeMap = new HashMap<>();
-        demandeMap.put("id", demande.getId());
-        demandeMap.put("typeDemande", demande.getTypeDemande());
-        demandeMap.put("dateDemande", demande.getDateDemande());
-        demandeMap.put("dateDebut", demande.getDateDebut());
-        demandeMap.put("nbrJours", demande.getNbrJours());
-        demandeMap.put("texteDemande", demande.getTexteDemande());
-        demandeMap.put("reponseChef", demande.getReponseChef());
-        demandeMap.put("observation", demande.getObservation());
 
-        // Informations sur le personnel
-        if (demande.getMatPers() != null) {
-            Map<String, Object> personnelMap = new HashMap<>();
-            personnelMap.put("id", demande.getMatPers().getId());
-            personnelMap.put("nom", demande.getMatPers().getNom());
-            personnelMap.put("prenom", demande.getMatPers().getPrenom());
-            personnelMap.put("matricule", demande.getMatPers().getMatricule());
-            personnelMap.put("Email", demande.getMatPers().getEmail());
+    @GetMapping("/approved")
+    public ResponseEntity<?> getDemandesApprovedByChef1() {
+        try {
+            // 1. Récupérer toutes les réponses où le chef1 a approuvé ("O")
+            List<Response_chefs_dem_autorisation> reponsesChef1 = responseChefsDemAutorisationRepository.findByResponseChef1("O");
 
-            demandeMap.put("personnel", personnelMap);
-        }
-
-        // Fichiers joints
-        if (demande.getFiles() != null && !demande.getFiles().isEmpty()) {
-            List<Map<String, Object>> fichiersList = demande.getFiles().stream()
-                    .map(file -> {
-                        Map<String, Object> fileMap = new HashMap<>();
-                        fileMap.put("id", file.getId());
-                        fileMap.put("filename", file.getFilename());
-                        fileMap.put("fileType", file.getFileType());
-                        fileMap.put("fileId", file.getFileId());
-
-                        return fileMap;
-                    })
+            // 2. Extraire les IDs des demandes approuvées
+            List<String> demandeIds = reponsesChef1.stream()
+                    .map(Response_chefs_dem_autorisation::getDemandeId)
                     .collect(Collectors.toList());
-            demandeMap.put("files", fichiersList);
-        }
 
-        // Détails de la formation
-        if (demande.getTitre() != null) {
-            demandeMap.put("titre", Map.of(
-                    "id", demande.getTitre().getId(),
-                    "name", demande.getTitre().getTitre()
-            ));
-        }
+            // 3. Récupérer les demandes correspondantes
+            List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByIdIn(demandeIds);
 
-        if (demande.getType() != null) {
-            demandeMap.put("type", Map.of(
-                    "id", demande.getType().getId(),
-                    "name", demande.getType().getType()
-            ));
-        }
+            return ResponseEntity.ok(demandes);
 
-        if (demande.getTheme() != null) {
-            demandeMap.put("theme", Map.of(
-                    "id", demande.getTheme().getId(),
-                    "name", demande.getTheme().getTheme()
-            ));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "status", "error",
+                            "message", "Erreur lors de la récupération des demandes",
+                            "error", e.getMessage()
+                    )
+            );
         }
-
-        return demandeMap;
     }
 
+    @GetMapping("/personnel/{matPersId}/approved")
+    public ResponseEntity<List<DemandeAutorisation>> getApprovedDemandesAutorisationByPersonnelId(
+            @PathVariable String matPersId) {
 
+        // check that looks at all chef approvals
+        List<DemandeAutorisation> allDemandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
 
+        List<DemandeAutorisation> approvedDemandes = allDemandes.stream()
+                .filter(demande -> {
+                    // Check if any chef has approved (O)
+                    Response_chefs_dem_autorisation response = demande.getResponseChefs();
+                    if (response == null) return false;
+
+                    return "O".equals(response.getResponseChef1()) ||
+                            "O".equals(response.getResponseChef2()) ||
+                            "O".equals(response.getResponseChef3());
+                })
+                .collect(Collectors.toList());
+
+        if (approvedDemandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(approvedDemandes);
+    }
+
+    @GetMapping("/personnel/{matPersId}/approved-by-chef1")
+    public ResponseEntity<List<DemandeAutorisation>> getDemandesApprovedByChef1(
+            @PathVariable String matPersId) {
+
+        // 1. Récupérer toutes les demandes du personnel
+        List<DemandeAutorisation> allDemandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
+
+        if (allDemandes.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        // 2. Filtrer celles approuvées par le chef de poids 1
+        List<DemandeAutorisation> approvedByChef1 = allDemandes.stream()
+                .filter(demande -> {
+                    Response_chefs_dem_autorisation response = demande.getResponseChefs();
+                    return response != null && "O".equals(response.getResponseChef1());
+                })
+                .collect(Collectors.toList());
+
+        if (approvedByChef1.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(approvedByChef1);
+    }
+
+    // Enhanced endpoint to get all information of a specific demande
     @GetMapping("/{id}/details")
     public ResponseEntity<?> getDemandeDetails(@PathVariable String id) {
-        Optional<DemandeFormation> demandeOpt = demandeFormationRepository.findById(id);
+        Optional<DemandeAutorisation> demandeOpt = demandeAutorisationRepository.findById(id);
 
         if (demandeOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
-        DemandeFormation demande = demandeOpt.get();
+        DemandeAutorisation demande = demandeOpt.get();
 
+        // Create a detailed response DTO
         Map<String, Object> response = new HashMap<>();
         response.put("id", demande.getId());
-        response.put("typeDemande", demande.getTypeDemande());
         response.put("dateDemande", demande.getDateDemande());
+        response.put("typeDemande", demande.getTypeDemande());
         response.put("dateDebut", demande.getDateDebut());
-        response.put("nbrJours", demande.getNbrJours());
         response.put("texteDemande", demande.getTexteDemande());
         response.put("reponseChef", demande.getReponseChef());
         response.put("reponseRH", demande.getReponseRH());
         response.put("codeSoc", demande.getCodeSoc());
-        response.put("annee_f", demande.getAnnee_f());
+        response.put("codAutorisation", demande.getCodAutorisation());
         response.put("observation", demande.getObservation());
+        // Format time information
+        response.put("heureSortie", String.format("%02d:%02d", demande.getHoraireSortie(), demande.getMinuteSortie()));
+        response.put("heureRetour", String.format("%02d:%02d", demande.getHoraireRetour(), demande.getMinuteRetour()));
+
         // Personnel information
         if (demande.getMatPers() != null) {
             Map<String, Object> personnelInfo = new HashMap<>();
@@ -1185,28 +1039,8 @@ public class DemandeFormationController {
                     .collect(Collectors.toList());
             response.put("fichiersJoint", filesList);
         }
-        // Formation details
-        if (demande.getTitre() != null) {
-            response.put("titre", Map.of(
-                    "id", demande.getTitre().getId(),
-                    "name", demande.getTitre().getTitre()
-            ));
-        }
-
-        if (demande.getType() != null) {
-            response.put("type", Map.of(
-                    "id", demande.getType().getId(),
-                    "name", demande.getType().getType()
-            ));
-        }
-
-        if (demande.getTheme() != null) {
-            response.put("theme", Map.of(
-                    "id", demande.getTheme().getId(),
-                    "name", demande.getTheme().getTheme()
-            ));
-        }
 
         return ResponseEntity.ok(response);
     }
+
 }

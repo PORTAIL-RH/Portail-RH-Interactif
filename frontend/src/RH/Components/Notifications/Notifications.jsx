@@ -10,8 +10,8 @@ const Notifications = () => {
   const userData = JSON.parse(localStorage.getItem("userData") || "{}")
   const role = userData.role || "RH"
   const serviceId = userData.service?.$id?.$oid || 
-  localStorage.getItem('userServiceId') || 
-  userData.serviceId;
+    localStorage.getItem('userServiceId') || 
+    userData.serviceId;
 
   const {
     notifications,
@@ -20,7 +20,7 @@ const Notifications = () => {
     error,
     fetchNotifications,
     markAllAsRead,
-    setUnviewedCount
+    markAsRead
   } = useNotifications(role, serviceId)
 
   const [activeFilter, setActiveFilter] = useState("all")
@@ -49,9 +49,18 @@ const Notifications = () => {
   }
 
   const handleMarkAllAsRead = async () => {
-    const success = await markAllAsRead()
-    if (success) {
-      setUnviewedCount(0)
+    try {
+      await markAllAsRead()
+    } catch (error) {
+      console.error("Failed to mark all as read:", error)
+    }
+  }
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id)
+    } catch (error) {
+      console.error("Failed to mark as read:", error)
     }
   }
 
@@ -64,7 +73,7 @@ const Notifications = () => {
     : []
 
   const readCount = notifications ? notifications.filter((n) => n.viewed).length : 0
-  const unreadCount = notifications ? notifications.filter((n) => !n.viewed).length : 0
+  const unreadCount = unviewedCount
   const totalCount = notifications ? notifications.length : 0
 
   return (
@@ -123,6 +132,7 @@ const Notifications = () => {
                   <div
                     key={notification.id}
                     className={`notification-page-item ${notification.viewed ? "read" : "unread"}`}
+                    onClick={() => !notification.viewed && handleMarkAsRead(notification.id)}
                   >
                     <div className="notification-page-icon">
                       <FiBell size={20} />
