@@ -1,159 +1,119 @@
-"use client"
-
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import useNotifications from "./useNotifications"
+import NotificationModal from "./NotificationModal"
 import "./Navbar.css"
 import bellIcon from "../../../assets/bell1.png"
-import NotificationModal from "./NotificationModal"
 import { FiSun, FiMoon, FiLogOut, FiUser } from "react-icons/fi"
-import { useNavigate } from "react-router-dom"
 
-const Navbar = ({ toggleTheme: externalToggleTheme, theme: externalTheme }) => {
-  const [userData, setUserData] = useState({
-    firstName: "",
-    lastName: "",
-    role: "",
-    serviceId: "",
-  })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
+  const [currentTheme, setCurrentTheme] = useState(theme || "light")
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
-  const navigate = useNavigate()
+  
+  // Get user data from localStorage
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}")
+  
+  // Use the notifications hook
+  const { 
+    notifications, 
+    unviewedCount, 
+    markAllAsRead, 
+    loading, 
+    error 
+  } = useNotifications()
 
   // Theme management
-  const [localTheme, setLocalTheme] = useState(() => {
-    return localStorage.getItem("theme") || "light"
-  })
-  const theme = externalTheme || localTheme
-
-  // Get user data from localStorage
   useEffect(() => {
-    try {
-      const storedUserData = localStorage.getItem("userData")
-      const storedServiceId = localStorage.getItem("userServiceId")
-
-      if (storedUserData) {
-        const parsedData = JSON.parse(storedUserData)
-        setUserData({
-          firstName: parsedData.nom || "",
-          lastName: parsedData.prenom || "",
-          role: parsedData.role || "Chef Hiérarchique",
-          serviceId: storedServiceId || "",
-        })
-      }
-    } catch (error) {
-      setError("Failed to parse user data")
-      console.error("Error parsing userData:", error)
-    } finally {
-      setLoading(false)
-    }
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setCurrentTheme(savedTheme)
   }, [])
 
-  // Notifications hook
-  const {
-    notifications,
-    unviewedCount,
-    markAsRead,
-    markAllAsRead,
-    error: notificationError,
-    fetchNotifications,
-  } = useNotifications(userData.role, userData.serviceId)
+  useEffect(() => {
+    if (theme) setCurrentTheme(theme)
+  }, [theme])
 
-  // Toggle notifications panel, matching admin implementation
-  const toggleNotifications = useCallback(() => {
-    setIsNotificationsOpen((prev) => !prev)
-  }, [])
-
-  // Theme toggle handler
-  const handleToggleTheme = useCallback(() => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    if (externalToggleTheme) {
-      externalToggleTheme()
-    } else {
-      setLocalTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      document.documentElement.classList.toggle("dark", newTheme === "dark")
+  const toggleNotifications = () => {
+    setIsNotificationsOpen(prev => !prev)
+    // Mark all as read when opening notifications
+    if (!isNotificationsOpen && unviewedCount > 0) {
+      markAllAsRead()
     }
-  }, [theme, externalToggleTheme])
+  }
 
-  // Logout handler
-  const handleLogout = useCallback(() => {
-    ;[
-      "authToken",
-      "userId",
-      "userRole",
-      "usermatricule",
-      "userCodeSoc",
-      "userServiceId",
-      "userServiceName",
-      "userData",
-    ].forEach((key) => localStorage.removeItem(key))
-    navigate("/")
-  }, [navigate])
+  const handleToggleTheme = () => {
+    const newTheme = currentTheme === "light" ? "dark" : "light"
+    setCurrentTheme(newTheme)
+    document.documentElement.classList.toggle("dark", newTheme === "dark")
+    localStorage.setItem("theme", newTheme)
+    if (toggleTheme) toggleTheme()
+  }
 
-  if (loading) return <div className="navbar loading">Loading...</div>
-  if (error) return <div className="navbar error">Error: {error}</div>
+  const handleLogout = () => {
+    localStorage.clear()
+    window.location.href = "/"
+  }
+
+  // Debugging
+  useEffect(() => {
+    console.log("Notification state:", {
+      unviewedCount,
+      notifications,
+      loading,
+      error
+    })
+  }, [unviewedCount, notifications, loading, error])
 
   return (
-    <nav className={`navbar ${theme}`}>
+    <nav className={`navbar ${currentTheme}`}>
       <div className="navbar-welcome">
         <div className="user-info">
-          <FiUser className="user-avatar" />
-          <span>
-            {userData.role}. Welcome, {userData.firstName} {userData.lastName}
+          <div className="user-avatar">
+            <FiUser />
+          </div>
+          <span className="welcome-text">
+            {userData.role}. Bienvenue, {userData.nom} {userData.prenom}
           </span>
         </div>
       </div>
-
+      
       <div className="navbar-actions">
         <button
           className="theme-toggle"
           onClick={handleToggleTheme}
-          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+          aria-label={currentTheme === "light" ? "Passer au mode sombre" : "Passer au mode clair"}
         >
-          {theme === "light" ? <FiMoon /> : <FiSun />}
+          {currentTheme === "light" ? <FiMoon /> : <FiSun />}
         </button>
-
+        
         <div className="notification-container">
+          {!hideNotificationBadge && unviewedCount > 0 && (
+            <span className="notification-badge">
+              {unviewedCount > 9 ? "9+" : unviewedCount}
+            </span>
+          )}
           <button
             className="notification-button"
-            onClick={() => {
-              toggleNotifications()
-              // Mark all as read when opening the notification panel
-              if (!isNotificationsOpen && unviewedCount > 0) {
-                markAllAsRead().catch((error) => {
-                  console.error("Failed to mark notifications as read:", error)
-                  // Optionally show an error message to the user
-                })
-              }
-            }}
-            aria-label={`Notifications (${unviewedCount} unread)`}
+            onClick={toggleNotifications}
+            aria-label="Notifications"
           >
             <img
-              src={bellIcon || "/placeholder.svg"}
+              src={bellIcon}
               alt="Notifications"
-              className={`notification-icon ${theme}`}
-              onError={(e) => {
-                e.target.src = "/placeholder.svg"
-              }}
+              className={`notification-icon ${currentTheme}`}
             />
-            {unviewedCount > 0 && <span className="notification-badge">{unviewedCount}</span>}
           </button>
-
+          
           {isNotificationsOpen && (
             <NotificationModal
+              onClose={() => setIsNotificationsOpen(false)}
               notifications={notifications}
               unviewedCount={unviewedCount}
-              markAsRead={markAsRead}
-              onClose={() => setIsNotificationsOpen(false)}
-              theme={theme}
             />
           )}
         </div>
-
+        
         <button className="logout-button" onClick={handleLogout}>
-          <FiLogOut />
-          <span>Logout</span>
+          <FiLogOut className="logout-icon" />
+          <span className="logout-text">Déconnexion</span>
         </button>
       </div>
     </nav>

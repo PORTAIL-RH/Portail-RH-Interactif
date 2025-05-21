@@ -1,3 +1,4 @@
+"use client"
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import useNotifications from "../Navbar/useNotifications"
@@ -7,21 +8,13 @@ import Navbar from "../Navbar/Navbar"
 import { FiBell, FiCheckCircle, FiEye, FiFilter } from "react-icons/fi"
 
 const Notifications = () => {
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}")
-  const role = userData.role || "RH"
-  const serviceId = userData.service?.$id?.$oid || 
-  localStorage.getItem('userServiceId') || 
-  userData.serviceId;
-
   const {
     notifications,
     unviewedCount,
     loading,
     error,
-    fetchNotifications,
-    markAllAsRead,
-    setUnviewedCount
-  } = useNotifications(role, serviceId)
+    markAllAsRead
+  } = useNotifications()
 
   const [activeFilter, setActiveFilter] = useState("all")
   const [theme, setTheme] = useState("light")
@@ -49,23 +42,28 @@ const Notifications = () => {
   }
 
   const handleMarkAllAsRead = async () => {
-    const success = await markAllAsRead()
-    if (success) {
-      setUnviewedCount(0)
+    try {
+      await markAllAsRead()
+    } catch (error) {
+      console.error("Failed to mark all as read:", error)
     }
   }
 
-  const filteredNotifications = notifications
-    ? notifications.filter((notification) => {
-        if (activeFilter === "unread") return !notification.viewed
-        if (activeFilter === "read") return notification.viewed
-        return true
-      }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-    : []
+  // Calculate counts
+  const readCount = notifications?.filter(n => 
+    n.readBy?.includes(localStorage.getItem("userId"))
+  ).length || 0
+  const unreadCount = unviewedCount || 0
+  const totalCount = notifications?.length || 0
 
-  const readCount = notifications ? notifications.filter((n) => n.viewed).length : 0
-  const unreadCount = notifications ? notifications.filter((n) => !n.viewed).length : 0
-  const totalCount = notifications ? notifications.length : 0
+  // Filter and sort notifications
+  const filteredNotifications = notifications
+    ?.filter(notification => {
+      if (activeFilter === "unread") return !notification.readBy?.includes(localStorage.getItem("userId"))
+      if (activeFilter === "read") return notification.readBy?.includes(localStorage.getItem("userId"))
+      return true
+    })
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) || []
 
   return (
     <div className={`app-container ${theme}`}>
@@ -122,7 +120,9 @@ const Notifications = () => {
                 {filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`notification-page-item ${notification.viewed ? "read" : "unread"}`}
+                    className={`notification-page-item ${
+                      notification.readBy?.includes(localStorage.getItem("userId")) ? "read" : "unread"
+                    }`}
                   >
                     <div className="notification-page-icon">
                       <FiBell size={20} />

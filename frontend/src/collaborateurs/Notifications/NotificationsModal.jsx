@@ -1,3 +1,4 @@
+"use client"
 
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
@@ -5,11 +6,12 @@ import { FiBell, FiFileText, FiClock, FiCheckCircle, FiInfo, FiX, FiChevronRight
 import { format } from "date-fns"
 import "./NotificationsModal.css"
 
+const API_URL = process.env.REACT_APP_API_URL
 
-
-const NotificationModal = ({ notifications = [], onClose }) => {
+const NotificationModal = ({ notifications = [], onClose, onMarkAsRead }) => {
   const navigate = useNavigate()
   const [filteredNotifications, setFilteredNotifications] = useState([])
+  const personnelId = localStorage.getItem("userId")
 
   // Update the useEffect to handle both timestamp and createdAt fields and add better error handling
   useEffect(() => {
@@ -96,6 +98,30 @@ const NotificationModal = ({ notifications = [], onClose }) => {
     }
   }
 
+  const handleNotificationClick = async (notification) => {
+    if (!notification.viewed) {
+      try {
+        const token = localStorage.getItem("authToken")
+        if (!token) return
+
+        // Mark notification as read
+        await fetch(`${API_URL}/api/notifications/${notification.id}/view`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        // If onMarkAsRead callback is provided, call it to refresh the notification count
+        if (onMarkAsRead) {
+          onMarkAsRead()
+        }
+      } catch (error) {
+        console.error("Error marking notification as read:", error)
+      }
+    }
+  }
+
   const handleViewMore = () => {
     navigate("/NotificationsCollab")
     onClose()
@@ -125,6 +151,7 @@ const NotificationModal = ({ notifications = [], onClose }) => {
                 <li
                   key={notification.id}
                   className={`modal-notification-item ${notification.viewed ? "read" : "unread"}`}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="modal-notification-content">
                     <div className="modal-notification-icon-container">{getNotificationIcon(notification.message)}</div>
