@@ -1,130 +1,179 @@
-import { useState, useEffect, useRef } from "react"
+"use client"
+
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { API_URL } from "../../../config"
 
-const useNotifications = (role, serviceId) => {
+const useNotifications = () => {
   const [notifications, setNotifications] = useState([])
   const [unviewedCount, setUnviewedCount] = useState(0)
-  const [error, setError] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
   const clientRef = useRef(null)
+  const isMountedRef = useRef(true)
 
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem("authToken")
-      
-      // Construire l'URL en fonction de la présence de serviceId
-      let url = `${API_URL}/api/notifications?role=${role}`
-      if (serviceId && role !== "Admin") {
-        url += `&serviceId=${serviceId}`
-      }
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la récupération des notifications")
-      }
-
-      const data = await response.json()
-      setNotifications(data)
-
-      // Compter les notifications non lues
-      const unviewed = data.filter((notification) => !notification.viewed).length
-      setUnviewedCount(unviewed)
-
-      setError(null)
-    } catch (err) {
-      console.error("Erreur:", err)
-      setError("Impossible de charger les notifications")
-    } finally {
-      setLoading(false)
+  // Get RH info from localStorage
+  const getRHInfo = useCallback(() => {
+    const userData = localStorage.getItem("userData")
+    if (!userData) {
+      throw new Error("RH user data not found in localStorage")
     }
-  }
-
-  const markAllAsRead = async () => {
-    try {
-      const token = localStorage.getItem("authToken")
-      const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          role,
-          serviceId: role !== "Admin" ? serviceId : null, // Envoyer serviceId seulement si ce n'est pas un Admin
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors du marquage des notifications comme lues")
-      }
-
-      // Mettre à jour le compteur immédiatement
-      setUnviewedCount(0)
-
-      // Actualiser les notifications
-      await fetchNotifications()
-
-      return true
-    } catch (err) {
-      console.error("Erreur:", err)
-      setError("Impossible de marquer les notifications comme lues")
-      return false
-    }
-  }
+    const { code_soc: codeSoc } = JSON.parse(userData)
+    return {  codeSoc }
+  }, [])
 
   useEffect(() => {
-    fetchNotifications()
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+      clientRef.current?.deactivate()
+    }
+  }, [])
 
-    const token = localStorage.getItem("authToken")
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${API_URL}/ws`),
-      reconnectDelay: 5000,
-      debug: (str) => console.log("🛜 WebSocket:", str),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-    })
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const {  codeSoc } = getRHInfo()
 
-    client.onConnect = () => {
-      console.log("✅ WebSocket connecté")
+      const response = await fetch(
+        `${API_URL}/api/notifications?role=RH&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
 
-      // Souscrire aux notifications spécifiques au rôle
-      const subscriptionPath = serviceId && role !== "Admin" 
-        ? `/topic/notifications/${role}/${serviceId}`
-        : `/topic/notifications/${role}`
+      if (!response.ok) throw new Error("Failed to fetch notifications")
       
-      client.subscribe(subscriptionPath, (message) => {
-        const newNotification = JSON.parse(message.body)
-        setNotifications((prev) => [newNotification, ...prev])
-        setUnviewedCount((prevCount) => prevCount + 1)
+      const data = await response.json()
+      if (isMountedRef.current) {
+        setNotifications(data)
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error("Fetch notifications error:", error)
+      if (isMountedRef.current) {
+        setError(error.message)
+        setLoading(false)
+      }
+    }
+  }, [getRHInfo])
+
+  const fetchUnviewedCount = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const userId = localStorage.getItem("userId")
+      const {  codeSoc } = getRHInfo()
+
+      const response = await fetch(
+        `${API_URL}/api/notifications/unread-count-for-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      if (!response.ok) throw new Error("Failed to fetch unread count")
+      
+      const count = await response.json()
+      if (isMountedRef.current) {
+        setUnviewedCount(count)
+      }
+      return count
+    } catch (error) {
+      console.error("Fetch unread count error:", error)
+      if (isMountedRef.current) {
+        setUnviewedCount(0)
+      }
+      return 0
+    }
+  }, [getRHInfo])
+
+  const markAllAsRead = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const userId = localStorage.getItem("userId")
+      const { codeSoc } = getRHInfo()
+
+      await fetch(
+        `${API_URL}/api/notifications/mark-all-read-by-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+
+      if (isMountedRef.current) {
+        fetchUnviewedCount()
+      }
+    } catch (error) {
+      console.error("Mark all as read error:", error)
+      throw error
+    }
+  }, [fetchUnviewedCount, getRHInfo])
+
+  useEffect(() => {
+    const initWebSocket = () => {
+      const token = localStorage.getItem("authToken")
+      const { codeSoc } = getRHInfo()
+
+      const client = new Client({
+        webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+        reconnectDelay: 5000,
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        onConnect: () => {
+          fetchUnviewedCount()
+          
+          client.subscribe(
+            `/topic/notifications/RH/${codeSoc}`,
+            (message) => {
+              const newNotification = JSON.parse(message.body)
+              const userId = localStorage.getItem("userId")
+
+              if (isMountedRef.current) {
+                setNotifications(prev => {
+                  if (!prev.some(n => n.id === newNotification.id)) {
+                    return [newNotification, ...prev]
+                  }
+                  return prev
+                })
+
+                if (!newNotification.readBy?.includes(userId)) {
+                  fetchUnviewedCount()
+                }
+              }
+            }
+          )
+        },
+        onStompError: (frame) => {
+          console.error("WebSocket error:", frame.headers.message)
+          setError("Connection error")
+        },
       })
+
+      client.activate()
+      return client
     }
 
-    client.activate()
+    const fetchInitialData = async () => {
+      try {
+        await Promise.all([fetchNotifications(), fetchUnviewedCount()])
+      } catch (error) {
+        console.error("Initial data fetch error:", error)
+      }
+    }
+
+    fetchInitialData()
+    const client = initWebSocket()
     clientRef.current = client
 
-    // Configurer le polling pour les notifications
-    const interval = setInterval(fetchNotifications, 30000)
-
-    return () => {
-      client.deactivate()
-      console.log("❌ WebSocket déconnecté")
-      clearInterval(interval)
-    }
-  }, [role, serviceId])
+    return () => client.deactivate()
+  }, [fetchNotifications, fetchUnviewedCount, getRHInfo])
 
   return {
     notifications,
     unviewedCount,
-    setUnviewedCount,
     loading,
     error,
     fetchNotifications,

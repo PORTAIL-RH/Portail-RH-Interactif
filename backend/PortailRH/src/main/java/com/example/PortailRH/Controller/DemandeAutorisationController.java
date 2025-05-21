@@ -155,13 +155,13 @@ public class DemandeAutorisationController {
                     personnel.getNom(), personnel.getPrenom(), heureSortieStr, heureRetourStr
             );
 
-            notificationService.createNotification(notificationMessage, "RH", null);
-
-            if (service != null && service.getChef1() != null) {
+            if (service != null ) {
                 notificationService.createNotification(
                         notificationMessage + " - Service: " + service.getServiceName(),
                         "Chef Hiérarchique",
-                        service.getId()
+                        null,
+                        service.getId(),
+                        personnel.getCode_soc()
                 );
             }
 
@@ -233,6 +233,17 @@ public class DemandeAutorisationController {
 
                 // Save the updated demande
                 DemandeAutorisation updatedDemande = demandeAutorisationRepository.save(existingDemande);
+
+
+                // Send notification
+                notificationService.createNotification(
+                        "Demande de formation de personnel %s a été mise à jour"+ updatedDemande.getMatPers().getNom(),
+                        "Chef Hiérarchique",
+                        updatedDemande.getMatPers().getId(),
+                        updatedDemande.getMatPers().getServiceId(),
+                        updatedDemande.getCodeSoc()
+                );
+
 
                 return ResponseEntity.ok(Map.of(
                         "message", "Demande d'autorisation mise à jour avec succès",
@@ -454,13 +465,16 @@ public class DemandeAutorisationController {
             // 9. Notification de l'employé
             if (demande.getMatPers() != null) {
                 String message = tousValides
-                        ? "Votre demande d'autorisation a été approuvée"
-                        : String.format("Validation reçue (Chef %d)", poidChef);
+                    ? String.format("Demande d'autorisation de personnel %s a été approuvée", demande.getMatPers().getNom())
+                    : String.format("Validation reçue (Chef %d)", poidChef);
+
 
                 notificationService.createNotification(
                         message,
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -600,14 +614,15 @@ public class DemandeAutorisationController {
             demandeAutorisationRepository.save(demande);
 
             // 8. Notification de l'employé
-            if (demande.getMatPers() != null) {
+            if (demande.getMatPers().getRole() == "RH") {
                 notificationService.createNotification(
-                        "Votre demande d'autorisation a été refusée",
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        "Votre demande d'autorisation a été refusé par RH",
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
-
             // 9. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
 
@@ -639,6 +654,18 @@ public class DemandeAutorisationController {
             demande.setReponseRH(Reponse.T);
             demande.setObservation(observation); // Set observation if provided
             demandeAutorisationRepository.save(demande);
+
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande d'autorisation a été traiter.";
+
+            // Create and send the notification
+            notificationService.createNotification(message, null, collaborateurId,null,null);
+
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }

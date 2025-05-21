@@ -83,6 +83,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/notifications/nbr").permitAll()
                         .requestMatchers(HttpMethod.GET, "/ws/**").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/notifications/mark-all-read").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/notifications/mark-all-read-by-user").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unread-for-user").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/notifications/{id}/mark-read-by").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/notifications/unread-count-for-user").permitAll()
 
                         //roles endpoints
 

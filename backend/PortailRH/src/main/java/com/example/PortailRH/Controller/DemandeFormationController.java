@@ -195,18 +195,17 @@ public class DemandeFormationController {
                     personnel.getNom(), personnel.getPrenom(), nbrJoursStr
             );
 
-            notificationService.createNotification(notificationMessage, "RH", null);
 
-            if (service != null && service.getChef1() != null) {
+            if (service != null ) {
                 notificationService.createNotification(
                         notificationMessage + " - Service: " + service.getServiceName(),
                         "Chef Hiérarchique",
-                        service.getId()
+                        null,
+                        service.getId(),
+                        personnel.getCode_soc()
                 );
             }
 
-            // 10. Send SSE update
-            sseController.sendUpdate("created", savedDemande);
 
             // 11. Return response
             return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
@@ -232,79 +231,7 @@ public class DemandeFormationController {
         }
     }
 
-    @GetMapping("/approved")
-    public ResponseEntity<?> getDemandesFormationApprovedByChef1() {
-        try {
-            // 1. Get all responses where chef1 approved ("O")
-            List<Response_chefs_dem_formation> reponsesChef1 = responseChefsFormationRepository.findByResponseChef1("O");
 
-            // 2. Extract the IDs of approved requests
-            List<String> demandeIds = reponsesChef1.stream()
-                    .map(Response_chefs_dem_formation::getDemandeId)
-                    .collect(Collectors.toList());
-
-            // 3. Get the corresponding formation requests
-            List<DemandeFormation> demandes = demandeFormationRepository.findByIdIn(demandeIds);
-
-            // 4. Format the response with formation details
-            List<Map<String, Object>> response = demandes.stream()
-                    .map(demande -> {
-                        Map<String, Object> demandeMap = new HashMap<>();
-                        demandeMap.put("id", demande.getId());
-                        demandeMap.put("dateDemande", demande.getDateDemande());
-                        demandeMap.put("typeDemande", demande.getTypeDemande());
-                        demandeMap.put("dateDebut", demande.getDateDebut());
-                        demandeMap.put("nbrJours", demande.getNbrJours());
-                        demandeMap.put("texteDemande", demande.getTexteDemande());
-                        demandeMap.put("reponseChef", demande.getReponseChef());
-
-                        // Add personnel information
-                        if (demande.getMatPers() != null) {
-                            Map<String, Object> personnelMap = new HashMap<>();
-                            personnelMap.put("id", demande.getMatPers().getId());
-                            personnelMap.put("matricule", demande.getMatPers().getMatricule());
-                            personnelMap.put("nom", demande.getMatPers().getNom());
-                            personnelMap.put("prenom", demande.getMatPers().getPrenom());
-                            demandeMap.put("matPers", personnelMap);
-                        }
-
-                        // Add formation details
-                        if (demande.getTitre() != null) {
-                            demandeMap.put("titre", demande.getTitre().getTitre());
-                        }
-                        if (demande.getTheme() != null) {
-                            demandeMap.put("theme", demande.getTheme().getTheme());
-                        }
-                        if (demande.getType() != null) {
-                            demandeMap.put("type", demande.getType().getType());
-                        }
-
-                        // Add response details
-                        if (demande.getResponseChefs() != null) {
-                            Map<String, Object> responseMap = new HashMap<>();
-                            responseMap.put("responseChef1", demande.getResponseChefs().getResponseChef1());
-                            responseMap.put("observationChef1", demande.getResponseChefs().getObservationChef1());
-                            responseMap.put("dateChef1", demande.getResponseChefs().getDateChef1());
-                            demandeMap.put("responseChefs", responseMap);
-                        }
-
-                        return demandeMap;
-                    })
-                    .collect(Collectors.toList());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            logger.error("Error fetching approved formation requests", e);
-            return ResponseEntity.internalServerError().body(
-                    Map.of(
-                            "status", "error",
-                            "message", "Erreur lors de la récupération des demandes de formation approuvées",
-                            "error", e.getMessage()
-                    )
-            );
-        }
-    }
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeFormation>> getDemandesFormationByPersonnelId(@PathVariable String matPersId) {
         List<DemandeFormation> demandes = demandeFormationRepository.findByMatPersId(matPersId);
@@ -366,6 +293,7 @@ public class DemandeFormationController {
 
         return ResponseEntity.ok(approvedByChef1);
     }
+
 
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemandeFormation(
@@ -481,18 +409,18 @@ public class DemandeFormationController {
             demande.setResponseChefs(response);
             demandeFormationRepository.save(demande);
 
-            // 9. Notification de l'employé
-            if (demande.getMatPers() != null) {
-                String message = tousValides
-                        ? "Votre demande de formation a été approuvée"
-                        : String.format("Validation reçue (Chef %d)", poidChef);
+            // 9. Notify employee
+            String message = tousValides
+                    ? String.format("Demande de formation de personnel %s a été approuvée", demande.getMatPers().getNom())
+                    : String.format("Validation reçue (Chef %d)", poidChef);
 
-                notificationService.createNotification(
-                        message,
-                        "collaborateur",
-                        demande.getMatPers().getId()
-                );
-            }
+            notificationService.createNotification(
+                    message,
+                    null,
+                    demande.getMatPers().getId(),
+                    null,
+                    null
+            );
 
             // 10. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
@@ -517,6 +445,7 @@ public class DemandeFormationController {
             ));
         }
     }
+
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemandeFormation(
@@ -628,12 +557,14 @@ public class DemandeFormationController {
             demande.setResponseChefs(response);
             demandeFormationRepository.save(demande);
 
-            // 8. Notification de l'employé
-            if (demande.getMatPers() != null) {
+            // 8. Notify employee
+            if (demande.getMatPers().getRole() == "RH") {
                 notificationService.createNotification(
-                        "Votre demande de formation a été refusée",
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        "Votre demande de formation a été refusé par RH",
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -688,8 +619,16 @@ public class DemandeFormationController {
             // Sauvegarder la demande mise à jour
             DemandeFormation updatedDemande = demandeFormationRepository.save(demande);
 
-            // Envoyer une mise à jour via SSE
-            sseController.sendUpdate("demande_updated", updatedDemande);
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Formation a été traiter.";
+
+            // Create and send the notification
+            notificationService.createNotification(message, null, collaborateurId,null,null);
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -801,14 +740,26 @@ public class DemandeFormationController {
 
                         DemandeFormation updatedDemande = demandeFormationRepository.save(existingDemande);
 
-                        // Send notification if status changed
+                      /*  // Send notification if status changed
                         if (demandeData.containsKey("reponseChef") || demandeData.containsKey("reponseRH")) {
                             notificationService.createNotification(
-                                    updatedDemande.getMatPers().getId(),
                                     "Votre demande de formation a été mise à jour",
-                                    "/demande-formation/" + updatedDemande.getId()
+                                    "/demande-formation/" + updatedDemande.getId(),
+                                    updatedDemande.getMatPers().getId(),
+                                    null
                             );
-                        }
+                        }*/
+
+
+                        // Send notification
+                        notificationService.createNotification(
+                                "Demande de formation de personnel %s a été mise à jour" + updatedDemande.getMatPers().getNom(),
+                                "Chef Hiérarchique",
+                                updatedDemande.getMatPers().getId(),
+                                updatedDemande.getMatPers().getServiceId(),
+                                updatedDemande.getCodeSoc()
+                        );
+
 
                         return ResponseEntity.ok(updatedDemande);
                     } catch (Exception e) {

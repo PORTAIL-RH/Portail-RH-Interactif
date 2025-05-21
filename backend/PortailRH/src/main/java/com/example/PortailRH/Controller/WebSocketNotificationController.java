@@ -18,9 +18,9 @@ public class WebSocketNotificationController {
 
     // Send a notification to all connected clients
     @MessageMapping("/send-notification")
-    public void sendNotification(String message, @Header("role") String role, @Header("serviceId") String serviceId) {
+    public void sendNotification(String message, @Header("role") String role,@Header("personnelId") String personnelId, @Header("serviceId") String serviceId,@Header("codeSoc") String codeSoc) {
         // Create a notification with role and serviceId
-        notificationService.createNotification(message, role, serviceId);
+        notificationService.createNotification(message, role, personnelId , serviceId,codeSoc);
 
         // Broadcast the notification to all subscribers
         messagingTemplate.convertAndSend("/topic/notifications", message);

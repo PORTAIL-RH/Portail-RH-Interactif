@@ -239,13 +239,14 @@ public class DemandeCongeController {
                     personnel.getNom(), personnel.getPrenom(), nbrJours
             );
 
-            notificationService.createNotification(notificationMessage, "RH", null);
 
-            if (service != null && service.getChef1() != null) {
+            if (service != null ) {
                 notificationService.createNotification(
                         notificationMessage + " - Service: " + service.getServiceName(),
                         "Chef Hiérarchique",
-                        service.getId()
+                        null,
+                        service.getId(),
+                        personnel.getCode_soc()
                 );
             }
 
@@ -328,6 +329,15 @@ public class DemandeCongeController {
 
                 // Save the updated demande
                 DemandeConge updatedDemande = demandeCongeRepository.save(existingDemande);
+
+                // Send notification
+                notificationService.createNotification(
+                        "Demande de congé de personnel %s a été mise à jour"+ updatedDemande.getMatPers().getNom(),
+                        "Chef Hiérarchique",
+                        updatedDemande.getMatPers().getId(),
+                        updatedDemande.getMatPers().getServiceId(),
+                        updatedDemande.getCodeSoc()
+                );
 
                 return ResponseEntity.ok(Map.of(
                         "message", "Demande de congé mise à jour avec succès",
@@ -522,13 +532,15 @@ public class DemandeCongeController {
             // 9. Notify employee
             if (demande.getMatPers() != null) {
                 String message = tousValides
-                        ? "Votre demande de congé a été approuvée"
-                        : "Votre demande a reçu une validation (en attente d'autres validations)";
+                        ? "Votre demande de congé a été approuvée (en attente validations RH)"
+                        : String.format("Validation reçue (Chef %d)", poidChef);
 
                 notificationService.createNotification(
                         message,
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -552,6 +564,7 @@ public class DemandeCongeController {
             ));
         }
     }
+
 
     @PutMapping("/refuser/{id}")
     public ResponseEntity<?> refuserDemandeConge(
@@ -664,11 +677,13 @@ public class DemandeCongeController {
             demandeCongeRepository.save(demande);
 
             // 8. Notify employee
-            if (demande.getMatPers() != null) {
+            if (demande.getMatPers().getRole() == "RH") {
                 notificationService.createNotification(
-                        "Votre demande de congé a été refusée",
-                        "collaborateur",
-                        demande.getMatPers().getId()
+                        "Votre demande de congé a été refusé par RH",
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
                 );
             }
 
@@ -692,7 +707,6 @@ public class DemandeCongeController {
         }
     }
 
-
     @PutMapping("/traiter/{id}")
     public ResponseEntity<String> traiterDemande(
             @PathVariable String id,
@@ -701,6 +715,19 @@ public class DemandeCongeController {
             demande.setReponseRH(Reponse.T);
             demande.setObservation(observation); // Set observation if provided
             demandeCongeRepository.save(demande);
+
+            // Get the collaborateur ID from the associated Personnel object
+            Personnel collaborateur = demande.getMatPers();
+            if (collaborateur == null) {
+                return ResponseEntity.badRequest().body("Aucun collaborateur associé à cette demande");
+            }
+            String collaborateurId = collaborateur.getId();
+            String message = "Votre demande de Conge a été traiter.";
+            String role = "collaborateur"; // Make sure this matches your role naming convention
+
+            // Create and send the notification
+            notificationService.createNotification(message, null, collaborateurId,null,null);
+
             return ResponseEntity.ok("Demande traitée avec succès");
         }).orElse(ResponseEntity.notFound().build());
     }

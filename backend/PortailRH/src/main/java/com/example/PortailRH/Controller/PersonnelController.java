@@ -177,6 +177,16 @@ public class PersonnelController {
                 if (personnel.getFailedLoginAttempts() >= MAX_REGISTRATION_ATTEMPTS) {
                     personnel.lockAccount("Too many registration attempts");
                     personnelRepository.save(personnel);
+
+                    // Send WebSocket notification to admins
+                    notificationService.createNotification(
+                            "Compte verrouillé: " + personnel.getMatricule(),
+                            "Admin",
+                            null,
+                            null,
+                            null
+                    );
+
                     sendLockNotification(personnel);
 
                     session.setAttribute("registrationAttempts", sessionAttempts + 1);
@@ -189,17 +199,30 @@ public class PersonnelController {
 
                 personnelRepository.save(personnel);
 
+                // Create notification
+                notificationService.createNotification(
+                        "Enregistrement réussi d'un nouveau personnel avec le matricule -> " + personnel.getMatricule(),
+                        "Admin",
+                        null,
+                        null,
+                        null
+                );
+
                 // 2d. Password update if changed
                 if (!bCryptPasswordEncoder.matches(request.getPassword(), personnel.getMotDePasse())) {
                     personnel.setMotDePasse(bCryptPasswordEncoder.encode(request.getPassword()));
                     personnelRepository.save(personnel);
                     sendPasswordUpdateEmail(personnel);
 
-                    // Send SSE update for password change
-                    sseController.sendUpdate("password_changed", Map.of(
-                            "matricule", personnel.getMatricule(),
-                            "timestamp", new Date()
-                    ));
+
+                    // Create notification
+                    notificationService.createNotification(
+                            "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
+                            "Admin",
+                            null,
+                            null,
+                            null
+                    );
                 }
 
                 return ResponseEntity.ok(Map.of(
@@ -243,17 +266,18 @@ public class PersonnelController {
 
             personnelRepository.save(newPersonnel);
 
-            // Send SSE update for new personnel
-            sseController.sendUpdate("new_personnel", Map.of(
-                    "id", newPersonnel.getId(),
-                    "matricule", newPersonnel.getMatricule(),
-                    "email", newPersonnel.getEmail(),
-                    "active", newPersonnel.isActive(),
-                    "timestamp", new Date()
-            ));
+            // Create notification
+            notificationService.createNotification(
+                    "Enregistrement réussi d'un nouveau personnel avec le matricule : " + newPersonnel.getMatricule(),
+                    "Admin",
+                    null,
+                    null,
+                    null
+            );
+
+
 
             sendWelcomeEmail(newPersonnel);
-            createSystemNotification(newPersonnel);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Registration successful. Account pending activation.",
@@ -461,21 +485,6 @@ public class PersonnelController {
 
             personnelRepository.save(newPersonnel);
 
-            // Create notification
-            notificationService.createNotification(
-                    "Un nouveau Personnel ajouté avec le matricule : " + matricule,
-                    "Admin",
-                    null
-            );
-
-            // Send SSE update to all connected clients
-            sseController.sendUpdate("new_personnel", Map.of(
-                    "id", newPersonnel.getId(),
-                    "matricule", matricule,
-                    "email", email,
-                    "active", false,
-                    "timestamp", new Date()
-            ));
 
             String token = jwtUtil.generateToken(email);
 
@@ -746,11 +755,14 @@ public class PersonnelController {
             personnel.setMotDePasse(bCryptPasswordEncoder.encode(newPassword));
             personnelRepository.save(personnel);
 
-            // Send SSE update for password reset
-            sseController.sendUpdate("password_reset", Map.of(
-                    "matricule", personnel.getMatricule(),
-                    "timestamp", new Date()
-            ));
+            // Create notification update for password reset
+            notificationService.createNotification(
+                    "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
+                    "Admin",
+                    null,
+                    null,
+                    null
+            );
 
             String subject = "Mot de passe mis à jour";
             String body = "Bonjour " + personnel.getPrenom() + ",<br><br>" +
@@ -860,6 +872,7 @@ public class PersonnelController {
                         entry.put("nom", personnel.getNom());
                         entry.put("prenom", personnel.getPrenom());
                         entry.put("role", personnel.getRole());
+
                         return entry;
                     })
                     .collect(Collectors.toList());
@@ -1021,6 +1034,8 @@ public class PersonnelController {
             response.put("prenom", personnel.getPrenom());
             response.put("role", personnel.getRole());
             response.put("active", personnel.isActive());
+            response.put("code_soc", personnel.getCode_soc());
+            response.put("service_id", personnel.getServiceId());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -1083,12 +1098,7 @@ public class PersonnelController {
                     unlockBody
             );
 
-            // Create system notification
-            notificationService.createNotification(
-                    "Account unlocked: " + personnel.getMatricule(),
-                    "Admin",
-                    personnel.getId()
-            );
+
 
             return ResponseEntity.ok().body(
                     Map.of("message", "Account unlocked successfully",
@@ -1370,11 +1380,5 @@ public class PersonnelController {
         }
     }
 
-    private void createSystemNotification(Personnel personnel) {
-        notificationService.createNotification(
-                "New personnel registered: " + personnel.getMatricule(),
-                "System",
-                personnel.getId()
-        );
-    }
+
 }

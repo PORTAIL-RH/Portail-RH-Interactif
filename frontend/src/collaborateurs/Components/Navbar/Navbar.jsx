@@ -1,11 +1,12 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
-import { FiSun, FiMoon, FiLogOut, FiBell } from "react-icons/fi"
+import { FiSun, FiMoon, FiBell } from "react-icons/fi"
 import "./Navbar.css"
 import NotificationsModal from "../../Notifications/NotificationsModal"
 import { API_URL } from "../../../config"
 import useNotifications from "../../Notifications/useNotifications"
-
 
 const Navbar = () => {
   const navigate = useNavigate()
@@ -96,7 +97,6 @@ const Navbar = () => {
     setShowNotificationsModal(!showNotificationsModal)
   }, [showNotificationsModal, markAllAsRead, fetchNotifications])
 
-
   return (
     <>
       <nav className="navbar">
@@ -129,13 +129,15 @@ const Navbar = () => {
               </span>
             </button>
           </div>
-
-          
         </div>
       </nav>
 
       {showNotificationsModal && (
-        <NotificationsModal notifications={notifications} onClose={() => setShowNotificationsModal(false)} />
+        <NotificationsModal
+          notifications={notifications}
+          onClose={() => setShowNotificationsModal(false)}
+          onMarkAsRead={fetchNotifications}
+        />
       )}
     </>
   )

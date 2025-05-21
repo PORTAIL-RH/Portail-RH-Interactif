@@ -132,11 +132,15 @@
 }
 
 .notification-button {
-  position: relative;
   background: none;
   border: none;
   cursor: pointer;
-  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: var(--navbar-transition);
 }
 
 .navbar.light .notification-button {
@@ -156,12 +160,12 @@
 }
 
 .notification-icon-img {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   object-fit: contain;
 }
 
-.notification-icon-light {
+.notification-icon-img.light {
   filter: brightness(0);
 }
 
