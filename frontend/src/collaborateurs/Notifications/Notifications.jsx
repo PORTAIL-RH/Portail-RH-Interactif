@@ -1,3 +1,4 @@
+"use client"
 
 import { useState } from "react"
 import { format } from "date-fns"
@@ -17,13 +18,18 @@ const Notifications = () => {
   const userRole = localStorage.getItem("userRole") || "Collaborateur"
   const userId = localStorage.getItem("userId")
 
-  // Use the notifications hook
-  const { notifications, loading, error, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(userRole,userId)
+  // Use the notifications hook with personnelId
+  const { notifications, loading, error, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(
+    userRole,
+    userId,
+  )
 
   // Sort notifications by timestamp (newest first)
-  const sortedNotifications = [...notifications]
-    .filter((notification) => notification.role === userRole)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+  const sortedNotifications = [...notifications].sort((a, b) => {
+    const dateA = new Date(b.timestamp || b.createdAt || 0)
+    const dateB = new Date(a.timestamp || a.createdAt || 0)
+    return dateA - dateB
+  })
 
   const handleNotificationClick = async (notification) => {
     // If notification is not viewed, mark it as viewed
@@ -115,6 +121,15 @@ const Notifications = () => {
               <div className="header-actions">
                 <button className="refresh-button" onClick={fetchNotifications}>
                   <FiRefreshCw />
+                </button>
+                <button
+                  className="mark-all-button"
+                  onClick={async () => {
+                    await markAllAsRead()
+                    fetchNotifications()
+                  }}
+                >
+                  Marquer tout comme lu
                 </button>
               </div>
             </div>

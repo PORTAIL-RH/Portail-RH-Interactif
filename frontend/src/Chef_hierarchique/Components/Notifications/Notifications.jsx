@@ -9,44 +9,18 @@ import Navbar from "../Navbar/Navbar"
 import { FiBell, FiCheckCircle, FiEye, FiFilter } from "react-icons/fi"
 
 const Notifications = () => {
-  // Get user data from localStorage
-  const [userData, setUserData] = useState({
-    role: "",
-    serviceId: "",
-  })
-  const [loading, setLoading] = useState(true)
   const [theme, setTheme] = useState("light")
   const [activeFilter, setActiveFilter] = useState("all")
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
-  // Fetch user data from local storage
-  useEffect(() => {
-    const storedUserData = localStorage.getItem("userData")
-    const storedServiceId = localStorage.getItem("userServiceId")
-    const storedRole = localStorage.getItem("userRole")
-
-    if (storedUserData) {
-      try {
-        const parsedData = JSON.parse(storedUserData)
-        setUserData({
-          role: storedRole || parsedData.role || "Chef Hiérarchique",
-          serviceId: storedServiceId || parsedData.serviceId || "",
-        })
-      } catch (error) {
-        console.error("Error parsing user data:", error)
-        setUserData({
-          role: storedRole || "Chef Hiérarchique",
-          serviceId: storedServiceId || "",
-        })
-      }
-    } else {
-      setUserData({
-        role: storedRole || "Chef Hiérarchique",
-        serviceId: storedServiceId || "",
-      })
-    }
-    setLoading(false)
-  }, [])
+  
+  const {
+    notifications,
+    unviewedCount,
+    loading,
+    error,
+    fetchNotifications,
+    markAllAsRead
+  } = useNotifications()
 
   // Theme management
   useEffect(() => {
@@ -77,16 +51,9 @@ const Notifications = () => {
     return () => window.removeEventListener("sidebarToggled", handleSidebarToggle)
   }, [])
 
-  // Get notifications
-  const { notifications, unviewedCount, markAllAsRead, error } = useNotifications(
-    userData.role,
-    userData.serviceId,
-  )
-
   // Filter and sort notifications
   const filteredNotifications = notifications
     .filter((notification) => {
-      if (notification.role !== userData.role) return false
       if (activeFilter === "unread") return !notification.viewed
       if (activeFilter === "read") return notification.viewed
       return true
@@ -94,13 +61,18 @@ const Notifications = () => {
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
 
   // Count statistics
-  const readCount = notifications.filter((n) => n.viewed && n.role === userData.role).length
-  const unreadCount = notifications.filter((n) => !n.viewed && n.role === userData.role).length
-  const totalCount = notifications.filter((n) => n.role === userData.role).length
+  const readCount = notifications.filter((n) => n.viewed).length
+  const unreadCount = notifications.filter((n) => !n.viewed).length
+  const totalCount = notifications.length
 
-
-
-
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead()
+      await fetchNotifications() // Refresh the notifications list
+    } catch (error) {
+      console.error("Error marking all as read:", error)
+    }
+  }
 
   if (loading) {
     return <div className="loading-container">Loading...</div>
@@ -114,7 +86,14 @@ const Notifications = () => {
         <div className="notifications-page-content">
           <div className="notifications-page-header">
             <h1>Notifications</h1>
-            
+            <button 
+              className="mark-all-read-btn"
+              onClick={handleMarkAllAsRead}
+              disabled={unreadCount === 0}
+            >
+              <FiCheckCircle />
+              <span>Marquer tout comme lu</span>
+            </button>
           </div>
 
           <div className="notifications-page-filters">

@@ -8,31 +8,13 @@ import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 import { API_URL } from "../../../config";
 
+const POLLING_INTERVAL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
 const DemandesAutorisation = () => {
-  const [demandesData, setDemandesData] = useState(() => {
-    try {
-      const stored = localStorage.getItem("demandes");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.autorisation?.data && Array.isArray(parsed.autorisation.data)) {
-          return {
-            autorisation: { 
-              data: parsed.autorisation.data || [], 
-              total: parsed.autorisation.total || 0, 
-              approved: parsed.autorisation.approved || 0, 
-              pending: parsed.autorisation.pending || 0 
-            },
-            timestamp: parsed.timestamp || 0
-          };
-        }
-      }
-    } catch (e) {
-      console.error("Error parsing demandes from localStorage:", e);
-    }
-    return {
-      autorisation: { data: [], total: 0, approved: 0, pending: 0 },
-      timestamp: 0
-    };
+  // State initialization
+  const [demandesData, setDemandesData] = useState({
+    autorisation: { data: [], total: 0, approved: 0, pending: 0 },
+    timestamp: 0
   });
 
   const [demandes, setDemandes] = useState([]);
@@ -55,9 +37,12 @@ const DemandesAutorisation = () => {
   const [previewFileUrl, setPreviewFileUrl] = useState(null);
   const [lastUpdated, setLastUpdated] = useState("");
   const [dataSource, setDataSource] = useState("");
+  const [nextRefresh, setNextRefresh] = useState("");
   const [services, setServices] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
+  
+  // Helper functions
   const formatDateTime = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -138,14 +123,21 @@ const DemandesAutorisation = () => {
 
   const canValidateDemande = (demande) => {
     const currentPoid = getUserPoidForDemande(demande);
+    
+    // If user is not authorized
     if (!currentPoid || currentPoid === 0) return false;
-    const userResponse = getCurrentUserResponse(demande);
-    return userResponse === "I";
+
+    // If no response object exists, chef can respond
+    if (!demande.reponseChef) return true;
+
+    // Check only the field for current chef's poid
+    const responseField = `responseChef${currentPoid}`;
+    return demande.reponseChef[responseField] === "I";
   };
 
   const renderUserSpecificStatus = (demande) => {
-    const userResponse = getCurrentUserResponse(demande);
     const currentPoid = getUserPoidForDemande(demande);
+    const userResponse = getCurrentUserResponse(demande);
     
     if (userResponse === "O") {
       return (
@@ -173,37 +165,7 @@ const DemandesAutorisation = () => {
     );
   };
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light";
-    setTheme(savedTheme);
-    document.documentElement.classList.add(savedTheme);
-    document.body.className = savedTheme;
-
-    const handleStorageChange = () => {
-      const currentTheme = localStorage.getItem("theme") || "light";
-      setTheme(currentTheme);
-      document.documentElement.className = currentTheme;
-      document.body.className = currentTheme;
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("themeChanged", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("themeChanged", handleStorageChange);
-    };
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light";
-    setTheme(newTheme);
-    document.documentElement.className = newTheme;
-    document.body.className = newTheme;
-    localStorage.setItem("theme", newTheme);
-    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
-  };
-
+  // Data fetching
   const fetchFromAPI = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken");
@@ -241,7 +203,7 @@ const DemandesAutorisation = () => {
         })) || []
       }));
 
-      const processedAutorisation = {
+      const processedData = {
         data: demandesFromResponse,
         total: demandesFromResponse.length,
         approved: demandesFromResponse.filter(d => d.reponseChef && 
@@ -254,136 +216,17 @@ const DemandesAutorisation = () => {
            d.reponseChef.responseChef3 === "I")).length
       };
 
-      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
-      const updatedCache = {
-        ...currentCache,
-        autorisation: processedAutorisation,
-        timestamp: Date.now()
-      };
-      
-      localStorage.setItem("demandes", JSON.stringify(updatedCache));
-
-      return processedAutorisation;
+      return processedData;
     } catch (error) {
       console.error("API fetch error:", error);
       throw error;
     }
   }, [getUserInfo]);
 
-  const fetchDemandes = useCallback(async () => {
-    setLoading(true);
-    setError(null);
 
-    try {
-      const stored = localStorage.getItem("demandes");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          const cacheAge = Date.now() - (parsed.timestamp || 0);
-          
-          if (cacheAge < 3600000 && parsed.autorisation?.data && Array.isArray(parsed.autorisation.data)) {
-            setDemandesData(parsed);
-            setDemandes(parsed.autorisation.data);
-            setFilteredDemandes(parsed.autorisation.data);
-            setLastUpdated(new Date(parsed.timestamp).toLocaleTimeString());
-            setDataSource("cache");
-            setLoading(false);
-            
-            fetchFromAPI().catch(e => console.error("Background refresh failed:", e));
-            return;
-          }
-        } catch (e) {
-          console.error("Error parsing demandes from localStorage:", e);
-        }
-      }
 
-      const processedData = await fetchFromAPI();
-      setDemandesData(prev => ({
-        ...prev,
-        autorisation: processedData,
-        timestamp: Date.now()
-      }));
-      setDemandes(processedData.data);
-      setFilteredDemandes(processedData.data);
-      setDataSource("api");
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (error) {
-      console.error("Fetch error:", error);
-      setError(error.message || "An unknown error occurred");
-      
-      const stored = localStorage.getItem("demandes");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.autorisation?.data && Array.isArray(parsed.autorisation.data)) {
-            setDemandesData(parsed);
-            setDemandes(parsed.autorisation.data);
-            setFilteredDemandes(parsed.autorisation.data);
-            setDataSource("cache-fallback");
-          }
-        } catch (e) {
-          console.error("Error parsing fallback data:", e);
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchFromAPI]);
 
-  useEffect(() => {
-    getUserInfo();
-    fetchDemandes();
-  }, [getUserInfo, fetchDemandes]);
-
-  useEffect(() => {
-    const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
-
-    eventSource.onmessage = (event) => {
-      const update = JSON.parse(event.data);
-      if (update.type === "created" || update.type === "updated" || update.type === "deleted") {
-        fetchDemandes();
-      }
-    };
-
-    eventSource.onerror = (error) => {
-      console.error("EventSource error:", error);
-      eventSource.close();
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [fetchDemandes]);
-
-  useEffect(() => {
-    let filtered = demandes;
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (demande) =>
-          (demande.matPers?.nomComplet && demande.matPers.nomComplet.toLowerCase().includes(query)) ||
-          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query))
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => {
-        const userResponse = getCurrentUserResponse(demande);
-        return userResponse === selectedStatus;
-      });
-    }
-
-    if (startDate && endDate) {
-      filtered = filtered.filter((demande) => {
-        const demandeDate = new Date(demande.dateDemande);
-        return demandeDate >= new Date(startDate) && demandeDate <= new Date(endDate);
-      });
-    }
-
-    setFilteredDemandes(filtered);
-  }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
-
+  // Action handlers
   const openActionModal = (demandeId, type) => {
     setCurrentDemandeId(demandeId);
     setActionType(type);
@@ -398,142 +241,269 @@ const DemandesAutorisation = () => {
     setCurrentDemandeId(null);
   };
 
-  const toggleFilterExpand = () => {
-    setIsFilterExpanded((prev) => !prev);
-  };
+const handleAction = async () => {
+  const toastId = toast.loading(
+    actionType === "approve" ? "Validation en cours..." : "Refus en cours...",
+    { autoClose: false }
+  );
 
-  const handleAction = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      const userInfo = getUserInfo();
-      const demande = demandes.find(d => d.id === currentDemandeId);
-      
-      if (!userInfo || !demande) {
-        throw new Error("User validation information not available");
-      }
+  try {
+    // 1. Authentication
+    const token = localStorage.getItem("authToken");
+    if (!token) throw new Error("Session expirée - Veuillez vous reconnecter");
 
-      const currentPoid = getUserPoidForDemande(demande);
-      
-      if (!currentPoid || currentPoid === 0) {
-        throw new Error("Vous n'êtes pas autorisé à valider cette demande");
-      }
+    const userId = localStorage.getItem("userId");
+    if (!userId) throw new Error("Utilisateur non identifié");
 
-      let chefLevel = "";
-      switch(currentPoid) {
-        case 1: chefLevel = "chef1"; break;
-        case 2: chefLevel = "chef2"; break;
-        case 3: chefLevel = "chef3"; break;
-        default: throw new Error("Invalid user position");
-      }
+    // 2. Find current demande
+    const currentDemande = demandes.find(d => d.id === currentDemandeId);
+    if (!currentDemande) throw new Error("Demande introuvable");
 
-      const url = actionType === "approve" 
-        ? `${API_URL}/api/demande-autorisation/valider/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`
-        : `${API_URL}/api/demande-autorisation/refuser/${currentDemandeId}?chefId=${userInfo.id}&chefLevel=${chefLevel}`;
+    // 3. Check permission level
+    const currentPoid = getUserPoidForDemande(currentDemande);
+    if (!currentPoid || currentPoid === 0) throw new Error("Action non autorisée");
 
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          observation: observation
-        })
-      });
+    // 4. Check appropriate response field
+    const chefResponseField = `responseChef${currentPoid}`;
+    const currentUserResponse = currentDemande.reponseChef?.[chefResponseField] || "I";
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText);
-      }
-
-      const result = await response.json();
-      
-      if (result.status === "error") {
-        throw new Error(result.message);
-      }
-
-      const updatedData = demandes.map(d => {
-        if (d.id === currentDemandeId) {
-          const updatedDemande = { 
-            ...d, 
-            observation: observation 
-          };
-          
-          if (!updatedDemande.reponseChef) {
-            updatedDemande.reponseChef = {
-              id: `temp-${Date.now()}`,
-              demandeId: currentDemandeId,
-              responseChef1: "I",
-              responseChef2: "I",
-              responseChef3: "I",
-              dateChef1: "",
-              dateChef2: "",
-              dateChef3: "",
-              observationChef1: "",
-              observationChef2: "",
-              observationChef3: ""
-            };
-          }
-
-          if (currentPoid === 1) {
-            updatedDemande.reponseChef.responseChef1 = actionType === "approve" ? "O" : "N";
-            updatedDemande.reponseChef.dateChef1 = new Date().toISOString();
-            updatedDemande.reponseChef.observationChef1 = observation;
-          } else if (currentPoid === 2) {
-            updatedDemande.reponseChef.responseChef2 = actionType === "approve" ? "O" : "N";
-            updatedDemande.reponseChef.dateChef2 = new Date().toISOString();
-            updatedDemande.reponseChef.observationChef2 = observation;
-          } else if (currentPoid === 3) {
-            updatedDemande.reponseChef.responseChef3 = actionType === "approve" ? "O" : "N";
-            updatedDemande.reponseChef.dateChef3 = new Date().toISOString();
-            updatedDemande.reponseChef.observationChef3 = observation;
-          }
-          
-          return updatedDemande;
-        }
-        return d;
-      });
-
-      const updatedAutorisation = {
-        data: updatedData,
-        total: updatedData.length,
-        approved: updatedData.filter(d => d.reponseChef && 
-          (d.reponseChef.responseChef1 === "O" || 
-           d.reponseChef.responseChef2 === "O" || 
-           d.reponseChef.responseChef3 === "O")).length,
-        pending: updatedData.filter(d => !d.reponseChef || 
-          (d.reponseChef.responseChef1 === "I" && 
-           d.reponseChef.responseChef2 === "I" && 
-           d.reponseChef.responseChef3 === "I")).length
-      };
-
-      const currentCache = JSON.parse(localStorage.getItem("demandes") || "{}");
-      const updatedCache = {
-        ...currentCache,
-        autorisation: updatedAutorisation,
-        timestamp: Date.now()
-      };
-      
-      localStorage.setItem("demandes", JSON.stringify(updatedCache));
-
-      setDemandesData(updatedCache);
-      setDemandes(updatedData);
-      setFilteredDemandes(updatedData);
-      closeActionModal();
-      
-      // Updated toast messages to show chef level
-      const chefPosition = getUserPositionName(currentPoid);
-      toast.success(
-        actionType === "approve" 
-          ? `Demande approuvée (${chefPosition})` 
-          : `Demande refusée (${chefPosition})`
-      );
-      
-    } catch (error) {
-      toast.error(`Erreur: ${error.message}`);
+    if (currentUserResponse !== "I") {
+      throw new Error(`Vous avez déjà ${currentUserResponse === "O" ? "approuvé" : "refusé"} cette demande`);
     }
-  };
 
+    // 5. Observation validation for rejections
+    if (actionType === "reject" && (!observation || !observation.trim())) {
+      throw new Error("Une observation est obligatoire pour le refus");
+    }
+
+    // 6. Prepare request
+    const endpoint = actionType === "approve" ? "valider" : "refuser";
+    const url = `${API_URL}/api/demande-autorisation/${endpoint}/${currentDemandeId}?chefId=${userId}`;
+
+    const requestBody = {
+      observation: observation?.trim() ||
+        (actionType === "approve"
+          ? `Validation par ${getUserPositionName(currentPoid)}`
+          : "Refus sans motif spécifié")
+    };
+
+    // 7. API call
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText);
+    }
+
+    const responseData = await response.json();
+
+    // 8. Local update preserving all data types
+    const now = new Date().toISOString();
+    const updatedDemandes = demandes.map(d => {
+      if (d.id !== currentDemandeId) return d;
+
+      const updatedResponse = {
+        ...d.reponseChef,
+        [chefResponseField]: actionType === "approve" ? "O" : "N",
+        [`dateChef${currentPoid}`]: now,
+        [`observationChef${currentPoid}`]: requestBody.observation
+      };
+
+      return {
+        ...d,
+        reponseChef: updatedResponse,
+      };
+    });
+
+    // 9. Merge with existing localStorage cache safely, preserving other demand types
+    const existingCache = JSON.parse(localStorage.getItem("demandes") || "{}");
+
+    const updatedCache = {
+      ...existingCache, // Preserve other demand types (formation, conge, etc.)
+      autorisation: {
+        ...existingCache.autorisation, // Preserve other autorisation metadata
+        data: updatedDemandes,
+        total: updatedDemandes.length,
+        approved: updatedDemandes.filter(d =>
+          d.reponseChef?.responseChef1 === "O" ||
+          d.reponseChef?.responseChef2 === "O" ||
+          d.reponseChef?.responseChef3 === "O"
+        ).length,
+        pending: updatedDemandes.filter(d =>
+          d.reponseChef?.responseChef1 === "I" &&
+          d.reponseChef?.responseChef2 === "I" &&
+          d.reponseChef?.responseChef3 === "I"
+        ).length
+      },
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem("demandes", JSON.stringify(updatedCache));
+
+    // 10. Update state
+    setDemandesData(updatedCache);
+    setDemandes(updatedDemandes);
+    setFilteredDemandes(updatedDemandes);
+
+    // 11. User feedback
+    closeActionModal();
+    toast.update(toastId, {
+      render: responseData.message || `Demande ${actionType === "approve" ? "approuvée" : "rejetée"}`,
+      type: "success",
+      isLoading: false,
+      autoClose: 3000
+    });
+
+    // 12. Delayed refresh
+    setTimeout(fetchDemandes, 2000);
+
+  } catch (error) {
+    let errorMessage = "Erreur technique";
+    try {
+      const errorObj = JSON.parse(error.message);
+      errorMessage = errorObj.message || error.message;
+    } catch (e) {
+      errorMessage = error.message;
+    }
+
+    toast.update(toastId, {
+      render: errorMessage,
+      type: "error",
+      isLoading: false,
+      autoClose: 5000
+    });
+
+    if (error.message.includes("Session")) {
+      setTimeout(() => window.location.href = "/", 2000);
+    }
+  }
+};
+
+const fetchDemandes = useCallback(async (isBackgroundRefresh = false) => {
+  if (!isBackgroundRefresh) setLoading(true);
+  setError(null);
+
+  try {
+    // Get complete cached data (including other demand types)
+    const cachedData = JSON.parse(localStorage.getItem("demandes") || "{}");
+    
+    const useCached = cachedData.autorisation?.data && Array.isArray(cachedData.autorisation.data);
+
+    if (useCached) {
+      setDemandesData(cachedData);
+      setDemandes(cachedData.autorisation.data);
+      setFilteredDemandes(cachedData.autorisation.data);
+      setLastUpdated(new Date(cachedData.timestamp).toLocaleTimeString());
+      setDataSource("cache");
+
+      if (!isBackgroundRefresh) {
+        fetchFromAPI()
+          .then(apiData => {
+            // Create new data while preserving other demand types
+            const newData = {
+              ...cachedData, // Keep existing data (formation, conge, etc.)
+              autorisation: apiData, // Update only autorisation data
+              timestamp: Date.now()
+            };
+
+            if (JSON.stringify(cachedData.autorisation.data) !== JSON.stringify(apiData.data)) {
+              localStorage.setItem("demandes", JSON.stringify(newData));
+              setDemandesData(newData);
+              setDemandes(apiData.data);
+              setFilteredDemandes(apiData.data);
+              setDataSource("api");
+              setLastUpdated(new Date().toLocaleTimeString());
+            }
+          })
+          .catch(e => console.error("Error during API refresh:", e));
+      } else {
+        // Background refresh - merge carefully without overwriting other types
+        const apiData = await fetchFromAPI();
+
+        // Merge existing and new autorisation data
+        const mergedDemandes = cachedData.autorisation.data.map(localDemande => {
+          const updated = apiData.data.find(d => d.id === localDemande.id);
+          return updated ? { ...localDemande, ...updated } : localDemande;
+        });
+
+        // Add any new demandes from API
+        const newOnes = apiData.data.filter(apiD =>
+          !cachedData.autorisation.data.some(localD => localD.id === apiD.id)
+        );
+
+        const finalMerged = [...mergedDemandes, ...newOnes];
+
+        // Update only autorisation while preserving other types
+        const updatedCache = {
+          ...cachedData, // Preserve other demand types
+          autorisation: {
+            ...cachedData.autorisation, // Preserve other autorisation metadata
+            data: finalMerged,
+            total: finalMerged.length,
+            approved: finalMerged.filter(d =>
+              d.reponseChef?.responseChef1 === "O" ||
+              d.reponseChef?.responseChef2 === "O" ||
+              d.reponseChef?.responseChef3 === "O"
+            ).length,
+            pending: finalMerged.filter(d =>
+              d.reponseChef?.responseChef1 === "I" &&
+              d.reponseChef?.responseChef2 === "I" &&
+              d.reponseChef?.responseChef3 === "I"
+            ).length
+          },
+          timestamp: Date.now()
+        };
+
+        localStorage.setItem("demandes", JSON.stringify(updatedCache));
+        setDemandesData(updatedCache);
+        setDemandes(finalMerged);
+        setFilteredDemandes(finalMerged);
+        setDataSource("merged");
+        setLastUpdated(new Date().toLocaleTimeString());
+      }
+      return;
+    }
+
+    // No cache case - initialize with only autorisation data
+    const processedData = await fetchFromAPI();
+    const newData = {
+      autorisation: processedData, // Only autorisation data
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem("demandes", JSON.stringify(newData));
+    setDemandesData(newData);
+    setDemandes(processedData.data);
+    setFilteredDemandes(processedData.data);
+    setDataSource("api");
+    setLastUpdated(new Date().toLocaleTimeString());
+
+  } catch (error) {
+    console.error("Fetch error:", error);
+    if (!isBackgroundRefresh) {
+      setError(error.message || "Une erreur est survenue");
+      const fallback = JSON.parse(localStorage.getItem("demandes") || "{}");
+      if (fallback.autorisation?.data) {
+        setDemandesData(fallback);
+        setDemandes(fallback.autorisation.data);
+        setFilteredDemandes(fallback.autorisation.data);
+        setDataSource("cache-fallback");
+      }
+    }
+  } finally {
+    if (!isBackgroundRefresh) setLoading(false);
+  }
+}, [fetchFromAPI]);
+
+
+  
   const openModal = (demande) => {
     setSelectedDemande(demande);
     setIsModalOpen(true);
@@ -557,7 +527,7 @@ const DemandesAutorisation = () => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(errorText || `Erreur HTTP: ${response.status}`);
+        throw new Error(errorText || `HTTP error: ${response.status}`);
       }
       
       const blob = await response.blob();
@@ -637,6 +607,95 @@ const DemandesAutorisation = () => {
     fetchDemandes();
   };
 
+  const toggleFilterExpand = () => {
+    setIsFilterExpanded((prev) => !prev);
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.documentElement.className = newTheme;
+    document.body.className = newTheme;
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
+
+  // Effects
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
+    document.body.className = savedTheme;
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      document.documentElement.className = currentTheme;
+      document.body.className = currentTheme;
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    getUserInfo();
+    fetchDemandes();
+
+    // Set up polling
+    const pollingInterval = setInterval(() => {
+      fetchDemandes(true);
+    }, POLLING_INTERVAL);
+
+    // Update next refresh time display
+    const updateNextRefreshTime = () => {
+      const next = new Date(Date.now() + POLLING_INTERVAL);
+      setNextRefresh(next.toLocaleTimeString());
+    };
+
+    updateNextRefreshTime();
+    const refreshDisplayInterval = setInterval(updateNextRefreshTime, 60000);
+
+    return () => {
+      clearInterval(pollingInterval);
+      clearInterval(refreshDisplayInterval);
+    };
+  }, [getUserInfo, fetchDemandes]);
+
+  useEffect(() => {
+    let filtered = demandes;
+
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (demande) =>
+          (demande.matPers?.nomComplet && demande.matPers.nomComplet.toLowerCase().includes(query)) ||
+          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query))
+      );
+    }
+
+    if (selectedStatus !== "all") {
+      filtered = filtered.filter((demande) => {
+        const userResponse = getCurrentUserResponse(demande);
+        return userResponse === selectedStatus;
+      });
+    }
+
+    if (startDate && endDate) {
+      filtered = filtered.filter((demande) => {
+        const demandeDate = new Date(demande.dateDemande);
+        return demandeDate >= new Date(startDate) && demandeDate <= new Date(endDate);
+      });
+    }
+
+    setFilteredDemandes(filtered);
+  }, [selectedStatus, startDate, endDate, demandes, searchQuery]);
+
   if (loading) {
     return (
       <div className={`app-container ${theme}`}>
@@ -685,21 +744,10 @@ const DemandesAutorisation = () => {
           <div className="page-header">
             <div className="header-row">
               <h1>Demandes d'Autorisation</h1>
-              <button className="refresh-button" onClick={handleRefresh}>
-                <FiRefreshCw /> Rafraîchir
-              </button>
+
             </div>
             <p>Gérez les demandes d'autorisation de vos collaborateurs</p>
-            <small className="polling-indicator">
-              Dernière mise à jour: {lastUpdated || "Jamais"}
-              {dataSource && (
-                <span className="data-source">
-                  {dataSource === "api" ? " (Données live)" : 
-                   dataSource === "cache" ? " (Données en cache)" : 
-                   " (Données de secours)"}
-                </span>
-              )}
-            </small>
+            
           </div>
 
           <div className="filter-tabs-container">
@@ -739,17 +787,7 @@ const DemandesAutorisation = () => {
             </div>
           </div>
 
-          <div className="search-bar-container">
-            <div className="search-bar">
-              <FiSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Rechercher par nom ou contenu..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
+
 
           <div className="stats-cards">
             <div className="stat-card total">
@@ -933,42 +971,62 @@ const DemandesAutorisation = () => {
                           {renderUserSpecificStatus(demande)}
                         </td>
                         <td>
-                          <div className="action-buttons">
-                            <button
-                              className={`action-button approve ${!canValidate ? 'disabled' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (canValidate) {
-                                  openActionModal(demande.id, "approve");
-                                }
-                              }}
-                              disabled={!canValidate}
-                              title={!canValidate ? 
-                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
-                                "Non autorisé") : 
-                                "Approuver"}
-                            >
-                              <FiCheck />
-                              <span>Approuver</span>
-                            </button>
-                            <button
-                              className={`action-button reject ${!canValidate ? 'disabled' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (canValidate) {
-                                  openActionModal(demande.id, "reject");
-                                }
-                              }}
-                              disabled={!canValidate}
-                              title={!canValidate ? 
-                                (userResponse !== "I" ? "Vous avez déjà répondu" : 
-                                "Non autorisé") : 
-                                "Rejeter"}
-                            >
-                              <FiX />
-                              <span>Rejeter</span>
-                            </button>
-                          </div>
+ <div className="action-buttons">
+        <button
+          className={`action-button approve ${!canValidate ? 'disabled' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (canValidate) {
+              openActionModal(demande.id, "approve");
+            } else {
+              const response = getCurrentUserResponse(demande);
+              toast.info(
+                response === "I" 
+                  ? "Non autorisé" 
+                  : "Vous avez déjà répondu à cette demande",
+                { className: 'info-toast' }
+              );
+            }
+          }}
+          title={
+            !canValidate 
+              ? (getCurrentUserResponse(demande) === "I" 
+                  ? "Non autorisé" 
+                  : "Vous avez déjà répondu")
+              : "Approuver"
+          }
+        >
+          <FiCheck />
+          <span>Approuver</span>
+        </button>
+        <button
+          className={`action-button reject ${!canValidate ? 'disabled' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (canValidate) {
+              openActionModal(demande.id, "reject");
+            } else {
+              const response = getCurrentUserResponse(demande);
+              toast.info(
+                response === "I" 
+                  ? "Non autorisé" 
+                  : "Vous avez déjà répondu à cette demande",
+                { className: 'info-toast' }
+              );
+            }
+          }}
+          title={
+            !canValidate 
+              ? (getCurrentUserResponse(demande) === "I" 
+                  ? "Non autorisé" 
+                  : "Vous avez déjà répondu")
+              : "Rejeter"
+          }
+        >
+          <FiX />
+          <span>Rejeter</span>
+        </button>
+      </div>
                         </td>
                       </tr>
                     );

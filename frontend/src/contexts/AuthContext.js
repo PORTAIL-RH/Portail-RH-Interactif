@@ -11,56 +11,58 @@ export const AuthProvider = ({ children }) => {
 
  // In your AuthContext.js
  const login = (token, userData) => {
-  localStorage.setItem('authToken', token);
-  localStorage.setItem('userData', JSON.stringify(userData));
-  localStorage.setItem('userId', userData._id || userData.id);
-  localStorage.setItem('userRole', userData.role);
-  localStorage.setItem('usermatricule', userData.matricule);
+    try {
+      // Store basic auth info
+      localStorage.setItem('authToken', token);
+      
+      // Create a simplified user object for localStorage
+      const userToStore = {
+        id: userData._id?.$oid || userData._id || userData.id,
+        matricule: userData.matricule,
+        nom: userData.nom,
+        prenom: userData.prenom,
+        email: userData.email,
+        role: userData.role,
+        active: userData.active,
+        code_soc: userData.code_soc,
+        serviceId: userData.service_id // Using service_id from backend response
+      };
 
-  if (userData.code_soc) {
-    localStorage.setItem('userCodeSoc', userData.code_soc);
-  }
-  
- // Nouvelle méthode pour extraire le serviceId
- let serviceId = null;
-  
- // Cas 1: service est une DBRef avec $id (format MongoDB)
- if (userData.service && userData.service.$id) {
-   serviceId = userData.service.$id.$oid || userData.service.$id;
- }
- // Cas 2: service est une DBRef avec id direct
- else if (userData.service && userData.service.id) {
-   serviceId = userData.service.id.$oid || userData.service.id;
- }
- // Cas 3: service est un string (ID direct)
- else if (typeof userData.service === 'string') {
-   serviceId = userData.service;
- }
- // Cas 4: serviceId est au niveau racine
- else if (userData.serviceId) {
-   serviceId = userData.serviceId;
- }
+      // Store all data in localStorage
+      localStorage.setItem('userData', JSON.stringify(userToStore));
+      localStorage.setItem('userId', userToStore.id);
+      localStorage.setItem('userRole', userToStore.role);
+      localStorage.setItem('usermatricule', userToStore.matricule);
 
- if (serviceId) {
-   localStorage.setItem('userServiceId', serviceId);
- } else {
-   console.warn('Service ID not found in user data:', userData);
- }
+      // Store additional fields separately for easy access
+      if (userToStore.code_soc) {
+        localStorage.setItem('userCodeSoc', userToStore.code_soc);
+      }
+      if (userToStore.serviceId) {
+        localStorage.setItem('userServiceId', userToStore.serviceId);
+      }
 
- // Extraction du chef hiérarchique si nécessaire
- if (userData.chefHierarchique && userData.chefHierarchique.$id) {
-   const chefId = userData.chefHierarchique.$id.$oid || userData.chefHierarchique.$id;
-   localStorage.setItem('chefHierarchiqueId', chefId);
- }
-  
-  setIsAuthenticated(true);
-};
+      console.log("Stored user data:", userToStore); // Debug log
+
+      setIsAuthenticated(true);
+    } catch (error) {
+      console.error("Error in login function:", error);
+      throw error;
+    }
+  };
 
   const logout = () => {
+    // Clear all auth-related items
     localStorage.removeItem('authToken');
     localStorage.removeItem('userData');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('usermatricule');
+    localStorage.removeItem('userCodeSoc');
+    localStorage.removeItem('userServiceId');
     setIsAuthenticated(false);
   };
+
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, login, logout }}>

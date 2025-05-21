@@ -181,8 +181,8 @@ const Sidebar = ({ theme }) => {
             </li>
             <li className="dropdown-item">
               <Link
-                to="/AjoutDemandeAutorisationCHEF"
-                className={`dropdown-link ${isActive("/AjoutDemandeAutorisationCHEF") ? "active" : ""}`}
+                to="/CongeChef"
+                className={`dropdown-link ${isActive("/CongeChef") ? "active" : ""}`}
               >
                 Ajout-demande
               </Link>

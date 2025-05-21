@@ -98,7 +98,7 @@ public class DemandePreAvanceController {
 
                 // Send a notification to RH
                 String notificationMessageRH = "Nouvelle demande de pre avanse ajoutée avec succès par " + personnelDetails.getNom() + " " + personnelDetails.getPrenom();
-                notificationService.createNotification(notificationMessageRH, "RH", null, servicePersonnel.getId(),personnelDetails.getCode_soc());
+                notificationService.createNotification(notificationMessageRH, "RH",null,null,personnelDetails.getCode_soc());
 
 
             }

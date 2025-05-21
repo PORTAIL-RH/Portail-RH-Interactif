@@ -1,9 +1,11 @@
+"use client"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { API_URL } from "../../config"
 
-const useNotifications = (role) => {
+const useNotifications = (role, personnelId = null) => {
   const [notifications, setNotifications] = useState([])
   const [unviewedCount, setUnviewedCount] = useState(0)
   const [error, setError] = useState("")
@@ -24,19 +26,22 @@ const useNotifications = (role) => {
 
   const fetchUnviewedCount = useCallback(async () => {
     try {
-      const personnelId = localStorage.getItem("userId")
+      const userPersonnelId = personnelId || localStorage.getItem("userId")
       const token = localStorage.getItem("authToken")
 
-      if (!personnelId || !token) {
+      if (!userPersonnelId || !token) {
         console.warn("Missing auth token or personnel ID")
         return
       }
 
-      const response = await fetch(`${API_URL}/api/notifications/unreadnbr?personnelId=${personnelId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_URL}/api/notifications/unreadnbr?role=${role}&personnelId=${userPersonnelId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      })
+      )
 
       if (!response.ok) {
         throw new Error("Failed to fetch unread count")
@@ -49,21 +54,23 @@ const useNotifications = (role) => {
     } catch (error) {
       console.error("Error fetching unread count:", error)
     }
-  }, [])
+  }, [role, personnelId])
 
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true)
       const token = localStorage.getItem("authToken")
-      const personnelId = localStorage.getItem("userId")
+      const userPersonnelId = personnelId || localStorage.getItem("userId")
+      const serviceId = localStorage.getItem("serviceId") || ""
+      const codeSoc = localStorage.getItem("codeSoc") || ""
 
-      if (!token || !personnelId) {
+      if (!token || !userPersonnelId) {
         setError("Authentification requise")
         setLoading(false)
         return
       }
 
-      const url = `${API_URL}/api/notifications?role=${role}&personnelId=${personnelId}`
+      const url = `${API_URL}/api/notifications?role=${role}&personnelId=${userPersonnelId}&serviceId=${serviceId}&codeSoc=${codeSoc}`
 
       const response = await fetch(url, {
         headers: {
@@ -95,42 +102,45 @@ const useNotifications = (role) => {
         setLoading(false)
       }
     }
-  }, [role, fetchUnviewedCount])
+  }, [role, personnelId, fetchUnviewedCount])
 
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      const token = localStorage.getItem("authToken")
-      if (!token) throw new Error("Authentication token not found")
+  const markAsRead = useCallback(
+    async (notificationId) => {
+      try {
+        const token = localStorage.getItem("authToken")
+        if (!token) throw new Error("Authentication token not found")
 
-      const response = await fetch(`${API_URL}/api/notifications/${notificationId}/view`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+        const response = await fetch(`${API_URL}/api/notifications/${notificationId}/view`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
-      if (isMountedRef.current) {
-        setNotifications((prev) =>
-          prev.map((notif) => (notif.id === notificationId ? { ...notif, viewed: true } : notif))
-        )
-        fetchUnviewedCount()
+        if (isMountedRef.current) {
+          setNotifications((prev) =>
+            prev.map((notif) => (notif.id === notificationId ? { ...notif, viewed: true } : notif)),
+          )
+          fetchUnviewedCount()
+        }
+      } catch (error) {
+        console.error("Mark as read error:", error)
+        throw error
       }
-    } catch (error) {
-      console.error("Mark as read error:", error)
-      throw error
-    }
-  }, [fetchUnviewedCount])
+    },
+    [fetchUnviewedCount],
+  )
 
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
-      const personnelId = localStorage.getItem("userId")
+      const userPersonnelId = personnelId || localStorage.getItem("userId")
 
-      if (!token || !personnelId) throw new Error("Authentication token or user ID not found")
+      if (!token || !userPersonnelId) throw new Error("Authentication token or user ID not found")
 
-      const payload = { role, personnelId }
+      const payload = { role, personnelId: userPersonnelId }
 
       const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
         method: "PUT",
@@ -155,14 +165,14 @@ const useNotifications = (role) => {
       console.error("Mark all as read error:", error)
       throw error
     }
-  }, [role, fetchUnviewedCount])
+  }, [role, personnelId, fetchUnviewedCount])
 
   useEffect(() => {
     fetchNotifications()
 
     const token = localStorage.getItem("authToken")
-    const personnelId = localStorage.getItem("userId")
-    if (!token || !personnelId) return
+    const userPersonnelId = personnelId || localStorage.getItem("userId")
+    if (!token || !userPersonnelId) return
 
     const client = new Client({
       webSocketFactory: () => new SockJS(`${API_URL}/ws`),
@@ -176,7 +186,7 @@ const useNotifications = (role) => {
     client.onConnect = () => {
       console.log("✅ WebSocket connected")
 
-      const topic = `/topic/notifications/${role}/${personnelId}`
+      const topic = `/topic/notifications/${role}/${userPersonnelId}`
 
       client.subscribe(topic, (message) => {
         try {
@@ -207,7 +217,7 @@ const useNotifications = (role) => {
     return () => {
       if (clientRef.current) clientRef.current.deactivate()
     }
-  }, [role, fetchNotifications, fetchUnviewedCount])
+  }, [role, personnelId, fetchNotifications, fetchUnviewedCount])
 
   return {
     notifications,

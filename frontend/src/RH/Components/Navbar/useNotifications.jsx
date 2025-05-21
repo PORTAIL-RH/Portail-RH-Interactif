@@ -1,9 +1,11 @@
+"use client"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
 import { API_URL } from "../../../config"
 
-const useNotifications = (role, serviceId) => {
+const useNotifications = () => {
   const [notifications, setNotifications] = useState([])
   const [unviewedCount, setUnviewedCount] = useState(0)
   const [error, setError] = useState("")
@@ -11,214 +13,163 @@ const useNotifications = (role, serviceId) => {
   const clientRef = useRef(null)
   const isMountedRef = useRef(true)
 
+  // Get RH info from localStorage
+  const getRHInfo = useCallback(() => {
+    const userData = localStorage.getItem("userData")
+    if (!userData) {
+      throw new Error("RH user data not found in localStorage")
+    }
+    const { code_soc: codeSoc } = JSON.parse(userData)
+    return {  codeSoc }
+  }, [])
+
   useEffect(() => {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
-      if (clientRef.current) {
-        clientRef.current.deactivate()
-        console.log("❌ WebSocket disconnected")
-      }
+      clientRef.current?.deactivate()
     }
   }, [])
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const token = localStorage.getItem("authToken")
+      const {  codeSoc } = getRHInfo()
+
+      const response = await fetch(
+        `${API_URL}/api/notifications?role=RH&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
+      if (!response.ok) throw new Error("Failed to fetch notifications")
+      
+      const data = await response.json()
+      if (isMountedRef.current) {
+        setNotifications(data)
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error("Fetch notifications error:", error)
+      if (isMountedRef.current) {
+        setError(error.message)
+        setLoading(false)
+      }
+    }
+  }, [getRHInfo])
 
   const fetchUnviewedCount = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
       const userId = localStorage.getItem("userId")
+      const {  codeSoc } = getRHInfo()
 
-      if (!token || !userId) {
-        console.warn("Missing auth token or user ID")
-        return
-      }
+      const response = await fetch(
+        `${API_URL}/api/notifications/unread-count-for-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
 
-      let url = `${API_URL}/api/notifications/unreadnbr?role=${role}`
-      if (serviceId && role !== "Admin") {
-        url += `&serviceId=${serviceId}`
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch unread count")
-      }
-
+      if (!response.ok) throw new Error("Failed to fetch unread count")
+      
       const count = await response.json()
       if (isMountedRef.current) {
         setUnviewedCount(count)
       }
+      return count
     } catch (error) {
-      console.error("Error fetching unread count:", error)
+      console.error("Fetch unread count error:", error)
+      if (isMountedRef.current) {
+        setUnviewedCount(0)
+      }
+      return 0
     }
-  }, [role, serviceId])
-
-  const fetchNotifications = useCallback(async () => {
-    try {
-      setLoading(true)
-      const token = localStorage.getItem("authToken")
-      const userId = localStorage.getItem("userId")
-
-      if (!token || !userId) {
-        setError("Authentification requise")
-        setLoading(false)
-        return
-      }
-
-      let url = `${API_URL}/api/notifications?role=${role}`
-      if (serviceId && role !== "Admin") {
-        url += `&serviceId=${serviceId}`
-      }
-
-      const response = await fetch(url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-      }
-
-      const data = await response.json()
-
-      if (isMountedRef.current) {
-        setNotifications(data)
-        setError("")
-      }
-
-      fetchUnviewedCount()
-    } catch (error) {
-      console.error("Fetch notifications error:", error)
-      if (isMountedRef.current) {
-        setError("Impossible de récupérer les notifications.")
-      }
-    } finally {
-      if (isMountedRef.current) {
-        setLoading(false)
-      }
-    }
-  }, [role, serviceId, fetchUnviewedCount])
-
-  const markAsRead = useCallback(async (notificationId) => {
-    try {
-      const token = localStorage.getItem("authToken")
-      if (!token) throw new Error("Authentication token not found")
-
-      const response = await fetch(`${API_URL}/api/notifications/${notificationId}/view`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-
-      if (isMountedRef.current) {
-        setNotifications((prev) =>
-          prev.map((notif) => (notif.id === notificationId ? { ...notif, viewed: true } : notif))
-        )
-        fetchUnviewedCount()
-      }
-    } catch (error) {
-      console.error("Mark as read error:", error)
-      throw error
-    }
-  }, [fetchUnviewedCount])
+  }, [getRHInfo])
 
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
       const userId = localStorage.getItem("userId")
+      const { codeSoc } = getRHInfo()
 
-      if (!token || !userId) throw new Error("Authentication token or user ID not found")
-
-      const payload = { role }
-      if (serviceId && role !== "Admin") {
-        payload.serviceId = serviceId
-      }
-
-      const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!response.ok) throw new Error("Failed to mark all as read")
+      await fetch(
+        `${API_URL}/api/notifications/mark-all-read-by-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
 
       if (isMountedRef.current) {
-        setNotifications((prev) => prev.map((notif) => ({ ...notif, viewed: true })))
         fetchUnviewedCount()
       }
-
-      return true
     } catch (error) {
       console.error("Mark all as read error:", error)
       throw error
     }
-  }, [role, serviceId, fetchUnviewedCount])
+  }, [fetchUnviewedCount, getRHInfo])
 
   useEffect(() => {
-    fetchNotifications()
+    const initWebSocket = () => {
+      const token = localStorage.getItem("authToken")
+      const { codeSoc } = getRHInfo()
 
-    const token = localStorage.getItem("authToken")
-    const userId = localStorage.getItem("userId")
-    if (!token || !userId) return
+      const client = new Client({
+        webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+        reconnectDelay: 5000,
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        onConnect: () => {
+          fetchUnviewedCount()
+          
+          client.subscribe(
+            `/topic/notifications/RH/${codeSoc}`,
+            (message) => {
+              const newNotification = JSON.parse(message.body)
+              const userId = localStorage.getItem("userId")
 
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${API_URL}/ws`),
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-      debug: (str) => console.log("🛜 WebSocket:", str),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-    })
+              if (isMountedRef.current) {
+                setNotifications(prev => {
+                  if (!prev.some(n => n.id === newNotification.id)) {
+                    return [newNotification, ...prev]
+                  }
+                  return prev
+                })
 
-    client.onConnect = () => {
-      console.log("✅ WebSocket connected")
-
-      const topic = serviceId && role !== "Admin" 
-        ? `/topic/notifications/${role}/${serviceId}`
-        : `/topic/notifications/${role}`
-
-      client.subscribe(topic, (message) => {
-        try {
-          const newNotification = JSON.parse(message.body)
-          if (isMountedRef.current) {
-            const exists = notifications.some((n) => n.id === newNotification.id)
-            if (!exists) {
-              setNotifications((prev) => [newNotification, ...prev])
-              fetchUnviewedCount()
+                if (!newNotification.readBy?.includes(userId)) {
+                  fetchUnviewedCount()
+                }
+              }
             }
-          }
-        } catch (error) {
-          console.error("Error processing notification message:", error)
-        }
+          )
+        },
+        onStompError: (frame) => {
+          console.error("WebSocket error:", frame.headers.message)
+          setError("Connection error")
+        },
       })
+
+      client.activate()
+      return client
     }
 
-    client.onStompError = (frame) => {
-      console.error("WebSocket error:", frame.headers.message)
-      if (isMountedRef.current) {
-        setError("WebSocket connection error")
+    const fetchInitialData = async () => {
+      try {
+        await Promise.all([fetchNotifications(), fetchUnviewedCount()])
+      } catch (error) {
+        console.error("Initial data fetch error:", error)
       }
     }
 
-    client.activate()
+    fetchInitialData()
+    const client = initWebSocket()
     clientRef.current = client
 
-    return () => {
-      if (clientRef.current) clientRef.current.deactivate()
-    }
-  }, [role, serviceId, fetchNotifications, fetchUnviewedCount, notifications])
+    return () => client.deactivate()
+  }, [fetchNotifications, fetchUnviewedCount, getRHInfo])
 
   return {
     notifications,
@@ -226,7 +177,6 @@ const useNotifications = (role, serviceId) => {
     loading,
     error,
     fetchNotifications,
-    markAsRead,
     markAllAsRead,
   }
 }

@@ -27,7 +27,7 @@ public class NotificationService {
         notification.setTimestamp(LocalDateTime.now());
         notification.setViewed(false);
         notification.setRole(role);
-        notification.setCodeSoc(codeSoc); // ✅ Ajout du code_soc
+        notification.setCodeSoc(codeSoc); //
         notification.setReadBy(new ArrayList<>()); // Critical addition
 
         // Cas admin
@@ -35,12 +35,19 @@ public class NotificationService {
             // Admin notification (general broadcast)
             messagingTemplate.convertAndSend("/topic/notifications/Admin", notification);
         }
-        // Cas RH ou Chef Hiérarchique : utiliser serviceId et code_soc
-        else if ("RH".equalsIgnoreCase(role) || "Chef Hiérarchique".equalsIgnoreCase(role)) {
-            // RH or Chef Hiérarchique notification (scoped by serviceId and codeSoc)
+        // Cas RH: utiliser seulement code_soc
+        else if ("RH".equalsIgnoreCase(role)) {
+            // RH notification (scoped by codeSoc only)
+            if (codeSoc != null) {
+                messagingTemplate.convertAndSend("/topic/notifications/RH/" + codeSoc, notification);
+            }
+        }
+        // Cas Chef Hiérarchique: utiliser serviceId et code_soc
+        else if ("Chef Hiérarchique".equalsIgnoreCase(role)) {
+            // Chef Hiérarchique notification (scoped by serviceId and codeSoc)
             if (serviceId != null && codeSoc != null) {
                 notification.setServiceId(serviceId);
-                messagingTemplate.convertAndSend("/topic/notifications/" + role + "/" + serviceId + "/" + codeSoc, notification);
+                messagingTemplate.convertAndSend("/topic/notifications/Chef Hiérarchique/" + serviceId + "/" + codeSoc, notification);
             }
         }
         // Cas autres : notification générale
@@ -125,8 +132,17 @@ public class NotificationService {
         return unreadNotifications.size();
     }
     // Get notifications by role
-    public List<Notification> getNotificationsByRoleServiceIdCodeSoc(String role, String serviceId, String codeSoc) {
-        return notificationRepository.findByRoleAndServiceIdAndCodeSoc(role, serviceId, codeSoc);
+
+    public List<Notification> getNotificationsByRoleServiceIdCodeSoc(String role, String[] serviceIdArray, String codeSoc) {
+        List<Notification> notifications = new ArrayList<>();
+        for (String serviceId : serviceIdArray) {
+            notifications.addAll(notificationRepository.findByRoleAndServiceIdAndCodeSoc(role, serviceId, codeSoc));
+        }
+        return notifications;
+    }
+
+    public List<Notification> getNotificationsByRoleCodeSoc(String role, String codeSoc) {
+        return notificationRepository.findByRoleAndCodeSoc(role, codeSoc);
     }
 //for new groupe notification
     public Notification findById(String id) {
@@ -136,5 +152,53 @@ public class NotificationService {
     public Notification save(Notification notification) {
         return notificationRepository.save(notification);
     }
+
+    public List<Notification> findUnreadByUser(
+            String personnelId,
+            String role,
+            String[] serviceIdArray,
+            String codeSoc) {
+        List<Notification> notifications = new ArrayList<>();
+        for (String serviceId : serviceIdArray) {
+            notifications.addAll(notificationRepository.findByRoleAndServiceIdAndCodeSocAndReadByNotContaining(
+                    role,
+                    serviceId,
+                    codeSoc,
+                    personnelId
+            ));
+        }
+        return notifications;
+    }
+
+
+// mark all notifications as read for a specific user.
+public void markAllAsReadByUser(String personnelId, String role, String[] serviceIdArray, String codeSoc) {
+    if ("RH".equalsIgnoreCase(role)) {
+        // Pour RH, on ignore les serviceId
+        notificationRepository.markAllAsReadByUser(personnelId, role, null, codeSoc);
+    } else {
+        // Pour les autres rôles, parcourir chaque serviceId
+        for (String serviceId : serviceIdArray) {
+            notificationRepository.markAllAsReadByUser(personnelId, role, serviceId, codeSoc);
+        }
+    }
+}
+
+
+    // Alternative implementation if bulk update doesn't work
+    public void markAllAsReadByUserAlternative(String personnelId, String role, String[] serviceIdArray, String codeSoc) {
+        List<Notification> unreadNotifications = findUnreadByUser(personnelId, role, serviceIdArray, codeSoc);
+
+        for (Notification notification : unreadNotifications) {
+            if (!notification.getReadBy().contains(personnelId)) {
+                notification.getReadBy().add(personnelId);
+            }
+        }
+
+        if (!unreadNotifications.isEmpty()) {
+            notificationRepository.saveAll(unreadNotifications);
+        }
+    }
+
 
 }

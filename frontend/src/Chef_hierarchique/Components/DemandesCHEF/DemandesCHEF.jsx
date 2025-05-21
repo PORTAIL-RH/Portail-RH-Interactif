@@ -12,11 +12,13 @@ import {
   FiUsers,
   FiCheckCircle,
   FiXCircle,
+  FiEdit,
+  FiTrash2,
 } from "react-icons/fi"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
 import "./DemandesCHEF.css"
-import { API_URL } from "../../../config"; 
+import { API_URL } from "../../../config"
 
 const DemandesCHEF = () => {
   const [demandes, setDemandes] = useState([])
@@ -40,6 +42,17 @@ const DemandesCHEF = () => {
   // Selected demande for details view
   const [selectedDemande, setSelectedDemande] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editFormData, setEditFormData] = useState({})
+
+  // File preview states
+  const [previewFile, setPreviewFile] = useState({
+    url: null,
+    type: null,
+    loading: false,
+    error: null
+  })
 
   // Stats
   const [stats, setStats] = useState({
@@ -48,44 +61,42 @@ const DemandesCHEF = () => {
     approved: 0,
     rejected: 0,
   })
-    // Theme management
-    useEffect(() => {
-      const savedTheme = localStorage.getItem("theme") || "light"
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-  
-      // Listen for theme changes
-      const handleStorageChange = () => {
-        const currentTheme = localStorage.getItem("theme") || "light"
-        setTheme(currentTheme)
-        applyTheme(currentTheme)
-      }
-  
-      window.addEventListener("storage", handleStorageChange)
-      window.addEventListener("themeChanged", (e) => {
-        setTheme(e.detail || "light")
-        applyTheme(e.detail || "light")
-      })
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange)
-        window.removeEventListener("themeChanged", handleStorageChange)
-      }
-    }, [])
-  
-    const applyTheme = (theme) => {
-      document.documentElement.classList.remove("light", "dark")
-      document.documentElement.classList.add(theme)
-      document.body.className = theme
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light"
+      setTheme(currentTheme)
+      applyTheme(currentTheme)
     }
-  
-    const toggleTheme = () => {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      applyTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("themeChanged", handleStorageChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("themeChanged", handleStorageChange)
     }
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    document.body.className = theme
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
   useEffect(() => {
     fetchDemandes()
   }, [])
@@ -120,7 +131,6 @@ const DemandesCHEF = () => {
             throw new Error(`Erreur ${response.status} lors de la récupération des demandes de ${type}`)
           }
 
-          // Check if response has content
           const text = await response.text()
           const data = text ? JSON.parse(text) : []
 
@@ -177,7 +187,6 @@ const DemandesCHEF = () => {
   const applyFilters = () => {
     let filtered = [...demandes]
 
-    // Filter by search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
@@ -187,12 +196,10 @@ const DemandesCHEF = () => {
       )
     }
 
-    // Filter by type
     if (selectedType !== "all") {
       filtered = filtered.filter((demande) => demande.demandeType === selectedType)
     }
 
-    // Filter by status
     if (selectedStatus !== "all") {
       filtered = filtered.filter((demande) => {
         if (selectedStatus === "pending") return demande.reponseChef === "I"
@@ -202,11 +209,10 @@ const DemandesCHEF = () => {
       })
     }
 
-    // Filter by date range
     if (startDate && endDate) {
       const start = new Date(startDate)
       const end = new Date(endDate)
-      end.setHours(23, 59, 59) // Include the entire end day
+      end.setHours(23, 59, 59)
 
       filtered = filtered.filter((demande) => {
         const demandeDate = new Date(demande.dateDemande)
@@ -215,7 +221,7 @@ const DemandesCHEF = () => {
     }
 
     setFilteredDemandes(filtered)
-    setCurrentPage(1) // Reset to first page when filters change
+    setCurrentPage(1)
   }
 
   const clearFilters = () => {
@@ -238,17 +244,75 @@ const DemandesCHEF = () => {
   const closeDetailsModal = () => {
     setShowDetailsModal(false)
     setSelectedDemande(null)
+    setPreviewFile({
+      url: null,
+      type: null,
+      loading: false,
+      error: null
+    })
   }
 
-  const handleDownloadAttachment = async (demande) => {
+  const handleDeleteDemande = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken")
+      
+      const response = await fetch(`${API_URL}/api/demande-${selectedDemande.demandeType}/${selectedDemande.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la suppression de la demande")
+      }
+
+      toast.success("Demande supprimée avec succès")
+      fetchDemandes()
+      setShowDeleteModal(false)
+      closeDetailsModal()
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error)
+      toast.error("Erreur lors de la suppression de la demande")
+    }
+  }
+
+  const handleUpdateDemande = async () => {
+    try {
+      const authToken = localStorage.getItem("authToken")
+      
+      const response = await fetch(`${API_URL}/api/demande-${selectedDemande.demandeType}/${selectedDemande.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(editFormData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la modification de la demande")
+      }
+
+      toast.success("Demande modifiée avec succès")
+      fetchDemandes()
+      setShowEditModal(false)
+      closeDetailsModal()
+    } catch (error) {
+      console.error("Erreur lors de la modification:", error)
+      toast.error("Erreur lors de la modification de la demande")
+    }
+  }
+
+  const handleDownloadAttachment = async (demande, isResponse = false) => {
     try {
       const authToken = localStorage.getItem("authToken")
 
-      if (!authToken) {
-        throw new Error("Authentification requise")
-      }
+      const endpoint = isResponse 
+        ? `${API_URL}/api/demande-${demande.demandeType}/files-reponse/${demande.id}`
+        : `${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`
 
-      const response = await fetch(`${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`, {
+      const response = await fetch(endpoint, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -263,15 +327,79 @@ const DemandesCHEF = () => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `piece-jointe-${demande.id}.pdf`
+      a.download = isResponse 
+        ? `reponse-${demande.id}.pdf` 
+        : `piece-jointe-${demande.id}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
       console.error("Erreur lors du téléchargement:", error)
-      alert("Erreur lors du téléchargement du fichier")
+      toast.error("Erreur lors du téléchargement du fichier")
     }
+  }
+
+  const handlePreviewFile = async (demande, isResponse = false) => {
+    try {
+      setPreviewFile({
+        url: null,
+        type: null,
+        loading: true,
+        error: null
+      })
+
+      const authToken = localStorage.getItem("authToken")
+
+      const endpoint = isResponse 
+        ? `${API_URL}/api/demande-${demande.demandeType}/files-reponse/${demande.id}`
+        : `${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors du chargement du fichier")
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const fileType = isResponse 
+        ? (demande.fileReponseType || "application/pdf")
+        : (demande.pieceJointeType || "application/pdf")
+
+      setPreviewFile({
+        url,
+        type: fileType,
+        loading: false,
+        error: null
+      })
+    } catch (error) {
+      console.error("Erreur lors du chargement:", error)
+      setPreviewFile({
+        url: null,
+        type: null,
+        loading: false,
+        error: error.message
+      })
+      toast.error("Erreur lors du chargement du fichier")
+    }
+  }
+
+  const closePreview = () => {
+    if (previewFile.url) {
+      URL.revokeObjectURL(previewFile.url)
+    }
+    setPreviewFile({
+      url: null,
+      type: null,
+      loading: false,
+      error: null
+    })
   }
 
   // Pagination logic
@@ -282,7 +410,6 @@ const DemandesCHEF = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
     const date = new Date(dateString)
@@ -293,7 +420,6 @@ const DemandesCHEF = () => {
     })
   }
 
-  // Get status text and class
   const getStatusInfo = (status) => {
     switch (status) {
       case "I":
@@ -307,7 +433,6 @@ const DemandesCHEF = () => {
     }
   }
 
-  // Get type text
   const getTypeText = (type) => {
     switch (type) {
       case "formation":
@@ -325,12 +450,16 @@ const DemandesCHEF = () => {
     }
   }
 
+  const hasFileResponse = (demande) => {
+    return demande.demandeType === "document" && demande.fileReponse
+  }
+
   if (loading) {
     return (
       <div className={`app-container ${theme}`}>
-      <Sidebar theme={theme} />
+        <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
@@ -343,9 +472,9 @@ const DemandesCHEF = () => {
   if (error) {
     return (
       <div className={`app-container ${theme}`}>
-      <Sidebar theme={theme} />
+        <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
@@ -363,9 +492,9 @@ const DemandesCHEF = () => {
 
   return (
     <div className={`app-container ${theme}`}>
-    <Sidebar theme={theme} />
+      <Sidebar theme={theme} />
       <div className="demandes-chef-container">
-      <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="demandes-chef-content">
           <div className="page-header">
             <h1>Mes Demandes</h1>
@@ -488,6 +617,7 @@ const DemandesCHEF = () => {
                     <th>Type</th>
                     <th>Description</th>
                     <th>Statut</th>
+                    <th>Fichiers</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -513,6 +643,28 @@ const DemandesCHEF = () => {
                           <span className={`status-badge ${statusInfo.className}`}>{statusInfo.text}</span>
                         </td>
                         <td>
+                          <div className="file-actions">
+                            {demande.pieceJointe && (
+                              <button
+                                className="file-action"
+                                onClick={() => handlePreviewFile(demande)}
+                                title="Voir la pièce jointe"
+                              >
+                                <FiEye /> PJ
+                              </button>
+                            )}
+                            {hasFileResponse(demande) && (
+                              <button
+                                className="file-action"
+                                onClick={() => handlePreviewFile(demande, true)}
+                                title="Voir la réponse"
+                              >
+                                <FiEye /> Réponse
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
                           <div className="action-buttons">
                             <button
                               className="action-button view"
@@ -521,14 +673,34 @@ const DemandesCHEF = () => {
                             >
                               <FiEye />
                             </button>
-                            {demande.pieceJointe && (
-                              <button
-                                className="action-button download"
-                                onClick={() => handleDownloadAttachment(demande)}
-                                title="Télécharger la pièce jointe"
-                              >
-                                <FiDownload />
-                              </button>
+                            {demande.reponseChef === "I" && (
+                              <>
+                                <button
+                                  className="action-button edit"
+                                  onClick={() => {
+                                    setSelectedDemande(demande)
+                                    setEditFormData({
+                                      texteDemande: demande.texteDemande,
+                                      dateDebut: demande.dateDebut,
+                                      dateFin: demande.dateFin,
+                                    })
+                                    setShowEditModal(true)
+                                  }}
+                                  title="Modifier"
+                                >
+                                  <FiEdit />
+                                </button>
+                                <button
+                                  className="action-button delete"
+                                  onClick={() => {
+                                    setSelectedDemande(demande)
+                                    setShowDeleteModal(true)
+                                  }}
+                                  title="Supprimer"
+                                >
+                                  <FiTrash2 />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -655,10 +827,43 @@ const DemandesCHEF = () => {
                         <FiFileText />
                         <h3>Pièce Jointe</h3>
                       </div>
-                      <button className="download-button" onClick={() => handleDownloadAttachment(selectedDemande)}>
-                        <FiDownload />
-                        <span>Télécharger la pièce jointe</span>
-                      </button>
+                      <div className="file-actions">
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => handlePreviewFile(selectedDemande)}
+                        >
+                          <FiEye /> Prévisualiser
+                        </button>
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={() => handleDownloadAttachment(selectedDemande)}
+                        >
+                          <FiDownload /> Télécharger
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasFileResponse(selectedDemande) && (
+                    <div className="demande-info-section">
+                      <div className="section-header">
+                        <FiFileText />
+                        <h3>Réponse du Document</h3>
+                      </div>
+                      <div className="file-actions">
+                        <button 
+                          className="btn btn-primary"
+                          onClick={() => handlePreviewFile(selectedDemande, true)}
+                        >
+                          <FiEye /> Prévisualiser
+                        </button>
+                        <button 
+                          className="btn btn-secondary"
+                          onClick={() => handleDownloadAttachment(selectedDemande, true)}
+                        >
+                          <FiDownload /> Télécharger
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -674,9 +879,166 @@ const DemandesCHEF = () => {
                 </div>
 
                 <div className="modal-footer">
+                  {selectedDemande.reponseChef === "I" && (
+                    <>
+                      <button 
+                        className="btn btn-warning"
+                        onClick={() => {
+                          setEditFormData({
+                            texteDemande: selectedDemande.texteDemande,
+                            dateDebut: selectedDemande.dateDebut,
+                            dateFin: selectedDemande.dateFin,
+                          })
+                          setShowEditModal(true)
+                        }}
+                      >
+                        <FiEdit /> Modifier
+                      </button>
+                      <button 
+                        className="btn btn-danger"
+                        onClick={() => setShowDeleteModal(true)}
+                      >
+                        <FiTrash2 /> Supprimer
+                      </button>
+                    </>
+                  )}
                   <button className="btn btn-secondary" onClick={closeDetailsModal}>
                     Fermer
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && (
+            <div className="modal-overlay">
+              <div className="confirmation-modal">
+                <div className="modal-header">
+                  <h2>Confirmer la suppression</h2>
+                  <button className="close-button" onClick={() => setShowDeleteModal(false)}>
+                    <FiX />
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <p>Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.</p>
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                    Annuler
+                  </button>
+                  <button className="btn btn-danger" onClick={handleDeleteDemande}>
+                    <FiTrash2 /> Confirmer la suppression
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Modal */}
+          {showEditModal && (
+            <div className="modal-overlay">
+              <div className="edit-modal">
+                <div className="modal-header">
+                  <h2>Modifier la Demande</h2>
+                  <button className="close-button" onClick={() => setShowEditModal(false)}>
+                    <FiX />
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label>Description</label>
+                    <textarea
+                      value={editFormData.texteDemande || ""}
+                      onChange={(e) => setEditFormData({...editFormData, texteDemande: e.target.value})}
+                      rows={4}
+                    />
+                  </div>
+                  {selectedDemande?.dateDebut && (
+                    <div className="form-group">
+                      <label>Date de Début</label>
+                      <input
+                        type="date"
+                        value={editFormData.dateDebut || ""}
+                        onChange={(e) => setEditFormData({...editFormData, dateDebut: e.target.value})}
+                      />
+                    </div>
+                  )}
+                  {selectedDemande?.dateFin && (
+                    <div className="form-group">
+                      <label>Date de Fin</label>
+                      <input
+                        type="date"
+                        value={editFormData.dateFin || ""}
+                        onChange={(e) => setEditFormData({...editFormData, dateFin: e.target.value})}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="modal-footer">
+                  <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+                    Annuler
+                  </button>
+                  <button className="btn btn-primary" onClick={handleUpdateDemande}>
+                    <FiEdit /> Enregistrer les modifications
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* File Preview Modal */}
+          {previewFile.loading && (
+            <div className="modal-overlay">
+              <div className="file-preview-modal">
+                <div className="loading-container">
+                  <div className="loading-spinner"></div>
+                  <p>Chargement du fichier...</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewFile.url && (
+            <div className="modal-overlay" onClick={closePreview}>
+              <div className="file-preview-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>Prévisualisation du fichier</h2>
+                  <button className="close-button" onClick={closePreview}>
+                    <FiX />
+                  </button>
+                </div>
+                <div className="modal-body">
+                  {previewFile.type.includes("pdf") ? (
+                    <embed 
+                      src={previewFile.url} 
+                      type="application/pdf" 
+                      width="100%" 
+                      height="500px" 
+                    />
+                  ) : previewFile.type.includes("image") ? (
+                    <img 
+                      src={previewFile.url} 
+                      alt="Preview" 
+                      style={{ maxWidth: '100%', maxHeight: '500px' }}
+                    />
+                  ) : (
+                    <div className="unsupported-preview">
+                      <FiFileText size={48} />
+                      <p>Prévisualisation non disponible pour ce type de fichier</p>
+                      <button 
+                        className="btn btn-primary"
+                        onClick={() => {
+                          const a = document.createElement('a')
+                          a.href = previewFile.url
+                          a.download = 'document'
+                          a.click()
+                        }}
+                      >
+                        <FiDownload /> Télécharger le fichier
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -688,4 +1050,3 @@ const DemandesCHEF = () => {
 }
 
 export default DemandesCHEF
-

@@ -26,6 +26,12 @@
   animation: modal-appear 0.3s ease-out;
 }
 
+/* Dark theme styles */
+.dark .modal-container {
+  background-color: #0f172a;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
 @keyframes modal-appear {
   from {
     opacity: 0;
@@ -50,11 +56,20 @@
   z-index: 10;
 }
 
+.dark .modal-header {
+  background-color: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
 .modal-title {
   font-size: 1.25rem;
   font-weight: 600;
   color: #333;
   margin: 0;
+}
+
+.dark .modal-title {
+  color: #f1f5f9;
 }
 
 .modal-close {
@@ -76,6 +91,15 @@
   color: #333;
 }
 
+.dark .modal-close {
+  color: #94a3b8;
+}
+
+.dark .modal-close:hover {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
 /* Chefs Responses Section */
 .chefs-responses-section {
   padding: 16px 20px;
@@ -83,11 +107,20 @@
   background-color: #f9f9f9;
 }
 
+.dark .chefs-responses-section {
+  background-color: #1e293b;
+  border-bottom: 1px solid #334155;
+}
+
 .section-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: #333;
   margin: 0 0 16px 0;
+}
+
+.dark .section-title {
+  color: #f1f5f9;
 }
 
 .chefs-responses-grid {
@@ -103,6 +136,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.dark .chef-response-group {
+  background-color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .chef-label {
   font-size: 0.875rem;
   font-weight: 600;
@@ -112,9 +150,17 @@
   letter-spacing: 0.5px;
 }
 
+.dark .chef-label {
+  color: #94a3b8;
+}
+
 .chef-value {
   font-size: 0.95rem;
   color: #333;
+}
+
+.dark .chef-value {
+  color: #e2e8f0;
 }
 
 .chef-response {
@@ -145,6 +191,21 @@
   color: #f59e0b;
 }
 
+.dark .chef-response.approved .response-status {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.dark .chef-response.rejected .response-status {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.dark .chef-response.pending .response-status {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
 .response-observation {
   font-size: 0.85rem;
   color: #666;
@@ -155,11 +216,20 @@
   border-radius: 4px;
 }
 
+.dark .response-observation {
+  color: #cbd5e1;
+  background-color: #1e293b;
+}
+
 /* Modal Body */
 .modal-body {
   padding: 20px;
   flex: 1;
   overflow-y: auto;
+}
+
+.dark .modal-body {
+  color: #e2e8f0;
 }
 
 /* Details Grid */
@@ -183,15 +253,27 @@
   letter-spacing: 0.5px;
 }
 
+.dark .detail-label {
+  color: #94a3b8;
+}
+
 .detail-value {
   font-size: 1rem;
   color: #333;
   word-break: break-word;
 }
 
+.dark .detail-value {
+  color: #f1f5f9;
+}
+
 .empty {
   color: #999;
   font-style: italic;
+}
+
+.dark .empty {
+  color: #64748b;
 }
 
 /* Status Styles */
@@ -200,6 +282,10 @@
   background-color: #f9f9f9;
   padding: 16px;
   border-radius: 6px;
+}
+
+.dark .demande-status {
+  background-color: #1e293b;
 }
 
 .status-history {
@@ -216,9 +302,18 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.dark .status-item {
+  background-color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .status-date {
   font-size: 0.875rem;
   color: #666;
+}
+
+.dark .status-date {
+  color: #94a3b8;
 }
 
 .status-text {
@@ -245,6 +340,21 @@
   color: #ef4444;
 }
 
+.dark .status-text.pending {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+.dark .status-text.approved {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.dark .status-text.rejected {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 /* Attachment Styles */
 .attachment-list {
   list-style: none;
@@ -260,6 +370,11 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.dark .attachment-item {
+  background-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .file-info {
   display: flex;
   align-items: center;
@@ -272,9 +387,17 @@
   color: #333;
 }
 
+.dark .file-name {
+  color: #f1f5f9;
+}
+
 .file-size {
   color: #666;
   font-size: 0.875rem;
+}
+
+.dark .file-size {
+  color: #94a3b8;
 }
 
 .file-actions {
@@ -305,10 +428,28 @@
   color: #333;
 }
 
+.dark .attachment-preview-btn {
+  background-color: #334155;
+  color: #e2e8f0;
+}
+
+.dark .attachment-download-btn {
+  background-color: #475569;
+  color: #e2e8f0;
+}
+
 .attachment-preview-btn:hover,
 .attachment-download-btn:hover {
   background-color: #e0e0e0;
   transform: translateY(-1px);
+}
+
+.dark .attachment-preview-btn:hover {
+  background-color: #475569;
+}
+
+.dark .attachment-download-btn:hover {
+  background-color: #64748b;
 }
 
 .attachment-preview-btn:active,
@@ -323,6 +464,10 @@
   border: 1px solid #eaeaea;
 }
 
+.dark .file-preview-inline {
+  border: 1px solid #334155;
+}
+
 /* Action Observation */
 .action-observation {
   margin-top: 24px;
@@ -332,11 +477,20 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+.dark .action-observation {
+  background-color: #1e293b;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .action-observation label {
   display: block;
   font-weight: 500;
   margin-bottom: 8px;
   color: #333;
+}
+
+.dark .action-observation label {
+  color: #f1f5f9;
 }
 
 .observation-textarea {
@@ -351,10 +505,21 @@
   margin-bottom: 12px;
 }
 
+.dark .observation-textarea {
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  color: #f1f5f9;
+}
+
 .observation-textarea:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.dark .observation-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .observation-actions {
@@ -371,6 +536,11 @@
   padding: 16px 20px;
   border-top: 1px solid #eaeaea;
   background-color: #f9f9f9;
+}
+
+.dark .modal-footer {
+  border-top: 1px solid #1e293b;
+  background-color: #1e293b;
 }
 
 /* Buttons */
@@ -417,8 +587,17 @@
   color: #374151;
 }
 
+.dark .modal-btn-secondary {
+  background-color: #334155;
+  color: #f1f5f9;
+}
+
 .modal-btn-secondary:hover {
   background-color: #d1d5db;
+}
+
+.dark .modal-btn-secondary:hover {
+  background-color: #475569;
 }
 
 .btn-cancel {
@@ -426,8 +605,17 @@
   color: #374151;
 }
 
+.dark .btn-cancel {
+  background-color: #334155;
+  color: #f1f5f9;
+}
+
 .btn-cancel:hover {
   background-color: #d1d5db;
+}
+
+.dark .btn-cancel:hover {
+  background-color: #475569;
 }
 
 .btn-confirm {

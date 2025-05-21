@@ -218,7 +218,7 @@ public class DemandeDocumentController {
                                 "Demande de formation de personnel %s a été mise à jour",
                                 "RH",
                                 demandeDetails.getMatPers().getMatricule(),
-                                demandeDetails.getMatPers().getServiceId(),
+                                null,
                                 demandeDetails.getCodeSoc()
                         );
 

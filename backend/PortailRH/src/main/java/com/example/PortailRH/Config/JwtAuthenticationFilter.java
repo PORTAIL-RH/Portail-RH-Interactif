@@ -1,16 +1,15 @@
 package com.example.PortailRH.Config;
 
 import com.example.PortailRH.Util.JwtUtil;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.IOException;
 
@@ -149,6 +148,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/services/by-chef/{chefId}") ||
                 requestURI.startsWith("/api/services/update/{id}") ||
                 requestURI.startsWith("/api/services/delete/{id}") ||
+                requestURI.startsWith("/api/services/{serviceId}/assign-chefs") ||
+                requestURI.startsWith("/api/services/basic") ||
 
 
 
@@ -170,8 +171,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 requestURI.startsWith("/api/notifications/mark-all-read") ||
                 requestURI.startsWith("/api/notifications/unreadnbr") ||
-                requestURI.startsWith("/api/notifications"))
-
+                requestURI.startsWith("/api/notifications")||
+                requestURI.startsWith("/api/notifications/unread-for-user")||
+                requestURI.startsWith("/api/notifications/{id}/mark-read-by")||
+                requestURI.startsWith("/api/notifications/{id}/mark-all-read-by-user")||
+                requestURI.startsWith("/api/notifications/unread-count-for-user"))
 
 
         {

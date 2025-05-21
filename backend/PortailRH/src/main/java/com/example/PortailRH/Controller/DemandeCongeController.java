@@ -771,6 +771,7 @@ public class DemandeCongeController {
             );
         }
     }
+
     @GetMapping("/collaborateurs-by-service/{chefserviceid}")
     public ResponseEntity<?> getDemandesCongeByService(@PathVariable String chefserviceid) {
         try {
@@ -1051,6 +1052,103 @@ public class DemandeCongeController {
             ));
         }
     }
+
+    @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
+    public ResponseEntity<?> getDemandesApprovedByChef1ForService(@PathVariable String chefserviceid) {
+        try {
+            // 1. Validate ID format
+            if (!ObjectId.isValid(chefserviceid)) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "ID invalide",
+                                "providedId", chefserviceid
+                        ));
+            }
+
+            ObjectId chefId = new ObjectId(chefserviceid);
+
+            // 2. Get chef information
+            Personnel chef = mongoTemplate.findOne(
+                    new Query(Criteria.where("_id").is(chefId)),
+                    Personnel.class
+            );
+            if (chef == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 3. Find services where chef is validator with weight 1
+            List<Validator> chefValidators = mongoTemplate.find(
+                    new Query(Criteria.where("chef.$id").is(chefId).and("poid").is(1)),
+                    Validator.class
+            );
+
+            if (chefValidators.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Ce chef n'est pas validateur de poids 1 pour aucun service",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 4. Get service IDs
+            List<ObjectId> serviceIds = chefValidators.stream()
+                    .map(v -> v.getService())
+                    .filter(Objects::nonNull)
+                    .map(s -> new ObjectId(s.getId()))
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            // 5. Get all personnel in these services (excluding current chef)
+            List<Personnel> servicePersonnel = mongoTemplate.find(
+                    new Query(Criteria.where("service.$id").in(serviceIds)
+                            .and("_id").ne(chefId)),
+                    Personnel.class
+            );
+
+            // 6. Get demandes for these personnel that are approved by chef1
+            List<ObjectId> personnelIds = servicePersonnel.stream()
+                    .map(p -> new ObjectId(p.getId()))
+                    .collect(Collectors.toList());
+
+            // First find all responses approved by chef1
+            List<Response_chefs_dem_conge> approvedResponses = responseChefsDemCongeRepository.findByResponseChef1("O");
+
+            // Then get the demandes that:
+            // 1. Belong to personnel in the service
+            // 2. Have responses approved by chef1
+            List<DemandeConge> approvedDemandes = mongoTemplate.find(
+                    new Query(Criteria.where("matPers.$id").in(personnelIds)
+                            .and("_id").in(approvedResponses.stream()
+                                    .map(r -> new ObjectId(r.getDemandeId()))
+                                    .collect(Collectors.toList()))
+                    ).with(Sort.by(Sort.Direction.DESC, "dateDemande")),
+                    DemandeConge.class
+            );
+
+            // 7. Prepare response
+            return ResponseEntity.ok(Map.of(
+                    "status", "success",
+                    "chef", buildPersonnelMap(chef),
+                    "services", buildServiceList(chefValidators),
+                    "statistics", Map.of(
+                            "totalPersonnel", servicePersonnel.size(),
+                            "approvedDemandes", approvedDemandes.size()
+                    ),
+                    "demandes", buildDemandeList(approvedDemandes)
+            ));
+
+        } catch (Exception e) {
+            log.error("Error in getDemandesApprovedByChef1ForService: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "status", "error",
+                    "message", "Erreur technique",
+                    "error", e.getMessage()
+            ));
+        }
+    }
+
 
  /*   @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
     public ResponseEntity<?> getDemandesCongeApprovedByCollaborateursService(

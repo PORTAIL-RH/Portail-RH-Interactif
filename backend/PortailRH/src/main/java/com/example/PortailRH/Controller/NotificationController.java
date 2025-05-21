@@ -34,16 +34,28 @@ public class NotificationController {
     public ResponseEntity<List<Notification>> getNotifications(
             @RequestParam String role,
             @RequestParam(required = false) String personnelId,
-            @RequestParam String serviceId,
-            @RequestParam String codeSoc) { // personnelId est optionnel
+            @RequestParam(required = false)  String[] serviceId,  // Made optional
+            @RequestParam String codeSoc) {
+
         List<Notification> notifications;
+
         if ("Admin".equals(role)) {
             notifications = notificationService.getAllNotificationsByRole(role);
-        } else if (personnelId != null && !personnelId.isEmpty()) {
+        }
+        else if (personnelId != null && !personnelId.isEmpty()) {
             notifications = notificationService.getNotificationsByPersonnelId(personnelId);
-        } else {
+        }
+        else if ("RH".equals(role)) {
+            notifications = notificationService.getNotificationsByRoleCodeSoc(role, codeSoc);
+        }
+        else {
+            // For other roles (like Chef Hiérarchique), serviceId becomes required
+            if (serviceId == null ) {
+                throw new IllegalArgumentException("serviceId is required for role: " + role);
+            }
             notifications = notificationService.getNotificationsByRoleServiceIdCodeSoc(role, serviceId, codeSoc);
         }
+
         return ResponseEntity.ok(notifications);
     }
 
@@ -161,11 +173,41 @@ public class NotificationController {
     public ResponseEntity<Integer> getUnreadCountForUser(
             @RequestParam String personnelId,
             @RequestParam String role,
-            @RequestParam String serviceId,
+            @RequestParam(required = false) String serviceId,  // Make serviceId optional
             @RequestParam String codeSoc) {
 
-        List<Notification> notifications = notificationRepository.findUnreadForUser(
-                personnelId, role, serviceId, codeSoc);
+        List<Notification> notifications;
+
+        if ("RH".equalsIgnoreCase(role)) {
+            // For RH role, don't use serviceId in the query
+            notifications = notificationRepository.findUnreadForUser(
+                    personnelId, role, null, codeSoc);  // Pass null for serviceId
+        } else {
+            // For other roles, use all parameters including serviceId
+            notifications = notificationRepository.findUnreadForUser(
+                    personnelId, role, serviceId, codeSoc);
+        }
+
         return ResponseEntity.ok(notifications.size());
+    }
+
+    // Mark all notifications as read for the current user
+    @PostMapping("/mark-all-read-by-user")
+    public ResponseEntity<?> markAllAsReadByUser(
+            @RequestParam String personnelId,
+            @RequestParam String role,
+            @RequestParam(required = false) String[] serviceId,  // Make serviceId optional
+            @RequestParam String codeSoc) {
+
+        if ("RH".equalsIgnoreCase(role)) {
+            notificationService.markAllAsReadByUser(personnelId, role, null, codeSoc);
+        } else {
+            if (serviceId == null ) {
+                throw new IllegalArgumentException("serviceId is required for role: " + role);
+            }
+            notificationService.markAllAsReadByUser(personnelId, role, serviceId, codeSoc);
+        }
+
+        return ResponseEntity.ok("All notifications marked as read by user " + personnelId);
     }
 }

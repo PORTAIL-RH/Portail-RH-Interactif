@@ -20,15 +20,15 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Error caught by ErrorBoundary:", error, errorInfo);
+    console.error("Erreur capturée par ErrorBoundary:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
       return (
         <div className="error-fallback">
-          <h2>Something went wrong</h2>
-          <button onClick={() => window.location.reload()}>Refresh Page</button>
+          <h2>Quelque chose s'est mal passé</h2>
+          <button onClick={() => window.location.reload()}>Rafraîchir la page</button>
         </div>
       );
     }
@@ -42,7 +42,7 @@ const safeParse = (key, defaultValue) => {
     if (stored === null || stored === 'undefined') return defaultValue;
     return JSON.parse(stored);
   } catch (e) {
-    console.error(`Error parsing ${key} from localStorage:`, e);
+    console.error(`Erreur de parsing ${key} depuis localStorage:`, e);
     return defaultValue;
   }
 };
@@ -68,7 +68,7 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
   try {
     const token = localStorage.getItem("authToken");
     if (!token) {
-      throw new Error("No authentication token found");
+      throw new Error("Aucun token d'authentification trouvé");
     }
 
     const response = await fetch(url, {
@@ -94,17 +94,17 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
 };
 
 const validateServiceResponse = (response) => {
-  if (!response) return { isValid: false, error: "Empty response" };
+  if (!response) return { isValid: false, error: "Réponse vide" };
   
-  // Handle error responses
+  // Gérer les réponses d'erreur
   if (response.status === "error") {
     return { 
       isValid: false, 
-      error: response.message || "Error from server" 
+      error: response.message || "Erreur du serveur" 
     };
   }
 
-  // Handle success responses
+  // Gérer les réponses de succès
   if (response.status === "success") {
     return {
       isValid: true,
@@ -114,8 +114,8 @@ const validateServiceResponse = (response) => {
     };
   }
 
-  // Fallback for other cases
-  return { isValid: false, error: "Invalid response structure" };
+  // Cas par défaut
+  return { isValid: false, error: "Structure de réponse invalide" };
 };
 
 const Accueil = () => {
@@ -198,46 +198,46 @@ const Accueil = () => {
     document.documentElement.className = newTheme;
     localStorage.setItem("theme", newTheme);
   };
-useEffect(() => {
-  const savedServices = localStorage.getItem("services");
 
-  if (savedServices) {
-    try {
-      const parsedServices = JSON.parse(savedServices);
-      if (Array.isArray(parsedServices)) {
-        setChefServices(parsedServices);
-      } else {
-        console.warn("Données de services invalides dans localStorage.");
-      }
-    } catch (err) {
-      console.error("Erreur de parsing des services depuis localStorage :", err);
-    }
-  } else {
-    const fetchServices = async () => {
-      const userId = localStorage.getItem("userId");
+  useEffect(() => {
+    const savedServices = localStorage.getItem("services");
 
-      if (userId) {
-        try {
-          const response = await fetchWithRetry(`${API_URL}/api/validators/by-chef/${userId}`);
-          if (Array.isArray(response)) {
-            setChefServices(response);
-            localStorage.setItem("services", JSON.stringify(response));
-          } else {
-            console.warn("Réponse inattendue de l'API :", response);
-          }
-        } catch (err) {
-          console.error("Erreur lors de la récupération des services :", err);
+    if (savedServices) {
+      try {
+        const parsedServices = JSON.parse(savedServices);
+        if (Array.isArray(parsedServices)) {
+          setChefServices(parsedServices);
+        } else {
+          console.warn("Données de services invalides dans localStorage.");
         }
-      } else {
-        console.warn("userId non trouvé dans localStorage.");
+      } catch (err) {
+        console.error("Erreur de parsing des services depuis localStorage :", err);
       }
-    };
+    } else {
+      const fetchServices = async () => {
+        const userId = localStorage.getItem("userId");
 
-    fetchServices();
-  }
-}, []);
+        if (userId) {
+          try {
+            const response = await fetchWithRetry(`${API_URL}/api/validators/by-chef/${userId}`);
+            if (Array.isArray(response)) {
+              setChefServices(response);
+              localStorage.setItem("services", JSON.stringify(response));
+            } else {
+              console.warn("Réponse inattendue de l'API :", response);
+            }
+          } catch (err) {
+            console.error("Erreur lors de la récupération des services :", err);
+          }
+        } else {
+          console.warn("userId non trouvé dans localStorage.");
+        }
+      };
 
-  
+      fetchServices();
+    }
+  }, []);
+
   const saveToLocalStorage = useCallback((key, data) => {
     try {
       if (data) {
@@ -247,7 +247,7 @@ useEffect(() => {
         setLastUpdated(now);
       }
     } catch (e) {
-      console.error("LocalStorage save error:", e);
+      console.error("Erreur de sauvegarde dans LocalStorage:", e);
     }
   }, []);
 
@@ -270,7 +270,7 @@ useEffect(() => {
         pending: demandesArray.filter(d => d?.reponseChef === "I").length
       };
     } catch (e) {
-      console.error("Error processing demandes:", e);
+      console.error("Erreur de traitement des demandes:", e);
       return {
         data: [],
         total: 0,
@@ -287,10 +287,10 @@ useEffect(() => {
       const exists = oldPersonnels.some(oldPerson => oldPerson.id === newPerson.id);
       if (!exists) {
         updates.push({
-          type: 'new_personnel',
+          type: 'nouveau_personnel',
           data: newPerson,
           timestamp: new Date().toISOString(),
-          message: `New employee added: ${newPerson.nom} ${newPerson.prenom}`
+          message: `Nouvel employé ajouté: ${newPerson.nom} ${newPerson.prenom}`
         });
       }
     });
@@ -303,10 +303,10 @@ useEffect(() => {
         );
         if (changedFields.length > 0) {
           updates.push({
-            type: 'personnel_updated',
+            type: 'personnel_mis_a_jour',
             data: newPerson,
             timestamp: new Date().toISOString(),
-            message: `Employee updated: ${newPerson.nom} ${newPerson.prenom} (${changedFields.join(', ')})`
+            message: `Employé mis à jour: ${newPerson.nom} ${newPerson.prenom} (${changedFields.join(', ')})`
           });
         }
       }
@@ -316,10 +316,10 @@ useEffect(() => {
       const exists = newPersonnels.some(newPerson => newPerson.id === oldPerson.id);
       if (!exists) {
         updates.push({
-          type: 'personnel_removed',
+          type: 'personnel_supprime',
           data: oldPerson,
           timestamp: new Date().toISOString(),
-          message: `Employee removed: ${oldPerson.nom} ${oldPerson.prenom}`
+          message: `Employé supprimé: ${oldPerson.nom} ${oldPerson.prenom}`
         });
       }
     });
@@ -331,7 +331,7 @@ useEffect(() => {
     const updates = [];
 
     const getRequesterName = (demande) => {
-      if (!demande.personnel) return "Unknown";
+      if (!demande.personnel) return "Inconnu";
       return `${demande.personnel.nom} ${demande.personnel.prenom}`;
     };
 
@@ -343,10 +343,10 @@ useEffect(() => {
         const exists = oldData.some(oldDemande => oldDemande.id === newDemande.id);
         if (!exists) {
           updates.push({
-            type: `new_${type}_demande`,
+            type: `nouvelle_demande_${type}`,
             data: newDemande,
             timestamp: new Date().toISOString(),
-            message: `New ${type} request from ${getRequesterName(newDemande)}`
+            message: `Nouvelle demande ${type} de ${getRequesterName(newDemande)}`
           });
         }
       });
@@ -355,15 +355,15 @@ useEffect(() => {
         const newDemande = newData.find(d => d.id === oldDemande.id);
         if (newDemande && oldDemande.reponseChef !== newDemande.reponseChef) {
           const statusMap = {
-            'O': 'approved',
-            'I': 'pending',
-            'R': 'rejected'
+            'O': 'approuvée',
+            'I': 'en attente',
+            'R': 'rejetée'
           };
           updates.push({
-            type: `${type}_demande_status_changed`,
+            type: `statut_demande_${type}_change`,
             data: newDemande,
             timestamp: new Date().toISOString(),
-            message: `${type} request from ${getRequesterName(newDemande)} ${statusMap[newDemande.reponseChef]}`
+            message: `Demande ${type} de ${getRequesterName(newDemande)} ${statusMap[newDemande.reponseChef]}`
           });
         }
       });
@@ -376,7 +376,7 @@ useEffect(() => {
     if (!silent) setLoading(true);
     try {
       if (!userId) {
-        throw new Error("User ID not available");
+        throw new Error("ID utilisateur non disponible");
       }
 
       const response = await fetchWithRetry(
@@ -392,7 +392,7 @@ useEffect(() => {
       } = validateServiceResponse(response);
       
       if (!isValid) {
-        throw new Error(error || "Invalid service data format");
+        throw new Error(error || "Format des données de service invalide");
       }
 
       if (collaborators.length > 0 || previousPersonnels.length > 0) {
@@ -417,7 +417,7 @@ useEffect(() => {
 
       const total = numberOfCollaborateurs || collaborators.length;
       const serviceData = {
-        name: serviceName || "Unknown service",
+        name: serviceName || "Service inconnu",
         ...stats,
         total,
         malePercentage: total > 0 ? Math.round((stats.maleCount / total) * 100) : 0,
@@ -432,8 +432,8 @@ useEffect(() => {
 
       return { serviceData, collaborators };
     } catch (error) {
-      console.error("Service data error:", error);
-      toast.error(`Failed to load service data: ${error.message}`);
+      console.error("Erreur des données de service:", error);
+      toast.error(`Échec du chargement des données de service: ${error.message}`);
       setServiceInfo(prev => ({ ...prev, error: error.message }));
       return {
         serviceData: serviceInfoRef.current,
@@ -459,7 +459,7 @@ useEffect(() => {
             const data = await fetchWithRetry(`${API_URL}/api/${path}`);
             return { key, data: processDemandes(data, key) };
           } catch (err) {
-            console.error(`${key} error:`, err);
+            console.error(`Erreur ${key}:`, err);
             return { 
               key, 
               data: demandesRef.current[key] || { 
@@ -499,8 +499,8 @@ useEffect(() => {
 
       return newDemandes;
     } catch (error) {
-      console.error("Demandes fetch error:", error);
-      toast.error("Failed to load requests data");
+      console.error("Erreur de récupération des demandes:", error);
+      toast.error("Échec du chargement des données de demandes");
       return demandesRef.current;
     } finally {
       if (!silent) setLoading(false);
@@ -525,8 +525,8 @@ useEffect(() => {
       
       return upcoming;
     } catch (error) {
-      console.error("Formations error:", error);
-      toast.error("Failed to load training data");
+      console.error("Erreur des formations:", error);
+      toast.error("Échec du chargement des données de formation");
       return upcomingFormationsRef.current;
     } finally {
       if (!silent) setLoading(false);
@@ -538,7 +538,7 @@ useEffect(() => {
       const options = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
       return new Date(dateString).toLocaleDateString("fr-FR", options);
     } catch {
-      return "Invalid date";
+      return "Date invalide";
     }
   }, []);
 
@@ -551,7 +551,7 @@ useEffect(() => {
         fetchFormations()
       ]);
     } catch (e) {
-      console.error("Error during refresh:", e);
+      console.error("Erreur lors du rafraîchissement:", e);
     } finally {
       setLoading(false);
     }
@@ -599,7 +599,7 @@ useEffect(() => {
           fetchFormations(true)
         ]);
       } catch (e) {
-        console.error("Error during polling:", e);
+        console.error("Erreur lors du polling:", e);
       }
     };
 
@@ -623,49 +623,24 @@ useEffect(() => {
           <div className="dashboard-content">
             <div className="dashboard-header">
               <div className="header-top">
-                <h1>Dashboard Overview</h1>
-                <div className="header-controls">
-                  <button 
-                    className={`refresh-btn ${loading ? "loading" : ""}`}
-                    onClick={handleRefresh}
-                    disabled={loading}
-                  >
-                    <FiRefreshCw className={loading ? "spinning" : ""} /> 
-                    <span>{loading ? "Loading..." : "Refresh"}</span>
-                  </button>
-                  <button 
-                    className="updates-toggle"
-                    onClick={toggleUpdatesPanel}
-                    aria-label="Show updates"
-                  >
-                    <FiBell />
-                    {newUpdates.length > 0 && (
-                      <span className="update-badge">{newUpdates.length}</span>
-                    )}
-                  </button>
-                </div>
+                <h1>Aperçu du Tableau de Bord</h1>
               </div>
               <p className="welcome-message">
-                Welcome, <span className="user-name">{userFirstName} {userLastName}</span>. 
-                Head of <span className="service-name">{serviceInfo.name}</span> department.
+                Bienvenue, <span className="user-name">{userFirstName} {userLastName}</span>. 
+                Chef du département <span className="service-name">{serviceInfo.name}</span>.
               </p>
-              {lastUpdated && (
-                <p className="last-updated">
-                  <FiClock className="update-icon" /> Last updated: {formatDate(lastUpdated)}
-                </p>
-              )}
             </div>
           
             <div className="dashboard-grid">
               {serviceInfo.error ? (
                 <div className="dashboard-card error-card">
                   <div className="card-header">
-                    <h2>Data Loading Error</h2>
+                    <h2>Erreur de Chargement des Données</h2>
                   </div>
                   <div className="card-content">
                     <p>{serviceInfo.error}</p>
                     <button onClick={handleRefresh} className="retry-btn">
-                      <FiRefreshCw /> Retry
+                      <FiRefreshCw /> Réessayer
                     </button>
                   </div>
                 </div>
@@ -673,7 +648,7 @@ useEffect(() => {
                 <>
                   <div className="dashboard-card personnel-overview">
                     <div className="card-header">
-                      <h2>Personnel Overview</h2>
+                      <h2>Aperçu du Personnel</h2>
                     </div>
                     <div className="card-content">
                       <div className="stat-cards">
@@ -691,30 +666,29 @@ useEffect(() => {
                   </div>
 
                   <div className="dashboard-card">
-  <div className="card-header">
-    <h2>Services for Current Chef</h2>
-  </div>
-  <div className="card-content">
-    {chefServices.length === 0 ? (
-      <p>No services found.</p>
-    ) : (
-      <ul>
-        {chefServices.map((service) => (
-          <li key={service.id}>
-            <strong>Nom Du Service :{service.serviceName}</strong> — Poid:   {service.poid}
-          </li>
-        ))}
-      </ul>
-    )}
-  </div>
-</div>
-
+                    <div className="card-header">
+                      <h2>Services du Chef Actuel</h2>
+                    </div>
+                    <div className="card-content">
+                      {chefServices.length === 0 ? (
+                        <p>Aucun service trouvé.</p>
+                      ) : (
+                        <ul>
+                          {chefServices.map((service) => (
+                            <li key={service.id}>
+                              <strong>Nom Du Service : {service.serviceName}</strong> — Poids: {service.poid}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
                 </>
               )}
 
               <div className="dashboard-card recent-requests">
                 <div className="card-header">
-                  <h2>Recent Requests</h2>
+                  <h2>Demandes Récentes</h2>
                 </div>
                 <div className="card-content">
                   <div className="requests-summary">
@@ -722,19 +696,19 @@ useEffect(() => {
                       <div className="request-icon">
                         <FiClock />
                       </div>
-                      <h3>Leave</h3>
+                      <h3>Congé</h3>
                       <p className="request-total">{demandes.conge.total}</p>
                       <div className="status-breakdown">
                         <div className="status-item">
                           <span className="status-dot approved"></span>
                           <span className="status-text">
-                            {demandes.conge.approved} approved
+                            {demandes.conge.approved} approuvées
                           </span>
                         </div>
                         <div className="status-item">
                           <span className="status-dot pending"></span>
                           <span className="status-text">
-                            {demandes.conge.pending} pending
+                            {demandes.conge.pending} en attente
                           </span>
                         </div>
                       </div>
@@ -743,19 +717,19 @@ useEffect(() => {
                       <div className="request-icon">
                         <FiUsers />
                       </div>
-                      <h3>Training</h3>
+                      <h3>Formation</h3>
                       <p className="request-total">{demandes.formation.total}</p>
                       <div className="status-breakdown">
                         <div className="status-item">
                           <span className="status-dot approved"></span>
                           <span className="status-text">
-                            {demandes.formation.approved} approved
+                            {demandes.formation.approved} approuvées
                           </span>
                         </div>
                         <div className="status-item">
                           <span className="status-dot pending"></span>
                           <span className="status-text">
-                            {demandes.formation.pending} pending
+                            {demandes.formation.pending} en attente
                           </span>
                         </div>
                       </div>
@@ -764,19 +738,19 @@ useEffect(() => {
                       <div className="request-icon">
                         <FiMapPin />
                       </div>
-                      <h3>Authorization</h3>
+                      <h3>Autorisation</h3>
                       <p className="request-total">{demandes.autorisation.total}</p>
                       <div className="status-breakdown">
                         <div className="status-item">
                           <span className="status-dot approved"></span>
                           <span className="status-text">
-                            {demandes.autorisation.approved} approved
+                            {demandes.autorisation.approved} approuvées
                           </span>
                         </div>
                         <div className="status-item">
                           <span className="status-dot pending"></span>
                           <span className="status-text">
-                            {demandes.autorisation.pending} pending
+                            {demandes.autorisation.pending} en attente
                           </span>
                         </div>
                       </div>
@@ -787,7 +761,7 @@ useEffect(() => {
 
               <div className="dashboard-card upcoming-formations">
                 <div className="card-header">
-                  <h2>Upcoming Training</h2>
+                  <h2>Formations à Venir</h2>
                 </div>
                 <div className="card-content">
                   {upcomingFormations.length > 0 ? (
@@ -809,14 +783,12 @@ useEffect(() => {
                             </div>
                             <div className="formation-info">
                               <h3 className="formation-title">
-                                {formation.theme?.name || formation.titre?.name || "Training"}
+                                {formation.theme?.theme} - {formation.titre?.titre }
                               </h3>
                               <div className="formation-meta">
                                 <span className="meta-item">
                                   <FiClock /> 
-                                  {endDate 
-                                    ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} days`
-                                    : "1 day"}
+                                  {formation.nbrJours} jours
                                 </span>
                                 {formation.lieu && (
                                   <span className="meta-item">
@@ -832,7 +804,7 @@ useEffect(() => {
                   ) : (
                     <div className="no-formations">
                       <FiClock className="no-data-icon" />
-                      <p>No upcoming training</p>
+                      <p>Aucune formation à venir</p>
                     </div>
                   )}
                 </div>
@@ -844,19 +816,19 @@ useEffect(() => {
         {showUpdatesPanel && (
           <div className="real-time-updates-panel">
             <div className="panel-header">
-              <h3>Recent Updates</h3>
+              <h3>Mises à Jour Récentes</h3>
               <button onClick={toggleUpdatesPanel} className="close-panel">
                 &times;
               </button>
             </div>
             <div className="updates-feed">
               {newUpdates.length === 0 ? (
-                <p className="no-updates">No recent updates</p>
+                <p className="no-updates">Aucune mise à jour récente</p>
               ) : (
                 newUpdates.slice().reverse().map((update, index) => (
                   <div key={index} className="update-item">
                     <div className="update-header">
-                      <span className="update-type">{update.type?.replace('_', ' ') || 'update'}</span>
+                      <span className="update-type">{update.type?.replace('_', ' ') || 'mise à jour'}</span>
                       <span className="update-time">
                         {new Date(update.timestamp).toLocaleTimeString()}
                       </span>

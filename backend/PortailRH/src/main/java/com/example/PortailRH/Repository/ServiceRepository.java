@@ -5,10 +5,10 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ServiceRepository extends MongoRepository<Service, String> {
-    Service findByServiceName(String serviceName);
-
+    Optional<Service> findByServiceName(String serviceName);
 
     @Query("{ '$or': [ { 'chef1.$id': ?0 }, { 'chef2.$id': ?1 }, { 'chef3.$id': ?2 } ] }")
     List<Service> findByChef1IdOrChef2IdOrChef3Id(String chef1Id, String chef2Id, String chef3Id);

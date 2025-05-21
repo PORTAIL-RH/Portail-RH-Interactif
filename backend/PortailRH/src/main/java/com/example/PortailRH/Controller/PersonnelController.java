@@ -866,10 +866,13 @@ public class PersonnelController {
             List<Map<String, String>> result = chefHierarchiques.stream()
                     .map(personnel -> {
                         Map<String, String> entry = new HashMap<>();
+                        entry.put("id", personnel.getId());
+
                         entry.put("matricule", personnel.getMatricule());
                         entry.put("nom", personnel.getNom());
                         entry.put("prenom", personnel.getPrenom());
                         entry.put("role", personnel.getRole());
+
                         return entry;
                     })
                     .collect(Collectors.toList());
@@ -1031,6 +1034,8 @@ public class PersonnelController {
             response.put("prenom", personnel.getPrenom());
             response.put("role", personnel.getRole());
             response.put("active", personnel.isActive());
+            response.put("code_soc", personnel.getCode_soc());
+            response.put("service_id", personnel.getServiceId());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {

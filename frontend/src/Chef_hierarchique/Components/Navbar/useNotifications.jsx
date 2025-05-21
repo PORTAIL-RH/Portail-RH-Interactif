@@ -1,201 +1,206 @@
+"use client"
+
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Client } from "@stomp/stompjs"
 import SockJS from "sockjs-client"
+import { API_URL } from "../../../config"
 
-const useNotifications = (role, userServiceId) => {
+const useNotifications = () => {
   const [notifications, setNotifications] = useState([])
   const [unviewedCount, setUnviewedCount] = useState(0)
   const [error, setError] = useState("")
+  const [loading, setLoading] = useState(true)
   const clientRef = useRef(null)
-  const isMountedRef = useRef(false)
+  const isMountedRef = useRef(true)
+
+  // Get Chef Hiérarchique info from localStorage
+  const getChefHierarchiqueInfo = useCallback(() => {
+    const userData = localStorage.getItem("userData")
+    const services = localStorage.getItem("services")
+    
+    if (!userData) {
+      throw new Error("Chef Hiérarchique user data not found in localStorage")
+    }
+    
+    const { code_soc: codeSoc } = JSON.parse(userData)
+    const chefServices = services ? JSON.parse(services) : []
+    
+    return { 
+      serviceIds: chefServices.map(service => service.serviceId),
+      codeSoc 
+    }
+  }, [])
 
   useEffect(() => {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
-      if (clientRef.current) {
-        clientRef.current.deactivate()
-      }
+      clientRef.current?.deactivate()
     }
   }, [])
 
   const fetchNotifications = useCallback(async () => {
     try {
+      setLoading(true)
       const token = localStorage.getItem("authToken")
-      if (!token) {
-        throw new Error("Authentication token not found")
-      }
+      const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
 
-      const url = "http://localhost:8080/api/notifications"
-      const params = new URLSearchParams({ role })
-      if (role === "Chef Hiérarchique" && userServiceId) {
-        params.append("serviceId", userServiceId)
-      }
+      // Utilisez le nouveau endpoint qui accepte une liste de serviceIds
+      const response = await fetch(
+        `${API_URL}/api/notifications?role=Chef Hiérarchique&serviceId=${serviceIds.join(',')}&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
 
-      const response = await fetch(`${url}?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      if (!response.ok) throw new Error("Failed to fetch notifications")
+      
+      const allNotifications = await response.json()
+      allNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
       if (isMountedRef.current) {
-        setNotifications(data)
-        setUnviewedCount(data.filter((notif) => !notif.viewed).length)
+        setNotifications(allNotifications)
+        setLoading(false)
       }
     } catch (error) {
       console.error("Fetch notifications error:", error)
       if (isMountedRef.current) {
         setError(error.message)
+        setLoading(false)
       }
     }
-  }, [role, userServiceId])
+  }, [getChefHierarchiqueInfo])
 
-  const markAsRead = useCallback(async (id) => {
+  const fetchUnviewedCount = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
-      const response = await fetch(`http://localhost:8080/api/notifications/${id}/view`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+      const userId = localStorage.getItem("userId")
+      const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
+      // Utilisez le nouveau endpoint qui accepte une liste de serviceIds
+      const response = await fetch(
+        `${API_URL}/api/notifications/unread-count-for-user?personnelId=${userId}&role=Chef Hiérarchique&serviceId=${serviceIds.join(',')}&codeSoc=${codeSoc}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
 
+      if (!response.ok) throw new Error("Failed to fetch unread count")
+      
+      const totalCount = await response.json()
+      
       if (isMountedRef.current) {
-        setNotifications((prev) => prev.map((notif) => (notif.id === id ? { ...notif, viewed: true } : notif)))
-        setUnviewedCount((prev) => Math.max(prev - 1, 0))
+        setUnviewedCount(totalCount)
       }
+      return totalCount
     } catch (error) {
-      console.error("Mark as read error:", error)
-      throw error
+      console.error("Fetch unread count error:", error)
+      if (isMountedRef.current) {
+        setUnviewedCount(0)
+      }
+      return 0
     }
-  }, [])
+  }, [getChefHierarchiqueInfo])
 
-  // Update the markAllAsRead function to properly handle the API requirements
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
-      if (!token) {
-        throw new Error("Authentication token not found")
-      }
+      const userId = localStorage.getItem("userId")
+      const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
 
-      // Ensure role is not empty
-      if (!role) {
-        throw new Error("Role is required")
-      }
-
-      // Create request body
-      const requestBody = { role }
-
-      // For non-Admin roles, serviceId is required
-      if (role !== "Admin") {
-        if (!userServiceId) {
-          console.error("ServiceId is required for non-admin roles")
-          throw new Error("ServiceId is required for non-admin roles")
+      // Utilisez le nouveau endpoint qui accepte une liste de serviceIds
+      await fetch(
+        `${API_URL}/api/notifications/mark-all-read-by-user?personnelId=${userId}&role=Chef Hiérarchique&serviceId=${serviceIds.join(',')}&codeSoc=${codeSoc}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
-        requestBody.serviceId = userServiceId
-      }
+      )
 
-      console.log("Sending mark all as read request:", requestBody)
-
-      const response = await fetch(`http://localhost:8080/api/notifications/mark-all-read`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(requestBody),
-      })
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-        throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`)
-      }
-
-      const result = await response.json()
-      console.log("Marked as read result:", result)
-
-      // Update local state
       if (isMountedRef.current) {
-        setNotifications((prev) => prev.map((notif) => ({ ...notif, viewed: true })))
         setUnviewedCount(0)
+        // Mise à jour optimiste des notifications
+        setNotifications(prev => 
+          prev.map(n => ({
+            ...n,
+            readBy: [...(n.readBy || []), userId]
+          }))
+        )
       }
-
-      return result
     } catch (error) {
       console.error("Mark all as read error:", error)
-      setError(error.message)
       throw error
     }
-  }, [role, userServiceId])
+  }, [getChefHierarchiqueInfo])
 
   useEffect(() => {
-    fetchNotifications()
+    const initWebSocket = () => {
+      const token = localStorage.getItem("authToken")
+      const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
 
-    const token = localStorage.getItem("authToken")
-    if (!token) return
+      const client = new Client({
+        webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+        reconnectDelay: 5000,
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        onConnect: () => {
+          fetchUnviewedCount()
+          
+          // Abonnement unique pour toutes les notifications du Chef Hiérarchique
+          client.subscribe(
+            `/topic/notifications/Chef Hiérarchique/${codeSoc}`,
+            (message) => {
+              const newNotification = JSON.parse(message.body)
+              const userId = localStorage.getItem("userId")
 
-    const client = new Client({
-      webSocketFactory: () => new SockJS("http://localhost:8080/ws"),
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-      connectHeaders: { Authorization: `Bearer ${token}` },
-    })
+              if (isMountedRef.current) {
+                setNotifications(prev => {
+                  if (!prev.some(n => n.id === newNotification.id)) {
+                    return [newNotification, ...prev]
+                  }
+                  return prev
+                })
 
-    client.onConnect = () => {
-      const topic =
-        role === "Chef Hiérarchique" && userServiceId
-          ? `/topic/notifications/${role}/${userServiceId}`
-          : `/topic/notifications/${role}`
-
-      client.subscribe(topic, (message) => {
-        const newNotification = JSON.parse(message.body)
-        if (isMountedRef.current) {
-          setNotifications((prev) => {
-            const exists = prev.some((n) => n.id === newNotification.id)
-            return exists ? prev : [newNotification, ...prev]
-          })
-          if (!newNotification.viewed) {
-            setUnviewedCount((prev) => prev + 1)
-          }
-        }
+                if (!newNotification.readBy?.includes(userId)) {
+                  setUnviewedCount(prev => prev + 1)
+                }
+              }
+            }
+          )
+        },
+        onStompError: (frame) => {
+          console.error("WebSocket error:", frame.headers.message)
+          setError("Connection error")
+        },
       })
+
+      client.activate()
+      return client
     }
 
-    client.onStompError = (frame) => {
-      console.error("STOMP error:", frame.headers.message)
-      if (isMountedRef.current) {
-        setError("WebSocket connection error")
+    const fetchInitialData = async () => {
+      try {
+        await Promise.all([fetchNotifications(), fetchUnviewedCount()])
+      } catch (error) {
+        console.error("Initial data fetch error:", error)
       }
     }
 
-    client.activate()
+    fetchInitialData()
+    const client = initWebSocket()
     clientRef.current = client
 
-    return () => {
-      if (clientRef.current) {
-        clientRef.current.deactivate()
-      }
-    }
-  }, [role, userServiceId, fetchNotifications])
+    return () => client.deactivate()
+  }, [fetchNotifications, fetchUnviewedCount, getChefHierarchiqueInfo])
 
   return {
     notifications,
     unviewedCount,
-    markAsRead,
-    markAllAsRead,
+    loading,
     error,
     fetchNotifications,
+    markAllAsRead,
   }
 }
 
