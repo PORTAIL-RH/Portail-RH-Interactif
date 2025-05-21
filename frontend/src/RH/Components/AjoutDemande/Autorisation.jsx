@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react"
 import { FiCalendar, FiClock, FiFileText, FiUpload, FiSend } from "react-icons/fi"
 import { ToastContainer, toast } from "react-toastify"
@@ -8,6 +7,7 @@ import { useNavigate } from "react-router-dom"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar"; 
 import { API_URL } from "../../../config"; 
+
 const AutorisationForm = () => {
   const [formData, setFormData] = useState({
     dateDebut: "",
@@ -27,45 +27,45 @@ const AutorisationForm = () => {
   const navigate = useNavigate()
   const [theme, setTheme] = useState("light")
 
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
 
-    // Theme management
-    useEffect(() => {
-      const savedTheme = localStorage.getItem("theme") || "light"
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-  
-      // Listen for theme changes
-      const handleStorageChange = () => {
-        const currentTheme = localStorage.getItem("theme") || "light"
-        setTheme(currentTheme)
-        applyTheme(currentTheme)
-      }
-  
-      window.addEventListener("storage", handleStorageChange)
-      window.addEventListener("themeChanged", (e) => {
-        setTheme(e.detail || "light")
-        applyTheme(e.detail || "light")
-      })
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange)
-        window.removeEventListener("themeChanged", handleStorageChange)
-      }
-    }, [])
-  
-    const applyTheme = (theme) => {
-      document.documentElement.classList.remove("light", "dark")
-      document.documentElement.classList.add(theme)
-      document.body.className = theme
+    // Listen for theme changes
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light"
+      setTheme(currentTheme)
+      applyTheme(currentTheme)
     }
-  
-    const toggleTheme = () => {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      applyTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("themeChanged", (e) => {
+      setTheme(e.detail || "light")
+      applyTheme(e.detail || "light")
+    })
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("themeChanged", handleStorageChange)
     }
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    document.body.className = theme
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
   useEffect(() => {
     const userId = localStorage.getItem("userId")
     const userCodeSoc = localStorage.getItem("userCodeSoc")
@@ -78,6 +78,17 @@ const AutorisationForm = () => {
       }))
     }
   }, [])
+
+  // Fonction pour valider si une heure est entre 9h et 18h
+  const validateTimeRange = (time) => {
+    if (!time) return false;
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+    
+    // 9h = 540 minutes, 18h = 1080 minutes
+    return totalMinutes >= 540 && totalMinutes <= 1080;
+  }
 
   const handleTabClick = (tab) => {
     setActiveTab(tab);
@@ -135,10 +146,24 @@ const AutorisationForm = () => {
 
     if (!formData.heureSortie) {
       newErrors.heureSortie = "L'heure de sortie est requise"
+    } else if (!validateTimeRange(formData.heureSortie)) {
+      newErrors.heureSortie = "L'heure de sortie doit être entre 9h et 18h"
     }
 
     if (!formData.heureRetour) {
       newErrors.heureRetour = "L'heure de retour est requise"
+    } else if (!validateTimeRange(formData.heureRetour)) {
+      newErrors.heureRetour = "L'heure de retour doit être entre 9h et 18h"
+    }
+
+    // Vérifier que l'heure de retour est après l'heure de sortie
+    if (formData.heureSortie && formData.heureRetour) {
+      const sortie = new Date(`2000-01-01T${formData.heureSortie}`);
+      const retour = new Date(`2000-01-01T${formData.heureRetour}`);
+      
+      if (retour <= sortie) {
+        newErrors.heureRetour = "L'heure de retour doit être après l'heure de sortie"
+      }
     }
 
     if (!formData.texteDemande) {
@@ -229,167 +254,171 @@ const AutorisationForm = () => {
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar theme={theme} />
-    <div className="demande-container">
-    <Navbar theme={theme} toggleTheme={toggleTheme} />
-    <div className="autorisation-form-container">
-      {/* Navigation Bar */}
-      <div className="request-nav-bar">
-        <div
-          className={`request-nav-item ${activeTab === "formation" ? "active" : ""}`}
-          onClick={() => handleTabClick("formation")}
-        >
-          Formation
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "conge" ? "active" : ""}`}
-          onClick={() => handleTabClick("conge")}
-        >
-          Congé
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "document" ? "active" : ""}`}
-          onClick={() => handleTabClick("document")}
-        >
-          Document
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "preAvance" ? "active" : ""}`}
-          onClick={() => handleTabClick("preAvance")}
-        >
-          PréAvance
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "autorisation" ? "active" : ""}`}
-          onClick={() => handleTabClick("autorisation")}
-        >
-          Autorisation
-        </div>
-      </div>
+      <div className="demande-container">
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <div className="autorisation-form-container">
+          {/* Navigation Bar */}
+          <div className="request-nav-bar">
+            <div
+              className={`request-nav-item ${activeTab === "formation" ? "active" : ""}`}
+              onClick={() => handleTabClick("formation")}
+            >
+              Formation
+            </div>
+            <div
+              className={`request-nav-item ${activeTab === "conge" ? "active" : ""}`}
+              onClick={() => handleTabClick("conge")}
+            >
+              Congé
+            </div>
+            <div
+              className={`request-nav-item ${activeTab === "document" ? "active" : ""}`}
+              onClick={() => handleTabClick("document")}
+            >
+              Document
+            </div>
+            <div
+              className={`request-nav-item ${activeTab === "preAvance" ? "active" : ""}`}
+              onClick={() => handleTabClick("preAvance")}
+            >
+              PréAvance
+            </div>
+            <div
+              className={`request-nav-item ${activeTab === "autorisation" ? "active" : ""}`}
+              onClick={() => handleTabClick("autorisation")}
+            >
+              Autorisation
+            </div>
+          </div>
 
-      <div className="form-card">
-        <div className="form-header">
-          <h2>Demande d'Autorisation</h2>
-          <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande d'autorisation de sortie</p>
-        </div>
+          <div className="form-card">
+            <div className="form-header">
+              <h2>Demande d'Autorisation</h2>
+              <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande d'autorisation de sortie</p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="autorisation-form">
-          <div className="form-section">
-            <h3 className="section-title">
-              <FiCalendar className="section-icon" />
-              <span>Date et Heures</span>
-            </h3>
+            <form onSubmit={handleSubmit} className="autorisation-form">
+              <div className="form-section">
+                <h3 className="section-title">
+                  <FiCalendar className="section-icon" />
+                  <span>Date et Heures</span>
+                </h3>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="dateDebut">Date</label>
-                <div className="input-wrapper">
-                  <input
-                    type="date"
-                    id="dateDebut"
-                    name="dateDebut"
-                    value={formData.dateDebut}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="dateDebut">Date</label>
+                    <div className="input-wrapper">
+                      <input
+                        type="date"
+                        id="dateDebut"
+                        name="dateDebut"
+                        value={formData.dateDebut}
+                        onChange={handleChange}
+                        className={errors.dateDebut ? "error" : ""}
+                      />
+                    </div>
+                    {errors.dateDebut && <div className="error-message">{errors.dateDebut}</div>}
+                  </div>
+                </div>
+
+                <div className="form-row two-columns">
+                  <div className="form-group">
+                    <label htmlFor="heureSortie">Heure de Sortie (9h-18h)</label>
+                    <div className="input-wrapper">
+                      <FiClock className="input-icon" />
+                      <input
+                        type="time"
+                        id="heureSortie"
+                        name="heureSortie"
+                        value={formData.heureSortie}
+                        onChange={handleChange}
+                        className={errors.heureSortie ? "error" : ""}
+                        min="09:00"
+                        max="18:00"
+                      />
+                    </div>
+                    {errors.heureSortie && <div className="error-message">{errors.heureSortie}</div>}
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="heureRetour">Heure de Retour (9h-18h)</label>
+                    <div className="input-wrapper">
+                      <FiClock className="input-icon" />
+                      <input
+                        type="time"
+                        id="heureRetour"
+                        name="heureRetour"
+                        value={formData.heureRetour}
+                        onChange={handleChange}
+                        className={errors.heureRetour ? "error" : ""}
+                        min="09:00"
+                        max="18:00"
+                      />
+                    </div>
+                    {errors.heureRetour && <div className="error-message">{errors.heureRetour}</div>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3 className="section-title">
+                  <FiFileText className="section-icon" />
+                  <span>Détails de la Demande</span>
+                </h3>
+
+                <div className="form-group">
+                  <label htmlFor="texteDemande">Motif de la Demande</label>
+                  <textarea
+                    id="texteDemande"
+                    name="texteDemande"
+                    value={formData.texteDemande}
                     onChange={handleChange}
-                    className={errors.dateDebut ? "error" : ""}
-                  />
-                </div>
-                {errors.dateDebut && <div className="error-message">{errors.dateDebut}</div>}
-              </div>
-            </div>
-
-            <div className="form-row two-columns">
-              <div className="form-group">
-                <label htmlFor="heureSortie">Heure de Sortie</label>
-                <div className="input-wrapper">
-                  <FiClock className="input-icon" />
-                  <input
-                    type="time"
-                    id="heureSortie"
-                    name="heureSortie"
-                    value={formData.heureSortie}
-                    onChange={handleChange}
-                    className={errors.heureSortie ? "error" : ""}
-                  />
-                </div>
-                {errors.heureSortie && <div className="error-message">{errors.heureSortie}</div>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="heureRetour">Heure de Retour</label>
-                <div className="input-wrapper">
-                  <FiClock className="input-icon" />
-                  <input
-                    type="time"
-                    id="heureRetour"
-                    name="heureRetour"
-                    value={formData.heureRetour}
-                    onChange={handleChange}
-                    className={errors.heureRetour ? "error" : ""}
-                  />
-                </div>
-                {errors.heureRetour && <div className="error-message">{errors.heureRetour}</div>}
-              </div>
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="section-title">
-              <FiFileText className="section-icon" />
-              <span>Détails de la Demande</span>
-            </h3>
-
-            <div className="form-group">
-              <label htmlFor="texteDemande">Motif de la Demande</label>
-              <textarea
-                id="texteDemande"
-                name="texteDemande"
-                value={formData.texteDemande}
-                onChange={handleChange}
-                placeholder="Veuillez expliquer le motif de votre demande d'autorisation..."
-                rows="4"
-                className={errors.texteDemande ? "error" : ""}
-              ></textarea>
-              {errors.texteDemande && <div className="error-message">{errors.texteDemande}</div>}
-            </div>
-          </div>
-
-          <div className="form-section">
-            <h3 className="section-title">
-              <FiUpload className="section-icon" />
-              <span>Document Justificatif</span>
-            </h3>
-
-            <div className="form-group">
-              <label htmlFor="file">Pièce Jointe (optionnel)</label>
-              <div className="file-upload-container">
-                <input type="file" id="file" name="file" onChange={handleFileChange} className="file-input" />
-                <div className="file-upload-box">
-                  <FiUpload className="upload-icon" />
-                  <span className="upload-text">
-                    {fileName ? fileName : "Glissez un fichier ou cliquez pour parcourir"}
-                  </span>
+                    placeholder="Veuillez expliquer le motif de votre demande d'autorisation..."
+                    rows="4"
+                    className={errors.texteDemande ? "error" : ""}
+                  ></textarea>
+                  {errors.texteDemande && <div className="error-message">{errors.texteDemande}</div>}
                 </div>
               </div>
-            </div>
-          </div>
 
-          <div className="form-actions">
-            <button type="submit" className="submit-button" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <div className="spinner"></div>
-                  <span>Envoi en cours...</span>
-                </>
-              ) : (
-                <>
-                  <FiSend />
-                  <span>Soumettre la Demande</span>
-                </>
-              )}
-            </button>
+              <div className="form-section">
+                <h3 className="section-title">
+                  <FiUpload className="section-icon" />
+                  <span>Document Justificatif</span>
+                </h3>
+
+                <div className="form-group">
+                  <label htmlFor="file">Pièce Jointe (optionnel)</label>
+                  <div className="file-upload-container">
+                    <input type="file" id="file" name="file" onChange={handleFileChange} className="file-input" />
+                    <div className="file-upload-box">
+                      <FiUpload className="upload-icon" />
+                      <span className="upload-text">
+                        {fileName ? fileName : "Glissez un fichier ou cliquez pour parcourir"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-actions">
+                <button type="submit" className="submit-button" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <div className="spinner"></div>
+                      <span>Envoi en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiSend />
+                      <span>Soumettre la Demande</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
-        </form>
-      </div>
-      </div>
+        </div>
       </div>
 
       <ToastContainer

@@ -611,15 +611,7 @@ const DemandesPreAvance = () => {
             </div>
             
             <div className="search-filter-container">
-              <div className="search-bar">
-                <FiSearch />
-                <input
-                  type="text"
-                  placeholder="Rechercher par nom, matricule ou motif..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+             
               
               <button 
                 className="filter-toggle" 
@@ -812,7 +804,7 @@ const DemandesPreAvance = () => {
                                 )}
                               </button>
                               <button
-                                className="btn-reject"
+                                className="action-button reject"
                                 onClick={() => handleRejectWithObservation(demande.id)}
                                 disabled={rejectingId === demande.id || processingId === demande.id}
                               >
@@ -827,10 +819,10 @@ const DemandesPreAvance = () => {
                             </>
                           )}
                           <button
-                            className="btn-view"
+                            className="btn-preview"
                             onClick={() => openModal(demande)}
                           >
-                            <FiEye /> Voir
+                            <FiEye /> 
                           </button>
                         </div>
                       </td>

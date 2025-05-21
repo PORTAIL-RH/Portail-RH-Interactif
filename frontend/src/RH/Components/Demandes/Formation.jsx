@@ -1,12 +1,142 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiX, FiEye, FiDownload } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiX, FiEye, FiDownload, FiInfo } from "react-icons/fi";
 import "./Demandes.css";
-import DemandeDetailsModal from "./DemandeDetailsModal";
 import { API_URL } from "../../../config";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import "./DemandeDetailsModal.css";
+
+const DemandeDetailsModal = ({ 
+  demande, 
+  onClose, 
+  onApprove, 
+  isProcessing, 
+  onPreviewFile, 
+  onDownloadFile,
+  theme 
+}) => {
+  return (
+    <div className={`modal-overlay ${theme}`}>
+      <div className={`modal-content ${theme}`}>
+        <div className="modal-header">
+          <h2>Détails de la Demande</h2>
+          <button className="close-button" onClick={onClose}>
+            <FiX />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="detail-section">
+            <h3>Informations Employé</h3>
+            <div className="detail-row">
+              <span className="detail-label">Nom:</span>
+              <span className="detail-value">{demande.matPers?.nom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Prénom:</span>
+              <span className="detail-value">{demande.matPers?.prenom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Matricule:</span>
+              <span className="detail-value">{demande.matPers?.matricule || "N/A"}</span>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h3>Détails Formation</h3>
+            <div className="detail-row">
+              <span className="detail-label">Date Demande:</span>
+              <span className="detail-value">
+                {new Date(demande.dateDemande).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Date Formation:</span>
+              <span className="detail-value">
+                {demande.dateDebut ? new Date(demande.dateDebut).toLocaleDateString() : "Non spécifiée"}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Nombre de jours:</span>
+              <span className="detail-value">{demande.nbrJours || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Titre:</span>
+              <span className="detail-value">{demande.titre || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Type:</span>
+              <span className="detail-value">{demande.type || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Thème:</span>
+              <span className="detail-value">{demande.theme || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Description:</span>
+              <span className="detail-value">{demande.texteDemande || "Aucune description"}</span>
+            </div>
+          </div>
+
+          {demande.files?.length > 0 && (
+            <div className="detail-section">
+              <h3>Fichiers Joints</h3>
+              {demande.files.map((file) => (
+                <div key={file.id} className="file-item">
+                  <span className="file-name">{file.filename}</span>
+                  <div className="file-actions">
+                    <button 
+                      className="btn-preview" 
+                      onClick={() => onPreviewFile(file.fileId, file.filename)}
+                      title="Aperçu"
+                    >
+                      <FiEye />
+                    </button>
+                    <button 
+                      className="btn-download"
+                      onClick={() => onDownloadFile(file.fileId, file.filename)}
+                      title="Télécharger"
+                    >
+                      <FiDownload />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <div className="status-display">
+            <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
+              {{
+                I: <><FiClock /> En attente</>,
+                T: <><FiCheck /> Traité</>
+              }[demande.reponseRH] || 'Inconnu'}
+            </span>
+          </div>
+          
+          <div className="action-buttons">
+            {demande.reponseRH === "I" && (
+              <button
+                className={`btn-approve ${isProcessing ? 'processing' : ''}`}
+                onClick={onApprove}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Traitement en cours...' : <><FiCheck /> Traiter la demande</>}
+              </button>
+            )}
+            <button className="btn-close" onClick={onClose}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DemandesFormation = () => {
   const [demandes, setDemandes] = useState(() => {
@@ -167,10 +297,10 @@ const DemandesFormation = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(d => 
-        (d.matPers?.nom?.toLowerCase().includes(query)) || 
-        (d.matPers?.prenom?.toLowerCase().includes(query)) ||
-        (d.matPers?.matricule?.toLowerCase().includes(query)) ||
-        (d.texteDemande?.toLowerCase().includes(query))
+        (d.matPers?.nom?.toLowerCase() || '').includes(query) || 
+        (d.matPers?.prenom?.toLowerCase() || '').includes(query) ||
+        (d.matPers?.matricule?.toLowerCase() || '').includes(query) ||
+        (d.texteDemande?.toLowerCase() || '').includes(query)
       );
     }
     if (selectedStatus !== "all") {
@@ -204,7 +334,7 @@ const DemandesFormation = () => {
       if (!response.ok) throw new Error(await response.text());
 
       const updatedFormation = demandes.map(d => 
-        d.id_libre_demande === demandeId ? { ...d, reponseRH: "T" } : d
+        d.id === demandeId ? { ...d, reponseRH: "T" } : d
       );
       setDemandes(updatedFormation);
       const updatedAllDemandes = {
@@ -379,36 +509,33 @@ const DemandesFormation = () => {
             <table className="demandes-table">
               <thead>
                 <tr>
-                  <th>Employé</th>
-                  <th>Matricule</th>
                   <th>Date Demande</th>
+                  <th>Employé</th>
                   <th>Date formation</th>
+                  <th>Nombre De Jours</th>
                   <th>Titre</th>
                   <th>Type</th>
                   <th>Thème</th>
                   <th>Fichiers</th>
                   <th>Statut</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDemandes.length > 0 ? (
                   filteredDemandes.map(demande => (
-                    <tr key={demande.id_libre_demande}>
+                    <tr key={demande.id}>
                       <td>
-                        <div className="employee-info">
-                          <span className="employee-name">
-                            {demande.matPers?.nom || "Inconnu"} {demande.matPers?.prenom}
-                          </span>
-                        </div>
+                        {new Date(demande.dateDemande).toLocaleDateString()}
                       </td>
                       <td>
+                        <span className="employee-name">
+                          {demande.matPers?.nom} {demande.matPers?.prenom}
+                        </span>
+                        <br />
                         <span className="employee-matricule">
                           {demande.matPers?.matricule || "N/A"}
                         </span>
-                      </td>
-                      <td>
-                        {new Date(demande.dateDemande).toLocaleDateString()}
                       </td>
                       <td>
                         {demande.dateDebut ? (
@@ -416,13 +543,16 @@ const DemandesFormation = () => {
                         ) : "Non spécifiée"}
                       </td>
                       <td>
-                        {demande.titre?.titre || "Aucun titre spécifié"}
+                        {demande.nbrJours}
                       </td>
                       <td>
-                        {demande.type?.type || "Aucun type spécifié"}
+                        {demande.titre || "Aucun titre spécifié"}
                       </td>
                       <td>
-                        {demande.theme?.theme || "Aucun thème spécifié"}
+                        {demande.type || "Aucun type spécifié"}
+                      </td>
+                      <td>
+                        {demande.theme || "Aucun thème spécifié"}
                       </td>
                       <td className="file-actions">
                         {demande.files?.length > 0 ? (
@@ -454,40 +584,47 @@ const DemandesFormation = () => {
                         )}
                       </td>
                       <td>
-                        <span className={`status-badge ${demande.reponseRH.toLowerCase()}`}>
+                        <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
                           {{
                             I: <><FiClock /> En attente</>,
                             T: <><FiCheck /> Traité</>
-                          }[demande.reponseRH]}
+                          }[demande.reponseRH] || 'Inconnu'}
                         </span>
                       </td>
                       <td>
-                        {demande.reponseRH === "I" ? (
-                          <div className="action-buttons">
+                        <div className="action-buttons">
+                          <button
+                            className="btn-details"
+                            onClick={() => {
+                              setSelectedDemande(demande);
+                              setIsModalOpen(true);
+                            }}
+                            title="Voir les détails"
+                          >
+                            <FiEye />
+                          </button>
+                          {demande.reponseRH === "I" && (
                             <button
                               className="btn-approve"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (demande.id_libre_demande) {
-                                  traiterDemande(demande.id_libre_demande);
+                                if (demande.id) {
+                                  traiterDemande(demande.id);
                                 } else {
                                   toast.error("ID de demande manquant");
                                 }
                               }}
-                              disabled={processingId === demande.id_libre_demande}
+                              disabled={processingId === demande.id}
+                              title="Traiter la demande"
                             >
-                              {processingId === demande.id_libre_demande ? (
+                              {processingId === demande.id ? (
                                 <span className="processing">Traitement...</span>
                               ) : (
-                                <>
-                                  <FiCheck /> Traiter
-                                </>
+                                <FiCheck />
                               )}
                             </button>
-                          </div>
-                        ) : (
-                          <span className="no-actions">Traité</span>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -563,10 +700,11 @@ const DemandesFormation = () => {
             <DemandeDetailsModal
               demande={selectedDemande}
               onClose={() => setIsModalOpen(false)}
-              onApprove={() => selectedDemande.id_libre_demande && traiterDemande(selectedDemande.id_libre_demande)}
-              isProcessing={processingId === selectedDemande.id_libre_demande}
+              onApprove={() => selectedDemande.id && traiterDemande(selectedDemande.id)}
+              isProcessing={processingId === selectedDemande.id}
               onPreviewFile={handlePreview}
               onDownloadFile={handleDownload}
+              theme={theme}
             />
           )}
         </div>

@@ -1,0 +1,30 @@
+
+Nom : Fida Sassi
+Email : aryemsassi22@gmail.com
+Téléphone : 20354629
+Âge : 23 ans
+
+Profil :
+Jeune diplômée en informatique passionnée par le développement logiciel et l’apprentissage de nouvelles technologies.
+
+Compétences :
+- Java
+- SQL
+- HTML / CSS
+- Git
+
+Expériences :
+- Projet universitaire : Développement d’un outil de gestion de bibliothèque en Java.
+- Stage de fin d'études : Maintenance d’une application desktop en Java Swing.
+
+Formation :
+- Licence en Informatique - ISI Sfax (2024)
+
+Langues :
+- Anglais : Intermédiaire
+- Arabe : Courant
+
+Centres d'intérêt :
+- Développement mobile
+- Résolution de problèmes algorithmiques
+

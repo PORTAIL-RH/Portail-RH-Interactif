@@ -132,7 +132,7 @@ const Sidebar = ({ theme }) => {
               </li>
               <li className="dropdown-item">
                 <Link to="/AjoutCandidature" className="dropdown-link">
-                  Candidature
+                  Offre
                 </Link>
               </li>
             </ul>

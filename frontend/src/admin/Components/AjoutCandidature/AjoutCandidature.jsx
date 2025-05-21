@@ -19,7 +19,9 @@ const AjoutCandidature = () => {
   });
 
   const [societes, setSocietes] = useState([]);
+  const [services, setServices] = useState([]);
   const [loadingSocietes, setLoadingSocietes] = useState(true);
+  const [loadingServices, setLoadingServices] = useState(true);
   const [error, setError] = useState("");
   const [theme, setTheme] = useState("light");
   const [totalPercentage, setTotalPercentage] = useState(0);
@@ -37,21 +39,27 @@ const AjoutCandidature = () => {
     };
   }, []);
 
-  // Fetch societes on component mount
+  // Fetch data on component mount
   useEffect(() => {
-    const fetchSocietes = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/societes`);
-        setSocietes(response.data);
+        // Fetch societes
+        const societesResponse = await axios.get(`${API_URL}/api/societes`);
+        setSocietes(societesResponse.data);
+        
+        // Fetch services
+        const servicesResponse = await axios.get(`${API_URL}/api/services/all`);
+        setServices(servicesResponse.data);
       } catch (err) {
-        console.error("Error fetching societes:", err);
-        toast.error("Erreur lors du chargement des emplacements");
+        console.error("Error fetching data:", err);
+        toast.error("Erreur lors du chargement des données");
       } finally {
         setLoadingSocietes(false);
+        setLoadingServices(false);
       }
     };
 
-    fetchSocietes();
+    fetchData();
   }, []);
 
   // Theme management
@@ -200,7 +208,7 @@ const AjoutCandidature = () => {
         <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="ajout-candidature-content">
           <div className="form-header">
-            <h2>Ajouter une Candidature</h2>
+            <h2>Ajouter une Offre</h2>
             <p className="form-subtitle">Créez une nouvelle offre d'emploi</p>
           </div>
           
@@ -242,14 +250,26 @@ const AjoutCandidature = () => {
 
             <div className="form-group">
               <label>Service:</label>
-              <input
-                type="text"
-                name="service"
-                value={formData.service}
-                onChange={handleInputChange}
-                placeholder="ex: Développement informatique"
-                required
-              />
+              {loadingServices ? (
+                <div className="loading-text">Chargement des services...</div>
+              ) : (
+                <div className="service-select-container">
+                  <select
+                    name="service"
+                    value={formData.service}
+                    onChange={handleInputChange}
+                    required
+                    className="service-select"
+                  >
+                    <option value="">Sélectionnez un service</option>
+                    {services.map((service) => (
+                      <option key={service.serviceId} value={service.nomService}>
+                        {service.nomService}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="form-group">
@@ -390,7 +410,7 @@ const AjoutCandidature = () => {
                 className="submit-button"
                 disabled={totalPercentage > 100}
               >
-                Ajouter la Candidature
+                Ajouter l'offre
               </button>
             </div>
           </form>

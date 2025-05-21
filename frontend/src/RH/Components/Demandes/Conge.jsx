@@ -1,16 +1,142 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText,FiDownload } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiDownload, FiEye, FiX, FiInfo } from "react-icons/fi";
 import "./Demandes.css";
-import DemandeDetailsModal from "./DemandeDetailsModal";
 import { API_URL } from "../../../config";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import "./DemandeDetailsModal.css";
+
+const DemandeDetailsModal = ({ 
+  demande, 
+  onClose, 
+  onApprove, 
+  isProcessing, 
+  onPreviewFile, 
+  onDownloadFile,
+  theme 
+}) => {
+  return (
+    <div className={`modal-overlay ${theme}`}>
+      <div className={`modal-content ${theme}`}>
+        <div className="modal-header">
+          <h2>Détails de la Demande de Congé</h2>
+          <button className="close-button" onClick={onClose}>
+            <FiX />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="detail-section">
+            <h3>Informations Employé</h3>
+            <div className="detail-row">
+              <span className="detail-label">Nom:</span>
+              <span className="detail-value">{demande.matPers?.nom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Prénom:</span>
+              <span className="detail-value">{demande.matPers?.prenom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Matricule:</span>
+              <span className="detail-value">{demande.matPers?.matricule || "N/A"}</span>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h3>Détails du Congé</h3>
+            <div className="detail-row">
+              <span className="detail-label">Date Demande:</span>
+              <span className="detail-value">
+                {new Date(demande.dateDemande).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Période:</span>
+              <span className="detail-value">
+                {new Date(demande.dateDebut).toLocaleDateString()} → {new Date(demande.dateFin).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Nombre de jours:</span>
+              <span className="detail-value">{demande.nbrJours || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Temps de départ:</span>
+              <span className="detail-value">{demande.snjTempDep || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Temps de retour:</span>
+              <span className="detail-value">{demande.snjTempRetour || "Non spécifié"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Motif:</span>
+              <span className="detail-value">{demande.texteDemande || "Aucun motif spécifié"}</span>
+            </div>
+          </div>
+
+          {demande.files?.length > 0 && (
+            <div className="detail-section">
+              <h3>Fichiers Joints</h3>
+              {demande.files.map((file) => (
+                <div key={file.id} className="file-item">
+                  <span className="file-name">{file.filename}</span>
+                  <div className="file-actions">
+                    <button 
+                      className="btn-preview" 
+                      onClick={() => onPreviewFile(file.fileId, file.filename)}
+                      title="Aperçu"
+                    >
+                      <FiEye />
+                    </button>
+                    <button 
+                      className="btn-download"
+                      onClick={() => onDownloadFile(file.fileId, file.filename)}
+                      title="Télécharger"
+                    >
+                      <FiDownload />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <div className="status-display">
+            <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
+              {{
+                I: <><FiClock /> En attente</>,
+                T: <><FiCheck /> Traité</>
+              }[demande.reponseRH] || 'Inconnu'}
+            </span>
+          </div>
+          
+          <div className="action-buttons">
+            {demande.reponseRH === "I" && (
+              <button
+                className={`btn-approve ${isProcessing ? 'processing' : ''}`}
+                onClick={onApprove}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Traitement en cours...' : <><FiCheck /> Traiter la demande</>}
+              </button>
+            )}
+            <button className="btn-close" onClick={onClose}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DemandesConge = () => {
-    const [previewFileId, setPreviewFileId] = useState(null);
-    const [previewFileUrl, setPreviewFileUrl] = useState(null);
+  const [previewFileId, setPreviewFileId] = useState(null);
+  const [previewFileUrl, setPreviewFileUrl] = useState(null);
   
   // Load initial data from localStorage with proper structure
   const [demandes, setDemandes] = useState(() => {
@@ -166,6 +292,58 @@ const DemandesConge = () => {
     setFilteredDemandes(filtered);
   }, [demandes, searchQuery, selectedStatus, startDate, endDate]);
 
+  // File handling functions
+  const fetchFileBlobUrl = async (fileId) => {
+    if (!fileId) throw new Error("File ID is missing");
+    const token = localStorage.getItem("authToken");
+    try {
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error(await response.text());
+      return await response.blob();
+    } catch (error) {
+      console.error("Error fetching file:", error);
+      throw error;
+    }
+  };
+
+  const handlePreview = async (fileId, filename) => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      toast.error(`Erreur d'aperçu: ${err.message}`);
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "document_conge.pdf") => {
+    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+    try {
+      const blob = await fetchFileBlobUrl(fileId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      toast.error(`Échec du téléchargement: ${err.message}`);
+    }
+  };
+
   // Process demande with proper storage updates
   const traiterDemande = async (demandeId) => {
     setProcessingId(demandeId);
@@ -244,56 +422,6 @@ const DemandesConge = () => {
     }
   };
 
-    const fetchFileBlobUrl = async (fileId) => {
-      if (!fileId) throw new Error("File ID is missing");
-      const token = localStorage.getItem("authToken");
-      try {
-        const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) throw new Error(await response.text());
-        return await response.blob();
-      } catch (error) {
-        console.error("Error fetching file:", error);
-        throw error;
-      }
-    };
-  
-    const handlePreview = async (fileId, filename) => {
-      if (!fileId) return toast.warning("Aucun fichier sélectionné");
-      if (previewFileId === fileId) {
-        setPreviewFileId(null);
-        setPreviewFileUrl(null);
-        return;
-      }
-      try {
-        const blob = await fetchFileBlobUrl(fileId);
-        const url = URL.createObjectURL(blob);
-        setPreviewFileId(fileId);
-        setPreviewFileUrl(url);
-      } catch (err) {
-        toast.error(`Erreur d'aperçu: ${err.message}`);
-      }
-    };
-  
-    const handleDownload = async (fileId, filename = "document_formation.pdf") => {
-      if (!fileId) return toast.warning("Aucun fichier sélectionné");
-      try {
-        const blob = await fetchFileBlobUrl(fileId);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 100);
-      } catch (err) {
-        toast.error(`Échec du téléchargement: ${err.message}`);
-      }
-    };
   // Show loading only when we have no cached data and are loading
   const showLoading = loading && demandes.length === 0;
 
@@ -377,12 +505,11 @@ const DemandesConge = () => {
                 <FiSearch />
                 <input
                   type="text"
-                  placeholder="Rechercher par nom, matricule ou contenu..."
+                  placeholder="Rechercher par nom, matricule ou motif..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
               <button 
                 className="filter-toggle" 
                 onClick={() => setIsFilterExpanded(!isFilterExpanded)}
@@ -479,14 +606,13 @@ const DemandesConge = () => {
             <table className="demandes-table">
               <thead>
                 <tr>
+                  <th>Date Demande</th>
                   <th>Employé</th>
-                  <th>Matricule</th>
                   <th>Période</th>
-                  <th>nbrJours</th>
-                  <th>Temp Depart</th>
-                  <th>Temp Retour</th>
-                  <th>Texte demande</th>
-                  <th>Fichiers</th>
+                  <th>Nombre de jours</th>
+                  <th>Temps départ</th>
+                  <th>Temps retour</th>
+                  <th>Pièces Jointes</th>
                   <th>Statut</th>
                   <th>Actions</th>
                 </tr>
@@ -496,87 +622,79 @@ const DemandesConge = () => {
                   filteredDemandes.map(demande => (
                     <tr key={demande.id}>
                       <td>
-                        <div className="employee-info">
-                          <span className="employee-name">
-                            {demande.employee?.nom || "Inconnu"} {demande.employee?.prenom}
-                          </span>
-                        </div>
+                        {new Date(demande.dateDemande).toLocaleDateString()}
                       </td>
                       <td>
+                        <span className="employee-name">
+                          {demande.matPers?.nom} {demande.matPers?.prenom}
+                        </span>
+                        <br />
                         <span className="employee-matricule">
-                          {demande.employee?.matricule || "N/A"}
+                          {demande.matPers?.matricule || "N/A"}
                         </span>
                       </td>
                       <td>
                         <div className="date-range">
-                          <div>
-                            <FiCalendar className="date-icon" />
-                            {new Date(demande.dateDebut).toLocaleDateString()}
-                          </div>
-                          <div className="date-separator">→</div>
-                          <div>
-                            <FiCalendar className="date-icon" />
-                            {new Date(demande.dateFin).toLocaleDateString()}
-                          </div>
+                          {new Date(demande.dateDebut).toLocaleDateString()} → {new Date(demande.dateFin).toLocaleDateString()}
                         </div>
                       </td>
                       <td>
-                        <span className="employee-matricule">
-                          {demande.nbrJours || "N/A"}
-                        </span>
+                        {demande.nbrJours || "N/A"}
                       </td>
                       <td>
-                        <span className="employee-matricule">
-                          {demande.snjTempDep || "N/A"}
-                        </span>
+                        {demande.snjTempDep || "N/A"}
                       </td>
                       <td>
-                        <span className="employee-matricule">
-                          {demande.snjTempRetour || "N/A"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="employee-matricule">
-                          {demande.texteDemande || "N/A"}
-                        </span>
+                        {demande.snjTempRetour || "N/A"}
                       </td>
                       <td className="file-actions">
-  {demande.files?.length > 0 ? (
-    <div className="file-buttons">
-      {demande.files.map((file) => (
-        <div key={file.id} className="file-button-group">
-          <button
-            className="btn-preview"
-            onClick={() => handlePreview(file.fileId, file.filename)}
-            title={`Aperçu: ${file.filename}`}
-          >
-            <FiEye /> <span className="file-name">{file.filename}</span>
-          </button>
-          <button
-            className="btn-download"
-            onClick={() => handleDownload(file.fileId, file.filename)}
-            title={`Télécharger: ${file.filename}`}
-          >
-            <FiDownload />
-          </button>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <span className="no-file">Aucun fichier</span>
-  )}
-</td>
+                        {demande.files?.length > 0 ? (
+                          <div className="file-buttons">
+                            {demande.files.map((file, index) => (
+                              <React.Fragment key={file.id}>
+                                <button
+                                  className="btn-preview"
+                                  onClick={() => handlePreview(file.fileId, file.filename)}
+                                  title={`Aperçu: ${file.filename}`}
+                                >
+                                  <FiEye />
+                                </button>
+                                <button
+                                  className="btn-download"
+                                  onClick={() => handleDownload(file.fileId, file.filename)}
+                                  title={`Télécharger: ${file.filename}`}
+                                >
+                                  <FiDownload />
+                                </button>
+                                {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="file-actions">Aucun fichier</span>
+                        )}
+                      </td>
                       <td>
-                        <span className={`status-badge ${demande.reponseRH.toLowerCase()}`}>
+                        <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
                           {{
                             I: <><FiClock /> En attente</>,
                             T: <><FiCheck /> Traité</>
-                          }[demande.reponseRH]}
+                          }[demande.reponseRH] || 'Inconnu'}
                         </span>
                       </td>
                       <td>
-                        {demande.reponseRH === "I" ? (
-                          <div className="action-buttons">
+                        <div className="action-buttons">
+                          <button
+                            className="btn-details"
+                            onClick={() => {
+                              setSelectedDemande(demande);
+                              setIsModalOpen(true);
+                            }}
+                            title="Voir les détails"
+                          >
+                            <FiEye />
+                          </button>
+                          {demande.reponseRH === "I" && (
                             <button
                               className="btn-approve"
                               onClick={(e) => {
@@ -584,19 +702,16 @@ const DemandesConge = () => {
                                 traiterDemande(demande.id);
                               }}
                               disabled={processingId === demande.id}
+                              title="Traiter la demande"
                             >
                               {processingId === demande.id ? (
                                 <span className="processing">Traitement...</span>
                               ) : (
-                                <>
-                                  <FiCheck /> Traiter
-                                </>
+                                <FiCheck />
                               )}
                             </button>
-                          </div>
-                        ) : (
-                          <span className="no-actions">Aucune action</span>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -625,6 +740,8 @@ const DemandesConge = () => {
               </tbody>
             </table>
           </div>
+
+          {/* File Preview Modal */}
           {previewFileUrl && (
             <div className="file-preview-modal">
               <div className="file-preview-content">
@@ -654,7 +771,7 @@ const DemandesConge = () => {
                     onClick={() => {
                       const link = document.createElement("a");
                       link.href = previewFileUrl;
-                      link.download = `formation_${previewFileId}.pdf`;
+                      link.download = `conge_${previewFileId}.pdf`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
@@ -666,6 +783,7 @@ const DemandesConge = () => {
               </div>
             </div>
           )}
+
           {/* Demande Details Modal */}
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal
@@ -673,6 +791,9 @@ const DemandesConge = () => {
               onClose={() => setIsModalOpen(false)}
               onApprove={() => traiterDemande(selectedDemande.id)}
               isProcessing={processingId === selectedDemande.id}
+              onPreviewFile={handlePreview}
+              onDownloadFile={handleDownload}
+              theme={theme}
             />
           )}
         </div>

@@ -256,6 +256,11 @@ public class DemandeFormationController {
                         demandeMap.put("dateDebut", demande.getDateDebut());
                         demandeMap.put("nbrJours", demande.getNbrJours());
                         demandeMap.put("texteDemande", demande.getTexteDemande());
+                        demandeMap.put("titre", demande.getTitre());
+                        demandeMap.put("type", demande.getType());
+                        demandeMap.put("theme", demande.getTheme());
+
+                        demandeMap.put("reponseRH", demande.getReponseRH());
                         demandeMap.put("reponseChef", demande.getReponseChef());
 
                         // Add personnel information
