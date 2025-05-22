@@ -10,8 +10,10 @@ const useNotifications = () => {
   const [unviewedCount, setUnviewedCount] = useState(0)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(true)
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false)
   const clientRef = useRef(null)
   const isMountedRef = useRef(true)
+  const subscriptionsRef = useRef([])
 
   // Get RH info from localStorage
   const getRHInfo = useCallback(() => {
@@ -20,21 +22,25 @@ const useNotifications = () => {
       throw new Error("RH user data not found in localStorage")
     }
     const { code_soc: codeSoc } = JSON.parse(userData)
-    return {  codeSoc }
+    return { codeSoc }
   }, [])
 
+  // Cleanup effect
   useEffect(() => {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
+      // Unsubscribe from all WebSocket topics
+      subscriptionsRef.current.forEach(sub => sub.unsubscribe())
       clientRef.current?.deactivate()
     }
   }, [])
 
+  // Fetch all notifications
   const fetchNotifications = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
-      const {  codeSoc } = getRHInfo()
+      const { codeSoc } = getRHInfo()
 
       const response = await fetch(
         `${API_URL}/api/notifications?role=RH&codeSoc=${codeSoc}`,
@@ -48,22 +54,23 @@ const useNotifications = () => {
       const data = await response.json()
       if (isMountedRef.current) {
         setNotifications(data)
-        setLoading(false)
       }
+      return data
     } catch (error) {
       console.error("Fetch notifications error:", error)
       if (isMountedRef.current) {
         setError(error.message)
-        setLoading(false)
       }
+      throw error
     }
   }, [getRHInfo])
 
+  // Fetch unread notifications count
   const fetchUnviewedCount = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
       const userId = localStorage.getItem("userId")
-      const {  codeSoc } = getRHInfo()
+      const { codeSoc } = getRHInfo()
 
       const response = await fetch(
         `${API_URL}/api/notifications/unread-count-for-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
@@ -84,15 +91,27 @@ const useNotifications = () => {
       if (isMountedRef.current) {
         setUnviewedCount(0)
       }
-      return 0
+      throw error
     }
   }, [getRHInfo])
 
+  // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
     try {
       const token = localStorage.getItem("authToken")
       const userId = localStorage.getItem("userId")
       const { codeSoc } = getRHInfo()
+
+      // Optimistic update
+      if (isMountedRef.current) {
+        setUnviewedCount(0)
+        setNotifications(prev => 
+          prev.map(n => ({
+            ...n,
+            readBy: [...(n.readBy || []), userId]
+          }))
+        )
+      }
 
       await fetch(
         `${API_URL}/api/notifications/mark-all-read-by-user?personnelId=${userId}&role=RH&codeSoc=${codeSoc}`,
@@ -100,67 +119,106 @@ const useNotifications = () => {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
           },
         }
       )
 
-      if (isMountedRef.current) {
-        fetchUnviewedCount()
-      }
+      // Verify with server
+      await fetchUnviewedCount()
     } catch (error) {
       console.error("Mark all as read error:", error)
+      // Rollback optimistic update
+      if (isMountedRef.current) {
+        fetchUnviewedCount()
+        fetchNotifications()
+      }
       throw error
     }
-  }, [fetchUnviewedCount, getRHInfo])
+  }, [fetchUnviewedCount, getRHInfo, fetchNotifications])
 
-  useEffect(() => {
-    const initWebSocket = () => {
-      const token = localStorage.getItem("authToken")
-      const { codeSoc } = getRHInfo()
+  // Initialize WebSocket connection
+  const initWebSocket = useCallback(() => {
+    const token = localStorage.getItem("authToken")
+    const userId = localStorage.getItem("userId")
+    const { codeSoc } = getRHInfo()
 
-      const client = new Client({
-        webSocketFactory: () => new SockJS(`${API_URL}/ws`),
-        reconnectDelay: 5000,
-        connectHeaders: { Authorization: `Bearer ${token}` },
-        onConnect: () => {
-          fetchUnviewedCount()
-          
-          client.subscribe(
-            `/topic/notifications/RH/${codeSoc}`,
-            (message) => {
-              const newNotification = JSON.parse(message.body)
-              const userId = localStorage.getItem("userId")
+    const client = new Client({
+      webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      connectHeaders: { Authorization: `Bearer ${token}` },
+      
+      onConnect: () => {
+        // Clear previous subscriptions
+        subscriptionsRef.current.forEach(sub => sub.unsubscribe())
+        subscriptionsRef.current = []
 
-              if (isMountedRef.current) {
-                setNotifications(prev => {
-                  if (!prev.some(n => n.id === newNotification.id)) {
-                    return [newNotification, ...prev]
-                  }
-                  return prev
-                })
-
-                if (!newNotification.readBy?.includes(userId)) {
-                  fetchUnviewedCount()
+        // Subscribe to RH notifications topic
+        const subscription = client.subscribe(
+          `/topic/notifications/RH/${codeSoc}`,
+          (message) => {
+            const newNotification = JSON.parse(message.body)
+            
+            if (isMountedRef.current) {
+              setNotifications(prev => {
+                // Update existing notification or add new one
+                const existingIndex = prev.findIndex(n => n.id === newNotification.id)
+                if (existingIndex >= 0) {
+                  const updated = [...prev]
+                  updated[existingIndex] = newNotification
+                  return updated
                 }
+                return [newNotification, ...prev]
+              })
+
+              // Update unread count based on actual read status
+              if (!newNotification.readBy?.includes(userId)) {
+                setUnviewedCount(prev => prev + 1)
+              } else if (newNotification.readBy?.includes(userId)) {
+                setUnviewedCount(prev => Math.max(0, prev - 1))
               }
             }
-          )
-        },
-        onStompError: (frame) => {
-          console.error("WebSocket error:", frame.headers.message)
+          }
+        )
+        
+        subscriptionsRef.current.push(subscription)
+      },
+      
+      onStompError: (frame) => {
+        console.error("WebSocket error:", frame.headers.message)
+        if (isMountedRef.current) {
           setError("Connection error")
-        },
-      })
+        }
+      },
+      
+      onDisconnect: () => {
+        if (isMountedRef.current) {
+          setError("Disconnected from notifications service")
+        }
+      }
+    })
 
-      client.activate()
-      return client
-    }
+    client.activate()
+    return client
+  }, [getRHInfo])
 
+  // Initial data loading
+  useEffect(() => {
     const fetchInitialData = async () => {
       try {
+        setLoading(true)
         await Promise.all([fetchNotifications(), fetchUnviewedCount()])
+        if (isMountedRef.current) {
+          setInitialLoadComplete(true)
+        }
       } catch (error) {
         console.error("Initial data fetch error:", error)
+      } finally {
+        if (isMountedRef.current) {
+          setLoading(false)
+        }
       }
     }
 
@@ -168,16 +226,20 @@ const useNotifications = () => {
     const client = initWebSocket()
     clientRef.current = client
 
-    return () => client.deactivate()
-  }, [fetchNotifications, fetchUnviewedCount, getRHInfo])
+    return () => {
+      client.deactivate()
+    }
+  }, [fetchNotifications, fetchUnviewedCount, initWebSocket])
 
   return {
     notifications,
     unviewedCount,
     loading,
+    initialLoadComplete,
     error,
     fetchNotifications,
     markAllAsRead,
+    fetchUnviewedCount
   }
 }
 

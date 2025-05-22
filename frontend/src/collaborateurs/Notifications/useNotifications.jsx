@@ -186,7 +186,7 @@ const useNotifications = (role, personnelId = null) => {
     client.onConnect = () => {
       console.log("✅ WebSocket connected")
 
-      const topic = `/topic/notifications/${role}/${userPersonnelId}`
+      const topic = `/topic/notifications/${userPersonnelId}`
 
       client.subscribe(topic, (message) => {
         try {
