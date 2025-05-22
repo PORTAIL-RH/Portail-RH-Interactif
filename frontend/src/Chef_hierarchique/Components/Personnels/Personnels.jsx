@@ -5,7 +5,6 @@ import PersonnelDetailsModal from "./PersonnelsDetailsModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Personnels.css";
-import "../../Colors.css";
 
 const Personnel = () => {
   const [personnelData, setPersonnelData] = useState({

@@ -317,6 +317,7 @@ public class DemandeFormationController {
                 ));
             }
 
+
             // 2. Recherche de la demande et de sa réponse
             DemandeFormation demande = demandeFormationRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de formation non trouvée"));
@@ -335,7 +336,6 @@ public class DemandeFormationController {
                         "message", "Cette demande a déjà été approuvée et ne peut plus être modifiée"
                 ));
             }
-
             // 4. Vérification que le validateur appartient au même service
             Validator validationInfo = validatorRepository.findByChefId(chefId)
                     .stream()
@@ -410,16 +410,17 @@ public class DemandeFormationController {
             demandeFormationRepository.save(demande);
 
             // 9. Notify employee
-            String message = tousValides
-                    ? String.format("Demande de formation de personnel %s a été approuvée", demande.getMatPers().getNom())
-                    : String.format("Validation reçue (Chef %d)", poidChef);
+            //notif
+            String message = String.format("Demande de formation de personnel %s a été approuvée - Validation reçue (Chef %d)",
+                    demande.getMatPers().getNom(), poidChef);
+
 
             notificationService.createNotification(
                     message,
+                    "RH",
                     null,
-                    demande.getMatPers().getId(),
                     null,
-                    null
+                    demande.getMatPers().getCode_soc()
             );
 
             // 10. Mise à jour SSE
@@ -443,6 +444,81 @@ public class DemandeFormationController {
                     "message", "Erreur technique",
                     "details", e.getMessage()
             ));
+        }
+    }
+    @GetMapping("/approved")
+    public ResponseEntity<?> getDemandesFormationApprovedByChef1() {
+        try {
+            // 1. Get all responses where chef1 approved ("O")
+            List<Response_chefs_dem_formation> reponsesChef1 = responseChefsFormationRepository.findByResponseChef1("O");
+
+            // 2. Extract the IDs of approved requests
+            List<String> demandeIds = reponsesChef1.stream()
+                    .map(Response_chefs_dem_formation::getDemandeId)
+                    .collect(Collectors.toList());
+
+            // 3. Get the corresponding formation requests
+            List<DemandeFormation> demandes = demandeFormationRepository.findByIdIn(demandeIds);
+
+            // 4. Format the response with formation details
+            List<Map<String, Object>> response = demandes.stream()
+                    .map(demande -> {
+                        Map<String, Object> demandeMap = new HashMap<>();
+                        demandeMap.put("id", demande.getId());
+                        demandeMap.put("dateDemande", demande.getDateDemande());
+                        demandeMap.put("typeDemande", demande.getTypeDemande());
+                        demandeMap.put("dateDebut", demande.getDateDebut());
+                        demandeMap.put("nbrJours", demande.getNbrJours());
+                        demandeMap.put("texteDemande", demande.getTexteDemande());
+                        demandeMap.put("reponseChef", demande.getReponseChef());
+                        demandeMap.put("reponseRH", demande.getReponseRH());
+
+
+                        // Add personnel information
+                        if (demande.getMatPers() != null) {
+                            Map<String, Object> personnelMap = new HashMap<>();
+                            personnelMap.put("id", demande.getMatPers().getId());
+                            personnelMap.put("matricule", demande.getMatPers().getMatricule());
+                            personnelMap.put("nom", demande.getMatPers().getNom());
+                            personnelMap.put("prenom", demande.getMatPers().getPrenom());
+                            demandeMap.put("matPers", personnelMap);
+                        }
+
+                        // Add formation details
+                        if (demande.getTitre() != null) {
+                            demandeMap.put("titre", demande.getTitre().getTitre());
+                        }
+                        if (demande.getTheme() != null) {
+                            demandeMap.put("theme", demande.getTheme().getTheme());
+                        }
+                        if (demande.getType() != null) {
+                            demandeMap.put("type", demande.getType().getType());
+                        }
+
+                        // Add response details
+                        if (demande.getResponseChefs() != null) {
+                            Map<String, Object> responseMap = new HashMap<>();
+                            responseMap.put("responseChef1", demande.getResponseChefs().getResponseChef1());
+                            responseMap.put("observationChef1", demande.getResponseChefs().getObservationChef1());
+                            responseMap.put("dateChef1", demande.getResponseChefs().getDateChef1());
+                            demandeMap.put("responseChefs", responseMap);
+                        }
+
+                        return demandeMap;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            logger.error("Error fetching approved formation requests", e);
+            return ResponseEntity.internalServerError().body(
+                    Map.of(
+                            "status", "error",
+                            "message", "Erreur lors de la récupération des demandes de formation approuvées",
+                            "error", e.getMessage()
+                    )
+            );
         }
     }
 
@@ -565,6 +641,17 @@ public class DemandeFormationController {
                         demande.getMatPers().getId(),
                         null,
                         null
+                );
+            }
+            else if (demande.getMatPers().getRole() == "RH"){
+                String message = String.format("Demande de formation de personnel %s a été refusé par chef (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+                notificationService.createNotification(
+                        message,
+                        "RH",
+                        null,
+                        null,
+                        demande.getMatPers().getCode_soc()
                 );
             }
 
@@ -983,7 +1070,9 @@ public class DemandeFormationController {
                 "id", personnel.getId(),
                 "nomComplet", personnel.getNom() + " " + personnel.getPrenom(),
                 "role", personnel.getRole(),
-                "email", personnel.getEmail()
+                "email", personnel.getEmail(),
+                "service", personnel.getServiceName()
+
         );
     }
 

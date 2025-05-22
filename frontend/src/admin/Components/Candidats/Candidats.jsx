@@ -14,6 +14,7 @@ import {
   FiBriefcase,
   FiChevronDown,
   FiChevronUp,
+  FiEye,
 } from "react-icons/fi";
 import "./Candidats.css";
 import { FaStar } from "react-icons/fa";
@@ -79,9 +80,15 @@ const CandidatsPostulation = () => {
 
       const formattedCandidates = candidatesArray.map(candidat => ({
         ...candidat,
-        id: candidat.id || candidat._id, // Handle both id and _id cases
-        technicalSkills: candidat.technicalSkills || {},
-        languageSkills: candidat.languageSkills || {},
+        id: candidat.id || candidat._id,
+matchedSkills: Array.isArray(candidat.matchedSkills)
+  ? Object.fromEntries(candidat.matchedSkills.map(skill => [skill, 100]))
+  : (candidat.matchedSkills || {}),
+
+missingSkills: Array.isArray(candidat.missingSkills)
+  ? Object.fromEntries(candidat.missingSkills.map(skill => [skill, 0]))
+  : (candidat.missingSkills || {}),
+
         date_candidature: candidat.dateCandidature || candidat.date_candidature || null,
         score: Math.round(candidat.matchPercentage || candidat.score || 0),
         status: candidat.accepted ? "Accepted" : "Pending",
@@ -98,44 +105,86 @@ const CandidatsPostulation = () => {
     }
   };
 
-  const initializeExpandedSkills = (candidates) => {
-    const initialExpandedState = {};
-    candidates.forEach(candidat => {
-      initialExpandedState[`tech-${candidat.id}`] = false;
-      initialExpandedState[`lang-${candidat.id}`] = false;
-    });
-    setExpandedSkills(initialExpandedState);
-  };
+const initializeExpandedSkills = (candidates) => {
+  const initialExpandedState = {};
+  candidates.forEach(candidat => {
+    initialExpandedState[`tech-${candidat.id}`] = false;
+    initialExpandedState[`lang-${candidat.id}`] = false;
+  });
+  setExpandedSkills(initialExpandedState);
+};
+
 
   useEffect(() => {
     fetchCandidats();
   }, [id]);
 
-  const handleDownloadCV = async (candidatId, cvFilePath) => {
-    try {
-      if (!cvFilePath) throw new Error("No CV file available");
 
-      const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
-        method: "GET",
-        credentials: "include"
-      });
-
-      if (!response.ok) throw new Error("Failed to download CV");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = cvFilePath.split('/').pop() || "CV.pdf";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Error downloading CV:", error);
-      alert("Error downloading CV: " + error.message);
+const handleDownloadCV = async (candidatId) => {
+  try {
+    if (!candidatId) {
+      throw new Error("ID du candidat manquant.");
     }
-  };
+
+    const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Échec du téléchargement du CV : ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    // Try to extract filename from Content-Disposition header
+    const contentDisposition = response.headers.get("Content-Disposition");
+    let filename = "cv.pdf";
+    if (contentDisposition && contentDisposition.includes("filename=")) {
+      filename = contentDisposition.split("filename=")[1].replace(/"/g, "");
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Erreur lors du téléchargement du CV :", error);
+    alert("Erreur lors du téléchargement du CV : " + error.message);
+  }
+};
+
+const handleViewCV = async (candidatId) => {
+  try {
+    if (!candidatId) {
+      throw new Error("ID du candidat manquant.");
+    }
+
+    const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      throw new Error(`Échec de l'ouverture du CV : ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    const fileURL = URL.createObjectURL(blob);
+    window.open(fileURL, "_blank", "noopener,noreferrer");
+
+    // Optional: Clean up after some time
+    setTimeout(() => URL.revokeObjectURL(fileURL), 10000);
+  } catch (error) {
+    console.error("Erreur lors de l'ouverture du CV :", error);
+    alert("Erreur lors de l'ouverture du CV : " + error.message);
+  }
+};
+
 
   const toggleSkills = (skillType, candidatId) => {
     setExpandedSkills(prev => ({
@@ -144,40 +193,48 @@ const CandidatsPostulation = () => {
     }));
   };
 
-  const renderSkills = (skills, skillType, candidatId) => {
-    if (!skills || Object.keys(skills).length === 0) {
-      return <p className="no-skills">No skills specified</p>;
-    }
+const renderSkills = (skills, skillType, candidatId) => {
+  if (!skills || Object.keys(skills).length === 0) {
+    return <p className="no-skills">No skills specified</p>;
+  }
 
-    const isExpanded = expandedSkills[`${skillType}-${candidatId}`];
-    const visibleSkills = isExpanded ? Object.entries(skills) : Object.entries(skills).slice(0, 3);
+  const isExpanded = expandedSkills[`${skillType}-${candidatId}`];
+  const visibleSkills = isExpanded
+    ? Object.entries(skills)
+    : Object.entries(skills).slice(0, 3);
 
-    return (
-      <>
-        <div className="skills-container">
-          {visibleSkills.map(([skill, percentage]) => (
-            <div key={skill} className="skill-item">
-              <div className="skill-info">
-                <span className="skill-name">{skill}</span>
-                <span className="skill-percentage">{Math.round(percentage)}%</span>
-              </div>
-              <div className="skill-bar-container">
-                <div className="skill-bar" style={{ width: `${Math.round(percentage)}%` }}></div>
-              </div>
+  return (
+    <>
+      <div className="skills-container">
+        {visibleSkills.map(([skill, percentage]) => (
+          <div key={skill} className="skill-item">
+            <div className="skill-info">
+              <span className="skill-name">{skill}</span>
+              <span className="skill-percentage">
+                {Math.round(percentage)}%
+              </span>
             </div>
-          ))}
-        </div>
-        {Object.keys(skills).length > 3 && (
-          <button 
-            className="skills-toggle" 
-            onClick={() => toggleSkills(skillType, candidatId)}
-          >
-            {isExpanded ? "Show Less" : "Show More"}
-          </button>
-        )}
-      </>
-    );
-  };
+            <div className="skill-bar-container">
+              <div
+                className="skill-bar"
+                style={{ width: `${Math.round(percentage)}%` }}
+              ></div>
+            </div>
+          </div>
+        ))}
+      </div>
+      {Object.keys(skills).length > 3 && (
+        <button
+          className="skills-toggle"
+          onClick={() => toggleSkills(skillType, candidatId)}
+        >
+          {isExpanded ? "Show Less" : "Show More"}
+        </button>
+      )}
+    </>
+  );
+};
+
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -220,7 +277,6 @@ const CandidatsPostulation = () => {
                   <div className="candidat-info">
                     <h3>{candidat.nom} {candidat.prenom}, {candidat.age} years</h3>
                     <div className="candidat-meta">
-                      <span><FiBriefcase /> {candidat.experience}</span>
                       <span><FaStar /> {candidat.score}% match</span>
                     </div>
                   </div>
@@ -234,16 +290,17 @@ const CandidatsPostulation = () => {
                     <div><FiMail /> {candidat.email}</div>
                     <div><FiPhone /> {candidat.numTel}</div>
                   </div>
+<div className="skills-section">
+  <h4>Matched Skills</h4>
+  {renderSkills(candidat.matchedSkills, "tech", candidat.id)}
+</div>
 
-                  <div className="skills-section">
-                    <h4>matched Skills</h4>
-                    {renderSkills(candidat.matchedSkills, "tech", candidat.id)}
-                  </div>
+<div className="skills-section">
+  <h4>Missing Skills</h4>
+  {renderSkills(candidat.missingSkills, "lang", candidat.id)}
+</div>
 
-                  <div className="skills-section">
-                    <h4>missing Skills </h4>
-                    {renderSkills(candidat.missingSkills, "lang", candidat.id)}
-                  </div>
+
 
                   <div className="detail-item">
                     <span>Application Date:</span>
@@ -252,13 +309,17 @@ const CandidatsPostulation = () => {
                 </div>
 
                 <div className="candidat-footer">
-                  <button
-                    onClick={() => handleDownloadCV(candidat.id, candidat.cvFilePath)}
-                    disabled={!candidat.cvFilePath}
-                    title={candidat.cvFilePath ? "Download CV" : "No CV available"}
-                  >
-                    <FiDownload /> CV
-                  </button>
+<button
+  onClick={() => handleDownloadCV(candidat.id)}
+  className="cv-download-button"
+>
+  <FiDownload /> CV
+</button>
+  <button onClick={() => handleViewCV(candidat.id)} className="cv-view-button">
+    <FiEye /> View
+  </button>
+
+
                 </div>
               </div>
             ))}

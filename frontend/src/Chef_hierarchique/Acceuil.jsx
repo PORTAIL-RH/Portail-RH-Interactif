@@ -5,6 +5,8 @@ import Navbar from "./Components/Navbar/Navbar";
 import { FiUsers, FiClock, FiMapPin, FiRefreshCw, FiBell } from "react-icons/fi";
 import { FaFemale, FaMale } from "react-icons/fa";
 import { toast } from "react-toastify";
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import "./Acceuil.css";
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
@@ -96,7 +98,6 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
 const validateServiceResponse = (response) => {
   if (!response) return { isValid: false, error: "Réponse vide" };
   
-  // Gérer les réponses d'erreur
   if (response.status === "error") {
     return { 
       isValid: false, 
@@ -104,7 +105,6 @@ const validateServiceResponse = (response) => {
     };
   }
 
-  // Gérer les réponses de succès
   if (response.status === "success") {
     return {
       isValid: true,
@@ -114,7 +114,6 @@ const validateServiceResponse = (response) => {
     };
   }
 
-  // Cas par défaut
   return { isValid: false, error: "Structure de réponse invalide" };
 };
 
@@ -140,21 +139,19 @@ const Accueil = () => {
 
   const [personnels, setPersonnels] = useState(() => safeParse("personnels", []));
   const [previousPersonnels, setPreviousPersonnels] = useState([]);
-
   const [demandes, setDemandes] = useState(() => ({
     conge: { data: [], total: 0, approved: 0, pending: 0 },
     formation: { data: [], total: 0, approved: 0, pending: 0 },
     autorisation: { data: [], total: 0, approved: 0, pending: 0 }
   }));
-
   const [previousDemandes, setPreviousDemandes] = useState(() => ({
     conge: { data: [], total: 0, approved: 0, pending: 0 },
     formation: { data: [], total: 0, approved: 0, pending: 0 },
     autorisation: { data: [], total: 0, approved: 0, pending: 0 }
   }));
   const [chefServices, setChefServices] = useState([]);
-
   const [upcomingFormations, setUpcomingFormations] = useState(() => safeParse("upcomingFormations", []));
+  const [approvedLeaves, setApprovedLeaves] = useState(() => safeParse("approvedLeaves", []));
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(() => {
     const stored = localStorage.getItem("lastUpdated");
@@ -168,6 +165,7 @@ const Accueil = () => {
   const serviceInfoRef = useRef(serviceInfo);
   const demandesRef = useRef(demandes);
   const upcomingFormationsRef = useRef(upcomingFormations);
+  const approvedLeavesRef = useRef(approvedLeaves);
 
   useEffect(() => {
     personnelsRef.current = personnels;
@@ -184,6 +182,10 @@ const Accueil = () => {
   useEffect(() => {
     upcomingFormationsRef.current = upcomingFormations;
   }, [upcomingFormations]);
+
+  useEffect(() => {
+    approvedLeavesRef.current = approvedLeaves;
+  }, [approvedLeaves]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || 
@@ -279,6 +281,99 @@ const Accueil = () => {
       };
     }
   }, []);
+
+const fetchApprovedLeaves = useCallback(async (silent = false) => {
+  if (!silent) setLoading(true);
+  try {
+    const token = localStorage.getItem("authToken");
+    const userId = localStorage.getItem("userId");
+    
+    // Use the same endpoint as in the calendar component
+    const data = await fetchWithRetry(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    
+    // Transform the data to match the calendar's expected format
+    const formattedLeaves = data.demandes.map(leave => ({
+      id: leave.id || leave._id,
+      employeeName: `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
+      startDate: leave.dateDebut,
+      endDate: leave.dateFin,
+      type: "ANNUAL", // You might want to get this from leave.typeConge?.nom
+      status: "ACCEPTED",
+      duration: calculateDuration(leave.dateDebut, leave.dateFin),
+      department: leave.matPers?.serviceName || "Unknown",
+      approvedBy: "Manager",
+      description: leave.texteDemande || "Congé annuel"
+    }));
+
+    setApprovedLeaves(formattedLeaves);
+    saveToLocalStorage('approvedLeaves', formattedLeaves);
+  } catch (error) {
+    console.error("Error fetching approved leaves:", error);
+    toast.error("Échec du chargement des demandes de congé approuvées");
+  } finally {
+    if (!silent) setLoading(false);
+  }
+}, [saveToLocalStorage, userId]);
+const calculateDuration = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = Math.abs(end - start);
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+};
+  const tileContent = ({ date, view }) => {
+    if (view !== 'month') return null;
+    
+    const leavesOnDay = approvedLeaves.filter(leave => 
+      date >= leave.start && date <= leave.end
+    );
+
+    if (leavesOnDay.length > 0) {
+      return (
+        <div className="calendar-event-indicator">
+          {leavesOnDay.map((leave, i) => (
+            <div key={i} className={`event-dot ${leave.type.toLowerCase().replace(' ', '-')}`} />
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const tileClassName = ({ date, view }) => {
+    if (view !== 'month') return null;
+    
+    const hasLeave = approvedLeaves.some(leave => 
+      date >= leave.start && date <= leave.end
+    );
+    
+    return hasLeave ? 'has-leave' : null;
+  };
+
+  const onDateClick = (date) => {
+    const leavesOnDate = approvedLeaves.filter(leave => 
+      date >= leave.start && date <= leave.end
+    );
+
+    if (leavesOnDate.length > 0) {
+      toast.info(
+        <div>
+          <h4>Congés le {date.toLocaleDateString('fr-FR')}:</h4>
+          <ul>
+            {leavesOnDate.map((leave, i) => (
+              <li key={i}>
+                {leave.title} - {leave.type} (du {leave.start.toLocaleDateString('fr-FR')} au {leave.end.toLocaleDateString('fr-FR')})
+              </li>
+            ))}
+          </ul>
+        </div>,
+        { autoClose: false }
+      );
+    }
+  };
 
   const detectPersonnelChanges = useCallback((oldPersonnels, newPersonnels) => {
     const updates = [];
@@ -548,14 +643,15 @@ const Accueil = () => {
       await Promise.all([
         fetchServiceData(),
         fetchAllDemandes(),
-        fetchFormations()
+        fetchFormations(),
+        fetchApprovedLeaves()
       ]);
     } catch (e) {
       console.error("Erreur lors du rafraîchissement:", e);
     } finally {
       setLoading(false);
     }
-  }, [fetchServiceData, fetchAllDemandes, fetchFormations]);
+  }, [fetchServiceData, fetchAllDemandes, fetchFormations, fetchApprovedLeaves]);
 
   const toggleUpdatesPanel = () => {
     setShowUpdatesPanel(!showUpdatesPanel);
@@ -570,20 +666,23 @@ const Accueil = () => {
       autorisation: { data: [], total: 0, approved: 0, pending: 0 }
     });
     const storedFormations = safeParse("upcomingFormations", []);
+    const storedLeaves = safeParse("approvedLeaves", []);
 
     if (storedServiceInfo) setServiceInfo(storedServiceInfo);
     if (storedPersonnels) setPersonnels(storedPersonnels);
     if (storedDemandes) setDemandes(storedDemandes);
     if (storedFormations) setUpcomingFormations(storedFormations);
+    if (storedLeaves) setApprovedLeaves(storedLeaves);
 
     const fetchInitialData = async () => {
       await fetchServiceData(true);
       await fetchAllDemandes(true);
       await fetchFormations(true);
+      await fetchApprovedLeaves(true);
     };
     
     fetchInitialData();
-  }, [fetchServiceData, fetchAllDemandes, fetchFormations]);
+  }, [fetchServiceData, fetchAllDemandes, fetchFormations, fetchApprovedLeaves]);
 
   useEffect(() => {
     let isMounted = true;
@@ -596,7 +695,8 @@ const Accueil = () => {
         await Promise.all([
           fetchServiceData(true),
           fetchAllDemandes(true),
-          fetchFormations(true)
+          fetchFormations(true),
+          fetchApprovedLeaves(true)
         ]);
       } catch (e) {
         console.error("Erreur lors du polling:", e);
@@ -611,7 +711,7 @@ const Accueil = () => {
       abortController.abort();
       clearInterval(pollingInterval);
     };
-  }, []); 
+  }, [fetchServiceData, fetchAllDemandes, fetchFormations, fetchApprovedLeaves]); 
 
   return (
     <ErrorBoundary>
@@ -624,11 +724,21 @@ const Accueil = () => {
             <div className="dashboard-header">
               <div className="header-top">
                 <h1>Aperçu du Tableau de Bord</h1>
+                <button 
+                  className={`refresh-btn ${loading ? 'disabled' : ''}`}
+                  onClick={handleRefresh}
+                  disabled={loading}
+                >
+                  <FiRefreshCw /> {loading ? 'Chargement...' : 'Rafraîchir'}
+                </button>
               </div>
               <p className="welcome-message">
                 Bienvenue, <span className="user-name">{userFirstName} {userLastName}</span>. 
                 Chef du département <span className="service-name">{serviceInfo.name}</span>.
               </p>
+              {lastUpdated && (
+                <p className="last-updated">Dernière mise à jour: {new Date(lastUpdated).toLocaleString('fr-FR')}</p>
+              )}
             </div>
           
             <div className="dashboard-grid">
@@ -661,9 +771,33 @@ const Accueil = () => {
                             <p className="stat-value">{serviceInfo.total}</p>
                           </div>
                         </div>
+                        <div className="stat-card">
+                          <div className="stat-icon male">
+                            <FaMale />
+                          </div>
+                          <div className="stat-details">
+                            <h3>Hommes</h3>
+                            <p className="stat-value">
+                              {serviceInfo.maleCount} ({serviceInfo.malePercentage}%)
+                            </p>
+                          </div>
+                        </div>
+                        <div className="stat-card">
+                          <div className="stat-icon female">
+                            <FaFemale />
+                          </div>
+                          <div className="stat-details">
+                            <h3>Femmes</h3>
+                            <p className="stat-value">
+                              {serviceInfo.femaleCount} ({serviceInfo.femalePercentage}%)
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
+
+      
 
                   <div className="dashboard-card">
                     <div className="card-header">
@@ -683,132 +817,132 @@ const Accueil = () => {
                       )}
                     </div>
                   </div>
-                </>
-              )}
 
-              <div className="dashboard-card recent-requests">
-                <div className="card-header">
-                  <h2>Demandes Récentes</h2>
-                </div>
-                <div className="card-content">
-                  <div className="requests-summary">
-                    <div className="request-type conge">
-                      <div className="request-icon">
-                        <FiClock />
-                      </div>
-                      <h3>Congé</h3>
-                      <p className="request-total">{demandes.conge.total}</p>
-                      <div className="status-breakdown">
-                        <div className="status-item">
-                          <span className="status-dot approved"></span>
-                          <span className="status-text">
-                            {demandes.conge.approved} approuvées
-                          </span>
-                        </div>
-                        <div className="status-item">
-                          <span className="status-dot pending"></span>
-                          <span className="status-text">
-                            {demandes.conge.pending} en attente
-                          </span>
-                        </div>
-                      </div>
+                  <div className="dashboard-card recent-requests">
+                    <div className="card-header">
+                      <h2>Demandes Récentes</h2>
                     </div>
-                    <div className="request-type formation">
-                      <div className="request-icon">
-                        <FiUsers />
-                      </div>
-                      <h3>Formation</h3>
-                      <p className="request-total">{demandes.formation.total}</p>
-                      <div className="status-breakdown">
-                        <div className="status-item">
-                          <span className="status-dot approved"></span>
-                          <span className="status-text">
-                            {demandes.formation.approved} approuvées
-                          </span>
+                    <div className="card-content">
+                      <div className="requests-summary">
+                        <div className="request-type conge">
+                          <div className="request-icon">
+                            <FiClock />
+                          </div>
+                          <h3>Congé</h3>
+                          <p className="request-total">{demandes.conge.total}</p>
+                          <div className="status-breakdown">
+                            <div className="status-item">
+                              <span className="status-dot approved"></span>
+                              <span className="status-text">
+                                {demandes.conge.approved} approuvées
+                              </span>
+                            </div>
+                            <div className="status-item">
+                              <span className="status-dot pending"></span>
+                              <span className="status-text">
+                                {demandes.conge.pending} en attente
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="status-item">
-                          <span className="status-dot pending"></span>
-                          <span className="status-text">
-                            {demandes.formation.pending} en attente
-                          </span>
+                        <div className="request-type formation">
+                          <div className="request-icon">
+                            <FiUsers />
+                          </div>
+                          <h3>Formation</h3>
+                          <p className="request-total">{demandes.formation.total}</p>
+                          <div className="status-breakdown">
+                            <div className="status-item">
+                              <span className="status-dot approved"></span>
+                              <span className="status-text">
+                                {demandes.formation.approved} approuvées
+                              </span>
+                            </div>
+                            <div className="status-item">
+                              <span className="status-dot pending"></span>
+                              <span className="status-text">
+                                {demandes.formation.pending} en attente
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="request-type autorisation">
-                      <div className="request-icon">
-                        <FiMapPin />
-                      </div>
-                      <h3>Autorisation</h3>
-                      <p className="request-total">{demandes.autorisation.total}</p>
-                      <div className="status-breakdown">
-                        <div className="status-item">
-                          <span className="status-dot approved"></span>
-                          <span className="status-text">
-                            {demandes.autorisation.approved} approuvées
-                          </span>
-                        </div>
-                        <div className="status-item">
-                          <span className="status-dot pending"></span>
-                          <span className="status-text">
-                            {demandes.autorisation.pending} en attente
-                          </span>
+                        <div className="request-type autorisation">
+                          <div className="request-icon">
+                            <FiMapPin />
+                          </div>
+                          <h3>Autorisation</h3>
+                          <p className="request-total">{demandes.autorisation.total}</p>
+                          <div className="status-breakdown">
+                            <div className="status-item">
+                              <span className="status-dot approved"></span>
+                              <span className="status-text">
+                                {demandes.autorisation.approved} approuvées
+                              </span>
+                            </div>
+                            <div className="status-item">
+                              <span className="status-dot pending"></span>
+                              <span className="status-text">
+                                {demandes.autorisation.pending} en attente
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="dashboard-card upcoming-formations">
-                <div className="card-header">
-                  <h2>Formations à Venir</h2>
-                </div>
-                <div className="card-content">
-                  {upcomingFormations.length > 0 ? (
-                    <div className="formations-list">
-                      {upcomingFormations.map((formation, index) => {
-                        const startDate = new Date(formation.dateDebut);
-                        const endDate = formation.dateFin ? new Date(formation.dateFin) : null;
-                        
-                        return (
-                          <div key={index} className="formation-event">
-                            <div className="calendar-badge">
-                              <div className="calendar-month">
-                                {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
-                              </div>
-                              <div className="calendar-day">{startDate.getDate()}</div>
-                              <div className="calendar-weekday">
-                                {startDate.toLocaleString("fr-FR", { weekday: "short" })}
-                              </div>
-                            </div>
-                            <div className="formation-info">
-                              <h3 className="formation-title">
-                                {formation.theme?.theme} - {formation.titre?.titre }
-                              </h3>
-                              <div className="formation-meta">
-                                <span className="meta-item">
-                                  <FiClock /> 
-                                  {formation.nbrJours} jours
-                                </span>
-                                {formation.lieu && (
-                                  <span className="meta-item">
-                                    <FiMapPin /> {formation.lieu}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="dashboard-card upcoming-formations">
+                    <div className="card-header">
+                      <h2>Formations à Venir</h2>
                     </div>
-                  ) : (
-                    <div className="no-formations">
-                      <FiClock className="no-data-icon" />
-                      <p>Aucune formation à venir</p>
+                    <div className="card-content">
+                      {upcomingFormations.length > 0 ? (
+                        <div className="formations-list">
+                          {upcomingFormations.map((formation, index) => {
+                            const startDate = new Date(formation.dateDebut);
+                            const endDate = formation.dateFin ? new Date(formation.dateFin) : null;
+                            
+                            return (
+                              <div key={index} className="formation-event">
+                                <div className="calendar-badge">
+                                  <div className="calendar-month">
+                                    {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
+                                  </div>
+                                  <div className="calendar-day">{startDate.getDate()}</div>
+                                  <div className="calendar-weekday">
+                                    {startDate.toLocaleString("fr-FR", { weekday: "short" })}
+                                  </div>
+                                </div>
+                                <div className="formation-info">
+                                  <h3 className="formation-title">
+                                    {formation.theme?.theme} - {formation.titre?.titre }
+                                  </h3>
+                                  <div className="formation-meta">
+                                    <span className="meta-item">
+                                      <FiClock /> 
+                                      {formation.nbrJours} jours
+                                    </span>
+                                    {formation.lieu && (
+                                      <span className="meta-item">
+                                        <FiMapPin /> {formation.lieu}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="no-formations">
+                          <FiClock className="no-data-icon" />
+                          <p>Aucune formation à venir</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

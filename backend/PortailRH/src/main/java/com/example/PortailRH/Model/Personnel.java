@@ -372,4 +372,5 @@ public class Personnel {
     public void setChefHierarchique(Personnel chefHierarchique) {
         this.chefHierarchique = chefHierarchique;
     }
+
 }

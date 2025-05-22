@@ -262,10 +262,11 @@ const AjoutCandidature = () => {
                     className="service-select"
                   >
                     <option value="">Sélectionnez un service</option>
-                    {services.map((service) => (
-                      <option key={service.serviceId} value={service.nomService}>
-                        {service.nomService}
-                      </option>
+{services.map((service) => (
+  <option key={service._id} value={service.serviceName}>
+    {service.serviceName}
+  </option>
+
                     ))}
                   </select>
                 </div>
