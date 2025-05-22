@@ -68,4 +68,24 @@ public interface NotificationRepository extends MongoRepository<Notification, St
             + "] }")
     @Update("{ $addToSet: { 'readBy': ?0 } }")
     void markAllAsReadByUser(String personnelId, String role, String serviceId, String codeSoc);
+
+
+// In NotificationRepository.java
+
+    // For RH special case
+    @Query("{ $and: [ "
+            + "{ 'role': ?1 }, "
+            + "{ 'codeSoc': ?2 }, "
+            + "{ 'readBy': { $nin: [ ?0 ] } } "
+            + "] }")
+    List<Notification> findUnreadForUserByRoleAndCodeSoc(String personnelId, String role, String codeSoc);
+
+    // For Chef Hiérarchique with multiple service IDs
+    @Query("{ $and: [ "
+            + "{ 'role': ?1 }, "
+            + "{ 'serviceId': { $in: ?2 } }, "
+            + "{ 'codeSoc': ?3 }, "
+            + "{ 'readBy': { $nin: [ ?0 ] } } "
+            + "] }")
+    List<Notification> findUnreadForChefHierarchique(String personnelId, String role, String[] serviceIds, String codeSoc);
 }

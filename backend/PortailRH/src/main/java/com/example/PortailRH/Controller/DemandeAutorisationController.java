@@ -452,6 +452,20 @@ public class DemandeAutorisationController {
             // 6. Sauvegarde de la réponse
             responseChefsDemAutorisationRepository.save(response);
 
+            // 9. Notification de l'employé
+            if (demande.getMatPers() != null) {
+                String message = String.format("Demande d'autorisation de personnel %s a été approuvée - Validation reçue (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+
+                notificationService.createNotification(
+                        message,
+                        "RH",
+                        null,
+                        null,
+                        demande.getMatPers().getCode_soc()
+                );
+            }
+
             // 7. Vérification si toutes les validations sont complètes
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
@@ -462,21 +476,7 @@ public class DemandeAutorisationController {
             demande.setResponseChefs(response);
             demandeAutorisationRepository.save(demande);
 
-            // 9. Notification de l'employé
-            if (demande.getMatPers() != null) {
-                String message = tousValides
-                    ? String.format("Demande d'autorisation de personnel %s a été approuvée", demande.getMatPers().getNom())
-                    : String.format("Validation reçue (Chef %d)", poidChef);
 
-
-                notificationService.createNotification(
-                        message,
-                        null,
-                        demande.getMatPers().getId(),
-                        null,
-                        null
-                );
-            }
 
             // 10. Mise à jour SSE
             sseController.sendUpdate("updated", demande);
@@ -623,8 +623,19 @@ public class DemandeAutorisationController {
                         null
                 );
             }
+            else if (demande.getMatPers().getRole() == "RH"){
+                String message = String.format("Demande d'autorisation de personnel %s a été refusé par chef (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+                notificationService.createNotification(
+                        message,
+                        "RH",
+                        null,
+                        null,
+                        demande.getMatPers().getCode_soc()
+                );
+            }
+
             // 9. Mise à jour SSE
-            sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",

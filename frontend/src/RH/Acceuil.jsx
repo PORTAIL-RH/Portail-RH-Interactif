@@ -126,7 +126,7 @@ const Accueil = () => {
         stats: {
           activation: `${API_URL}/api/Personnel/activation-status${cacheBuster}`,
           gender: `${API_URL}/api/Personnel/gender-distribution${cacheBuster}`,
-          unread: `${API_URL}/api/notifications/unreadnbr?role=RH${cacheBuster}`,
+          //unread: `${API_URL}/api/notifications/unreadnbr?role=RH${cacheBuster}`,
           total: `${API_URL}/api/notifications/nbr?role=RH${cacheBuster}`,
           personnel: `${API_URL}/api/Personnel/active${cacheBuster}`
         },

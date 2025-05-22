@@ -149,24 +149,31 @@ const useNotifications = () => {
           
           // Abonnement unique pour toutes les notifications du Chef Hiérarchique
           client.subscribe(
-            `/topic/notifications/Chef Hiérarchique/${codeSoc}`,
-            (message) => {
-              const newNotification = JSON.parse(message.body)
-              const userId = localStorage.getItem("userId")
+            // In your frontend WebSocket initialization
+              serviceIds.forEach(serviceId => {
+                client.subscribe(
+                  `/topic/notifications/Chef Hiérarchique/${serviceId}/${codeSoc}`,
+                    (message) => {
+                      const newNotification = JSON.parse(message.body)
+                      const userId = localStorage.getItem("userId")
 
-              if (isMountedRef.current) {
-                setNotifications(prev => {
-                  if (!prev.some(n => n.id === newNotification.id)) {
-                    return [newNotification, ...prev]
-                  }
-                  return prev
-                })
+                      if (isMountedRef.current) {
+                        setNotifications(prev => {
+                          if (!prev.some(n => n.id === newNotification.id)) {
+                            return [newNotification, ...prev]
+                          }
+                          return prev
+                        })
 
-                if (!newNotification.readBy?.includes(userId)) {
-                  setUnviewedCount(prev => prev + 1)
-                }
-              }
-            }
+                        if (!newNotification.readBy?.includes(userId)) {
+                          setUnviewedCount(prev => prev + 1)
+                        }
+                      }
+                    }
+                  
+                )
+              })
+            
           )
         },
         onStompError: (frame) => {

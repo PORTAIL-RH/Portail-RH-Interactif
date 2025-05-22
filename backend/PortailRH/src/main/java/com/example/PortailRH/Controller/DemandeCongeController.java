@@ -519,6 +519,20 @@ public class DemandeCongeController {
             // 6. Save validation response
             responseChefsDemCongeRepository.save(response);
 
+            // 9. Notify employee
+            if (demande.getMatPers() != null) {
+                String message = String.format("Demande de congé de personnel %s a été approuvée - Validation reçue (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+
+                notificationService.createNotification(
+                        message,
+                        "RH",
+                        null,
+                        null,
+                        demande.getMatPers().getCode_soc()
+                );
+            }
+
             // 7. Check if all validations are complete
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
@@ -529,20 +543,7 @@ public class DemandeCongeController {
             demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
 
-            // 9. Notify employee
-            if (demande.getMatPers() != null) {
-                String message = tousValides
-                        ? "Votre demande de congé a été approuvée (en attente validations RH)"
-                        : String.format("Validation reçue (Chef %d)", poidChef);
 
-                notificationService.createNotification(
-                        message,
-                        null,
-                        demande.getMatPers().getId(),
-                        null,
-                        null
-                );
-            }
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -684,6 +685,17 @@ public class DemandeCongeController {
                         demande.getMatPers().getId(),
                         null,
                         null
+                );
+            }
+            else if (demande.getMatPers().getRole() == "RH"){
+                String message = String.format("Demande de congé de personnel %s a été refusé par chef (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+                notificationService.createNotification(
+                        message,
+                        "RH",
+                        null,
+                        null,
+                        demande.getMatPers().getCode_soc()
                 );
             }
 

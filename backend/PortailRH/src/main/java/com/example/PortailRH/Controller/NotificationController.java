@@ -35,7 +35,7 @@ public class NotificationController {
             @RequestParam String role,
             @RequestParam(required = false) String personnelId,
             @RequestParam(required = false)  String[] serviceId,  // Made optional
-            @RequestParam String codeSoc) {
+            @RequestParam(required = false) String codeSoc) {
 
         List<Notification> notifications;
 
@@ -115,7 +115,7 @@ public class NotificationController {
 
     // Mark all notifications as read for a specific role and personnelId
     // Expects a role and personnelId in a PUT request body, validates them, and calls the service method.
-   @PutMapping("/mark-all-read")
+    @PutMapping("/mark-all-read")
     public ResponseEntity<?> markAllAsRead(@RequestBody Map<String, String> request) {
         String role = request.get("role");
         String personnelId = request.get("personnelId");
@@ -131,7 +131,7 @@ public class NotificationController {
             }
         }
 
-       int updatedCount = notificationService.markAllAsRead(role, personnelId);
+        int updatedCount = notificationService.markAllAsRead(role, personnelId);
         return ResponseEntity.ok(Map.of(
                 "message", "All notifications marked as read",
                 "updatedCount", updatedCount
@@ -173,19 +173,23 @@ public class NotificationController {
     public ResponseEntity<Integer> getUnreadCountForUser(
             @RequestParam String personnelId,
             @RequestParam String role,
-            @RequestParam(required = false) String serviceId,  // Make serviceId optional
+            @RequestParam(required = false) String[] serviceId,  // Change to String[]
             @RequestParam String codeSoc) {
 
         List<Notification> notifications;
 
         if ("RH".equalsIgnoreCase(role)) {
             // For RH role, don't use serviceId in the query
-            notifications = notificationRepository.findUnreadForUser(
-                    personnelId, role, null, codeSoc);  // Pass null for serviceId
-        } else {
-            // For other roles, use all parameters including serviceId
-            notifications = notificationRepository.findUnreadForUser(
+            notifications = notificationRepository.findUnreadForUserByRoleAndCodeSoc(
+                    personnelId, role, codeSoc);
+        } else if ("Chef Hiérarchique".equalsIgnoreCase(role)) {
+            // For Chef Hiérarchique, use the serviceId array
+            notifications = notificationRepository.findUnreadForChefHierarchique(
                     personnelId, role, serviceId, codeSoc);
+        } else {
+            // For other roles
+            notifications = notificationRepository.findUnreadForUser(
+                    personnelId, role, serviceId != null && serviceId.length > 0 ? serviceId[0] : null, codeSoc);
         }
 
         return ResponseEntity.ok(notifications.size());
