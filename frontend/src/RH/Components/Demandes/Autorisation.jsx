@@ -1,12 +1,126 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiDownload, FiEye, FiX } from "react-icons/fi";
+import { FiSearch, FiFilter, FiCalendar, FiCheck, FiClock, FiRefreshCw, FiFileText, FiDownload, FiEye, FiX, FiInfo } from "react-icons/fi";
 import "./Demandes.css";
-import DemandeDetailsModal from "./DemandeDetailsModal";
 import { API_URL } from "../../../config";
 import { toast, ToastContainer } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
+import "./DemandeDetailsModal.css";
+
+const DemandeDetailsModal = ({ 
+  demande, 
+  onClose, 
+  onApprove, 
+  isProcessing, 
+  onPreviewFile, 
+  onDownloadFile,
+  theme 
+}) => {
+  return (
+    <div className={`modal-overlay ${theme}`}>
+      <div className={`modal-content ${theme}`}>
+        <div className="modal-header">
+          <h2>Détails de la Demande d'Autorisation</h2>
+          <button className="close-button" onClick={onClose}>
+            <FiX />
+          </button>
+        </div>
+        
+        <div className="modal-body">
+          <div className="detail-section">
+            <h3>Informations Employé</h3>
+            <div className="detail-row">
+              <span className="detail-label">Nom:</span>
+              <span className="detail-value">{demande.matPers?.nom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Prénom:</span>
+              <span className="detail-value">{demande.matPers?.prenom || "Inconnu"}</span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Matricule:</span>
+              <span className="detail-value">{demande.matPers?.matricule || "N/A"}</span>
+            </div>
+          </div>
+
+          <div className="detail-section">
+            <h3>Détails Autorisation</h3>
+            <div className="detail-row">
+              <span className="detail-label">Date Demande:</span>
+              <span className="detail-value">
+                {new Date(demande.dateDemande).toLocaleDateString()}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Période:</span>
+              <span className="detail-value">
+                {demande.heureSortie}h{demande.minuteSortie?.toString().padStart(2, '0') || '00'} - {demande.heureRetour}h{demande.minuteRetour?.toString().padStart(2, '0') || '00'}
+              </span>
+            </div>
+            <div className="detail-row">
+              <span className="detail-label">Motif:</span>
+              <span className="detail-value">{demande.texteDemande || "Aucun motif spécifié"}</span>
+            </div>
+          </div>
+
+          {demande.files?.length > 0 && (
+            <div className="detail-section">
+              <h3>Fichiers Joints</h3>
+              {demande.files.map((file) => (
+                <div key={file.id} className="file-item">
+                  <span className="file-name">{file.filename}</span>
+                  <div className="file-actions">
+                    <button 
+                      className="btn-preview" 
+                      onClick={() => onPreviewFile(file.fileId)}
+                      title="Aperçu"
+                    >
+                      <FiEye />
+                    </button>
+                    <button 
+                      className="btn-download"
+                      onClick={() => onDownloadFile(file.fileId, file.filename)}
+                      title="Télécharger"
+                    >
+                      <FiDownload />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="modal-footer">
+          <div className="status-display">
+            <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
+              {{
+                I: <><FiClock /> En attente</>,
+                T: <><FiCheck /> Traité</>
+              }[demande.reponseRH] || 'Inconnu'}
+            </span>
+          </div>
+          
+          <div className="action-buttons">
+            {demande.reponseRH === "I" && (
+              <button
+                className={`btn-approve ${isProcessing ? 'processing' : ''}`}
+                onClick={onApprove}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Traitement en cours...' : <><FiCheck /> Traiter la demande</>}
+              </button>
+            )}
+            <button className="btn-close" onClick={onClose}>
+              Fermer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DemandesAutorisation = () => {
   // Load initial data from localStorage with proper structure
@@ -418,7 +532,6 @@ const DemandesAutorisation = () => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              
               <button 
                 className="filter-toggle" 
                 onClick={() => setIsFilterExpanded(!isFilterExpanded)}
@@ -515,14 +628,13 @@ const DemandesAutorisation = () => {
             <table className="demandes-table">
               <thead>
                 <tr>
-                  <th>Employé</th>
-                  <th>Matricule</th>
                   <th>Date Demande</th>
-                  <th>Heure Sortie</th>
-                  <th>Pièces Jointes</th>
+                  <th>Employé</th>
+                  <th>Période</th>
                   <th>Motif</th>
+                  <th>Pièces Jointes</th>
                   <th>Statut</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -530,65 +642,71 @@ const DemandesAutorisation = () => {
                   filteredDemandes.map(demande => (
                     <tr key={demande.id}>
                       <td>
-                        <div className="employee-info">
-                          <span className="employee-name">
-                            {demande.matPers?.nom || "Inconnu"} {demande.matPers?.prenom}
-                          </span>
-                        </div>
+                        {new Date(demande.dateDemande).toLocaleDateString()}
                       </td>
                       <td>
+                        <span className="employee-name">
+                          {demande.matPers?.nom} {demande.matPers?.prenom}
+                        </span>
+                        <br />
                         <span className="employee-matricule">
                           {demande.matPers?.matricule || "N/A"}
                         </span>
                       </td>
                       <td>
-                        {new Date(demande.dateDemande).toLocaleDateString()}
-                      </td>
-                      <td>
                         {demande.heureSortie}h{demande.minuteSortie?.toString().padStart(2, '0') || '00'} - {demande.heureRetour}h{demande.minuteRetour?.toString().padStart(2, '0') || '00'}
                       </td>
-                      <td className="file-actions">
-  {demande.files?.length > 0 ? (
-    <div className="file-buttons">
-      {demande.files.map((file, index) => (
-        <React.Fragment key={file.id}>
-          <button
-            className="btn-preview"
-            onClick={() => handlePreview(file.fileId)}
-            title={`Aperçu: ${file.filename}`}
-          >
-            <FiEye />
-          </button>
-          <button
-            className="btn-download"
-            onClick={() => handleDownload(file.fileId, file.filename)}
-            title={`Télécharger: ${file.filename}`}
-          >
-            <FiDownload />
-          </button>
-          {index < demande.files.length - 1 && <span className="file-separator">|</span>}
-        </React.Fragment>
-      ))}
-    </div>
-  ) : (
-    <span className="file-actions">Aucun fichier</span>
-  )}
-</td>
                       <td className="demande-text">
                         {demande.texteDemande || "Aucun motif spécifié"}
                       </td>
-
+                      <td className="file-actions">
+                        {demande.files?.length > 0 ? (
+                          <div className="file-buttons">
+                            {demande.files.map((file, index) => (
+                              <React.Fragment key={file.id}>
+                                <button
+                                  className="btn-preview"
+                                  onClick={() => handlePreview(file.fileId)}
+                                  title={`Aperçu: ${file.filename}`}
+                                >
+                                  <FiEye />
+                                </button>
+                                <button
+                                  className="btn-download"
+                                  onClick={() => handleDownload(file.fileId, file.filename)}
+                                  title={`Télécharger: ${file.filename}`}
+                                >
+                                  <FiDownload />
+                                </button>
+                                {index < demande.files.length - 1 && <span className="file-separator">|</span>}
+                              </React.Fragment>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="file-actions">Aucun fichier</span>
+                        )}
+                      </td>
                       <td>
-                        <span className={`status-badge ${demande.reponseRH.toLowerCase()}`}>
+                        <span className={`status-badge ${(demande.reponseRH || '').toLowerCase()}`}>
                           {{
                             I: <><FiClock /> En attente</>,
                             T: <><FiCheck /> Traité</>
-                          }[demande.reponseRH]}
+                          }[demande.reponseRH] || 'Inconnu'}
                         </span>
                       </td>
                       <td>
-                        {demande.reponseRH === "I" ? (
-                          <div className="action-buttons">
+                        <div className="action-buttons">
+                          <button
+                            className="btn-details"
+                            onClick={() => {
+                              setSelectedDemande(demande);
+                              setIsModalOpen(true);
+                            }}
+                            title="Voir les détails"
+                          >
+                            <FiEye />
+                          </button>
+                          {demande.reponseRH === "I" && (
                             <button
                               className="btn-approve"
                               onClick={(e) => {
@@ -596,25 +714,22 @@ const DemandesAutorisation = () => {
                                 traiterDemande(demande.id);
                               }}
                               disabled={processingId === demande.id}
+                              title="Traiter la demande"
                             >
                               {processingId === demande.id ? (
                                 <span className="processing">Traitement...</span>
                               ) : (
-                                <>
-                                  <FiCheck /> Traiter
-                                </>
+                                <FiCheck />
                               )}
                             </button>
-                          </div>
-                        ) : (
-                          <span className="no-actions">Traité</span>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr className="no-results">
-                    <td colSpan="8">
+                    <td colSpan="7">
                       <div className="no-results-content">
                         <FiFilter size={48} />
                         <h3>Aucune demande trouvée</h3>
@@ -649,6 +764,7 @@ const DemandesAutorisation = () => {
                     onClick={() => {
                       setPreviewFileId(null);
                       setPreviewFileUrl(null);
+                      URL.revokeObjectURL(previewFileUrl);
                     }}
                   >
                     <FiX />
@@ -667,7 +783,7 @@ const DemandesAutorisation = () => {
                     onClick={() => {
                       const link = document.createElement("a");
                       link.href = previewFileUrl;
-                      link.download = "document.pdf";
+                      link.download = `autorisation_${previewFileId}.pdf`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
@@ -689,6 +805,7 @@ const DemandesAutorisation = () => {
               isProcessing={processingId === selectedDemande.id}
               onPreviewFile={handlePreview}
               onDownloadFile={handleDownload}
+              theme={theme}
             />
           )}
         </div>

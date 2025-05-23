@@ -325,48 +325,58 @@ const handleAction = async () => {
   );
 
   try {
-    // 1. Get current demande
+    // 1. Get current demande and user info
     const currentDemande = demandes.find(d => d.id_libre_demande === currentDemandeId);
     if (!currentDemande) throw new Error("Demande introuvable");
+
+    const userInfo = getUserInfo();
+    if (!userInfo || !userInfo.id) throw new Error("User info not found");
 
     // 2. Check permissions
     const currentPoid = getUserPoidForDemande(currentDemande);
     if (!currentPoid) throw new Error("Non autorisé");
 
-    // 3. Make API call
-    const response = await fetch(
-      `${API_URL}/api/demande-formation/${
-        actionType === "approve" ? "valider" : "refuser"
-      }/${currentDemandeId}`,
-      {
-        method: "PUT",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          observation: observation || "Action effectuée"
-        })
-      }
+    // 3. Prepare the request URL with chefId parameter
+    const endpoint = actionType === "approve" ? "valider" : "refuser";
+    const url = new URL(
+      `${API_URL}/api/demande-formation/${endpoint}/${currentDemandeId}`
     );
+    url.searchParams.append("chefId", userInfo.id);
 
-    if (!response.ok) throw new Error(await response.text());
+    // 4. Make API call
+    const response = await fetch(url, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("authToken")}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        observation: observation || "Action effectuée"
+      })
+    });
 
-    // 4. Update LOCAL state only after successful API call
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Erreur lors de la requête");
+    }
+
+    // 5. Update LOCAL state only after successful API call
     const updatedDemandes = demandes.map(d => {
       if (d.id_libre_demande !== currentDemandeId) return d;
       
+      const now = new Date().toISOString();
       return {
         ...d,
         reponseChef: {
           ...d.reponseChef,
           [`responseChef${currentPoid}`]: actionType === "approve" ? "O" : "N",
-          [`observationChef${currentPoid}`]: observation || ""
+          [`observationChef${currentPoid}`]: observation || "",
+          [`dateChef${currentPoid}`]: now
         }
       };
     });
 
-    // 5. Update localStorage while preserving other demand types
+    // 6. Update localStorage while preserving other demand types
     const existingData = JSON.parse(localStorage.getItem("demandes") || "{}");
     const updatedData = {
       ...existingData,
@@ -392,12 +402,12 @@ const handleAction = async () => {
 
     localStorage.setItem("demandes", JSON.stringify(updatedData));
 
-    // 6. Update state
+    // 7. Update state
     setDemandesData(updatedData);
     setDemandes(updatedDemandes);
     setFilteredDemandes(updatedDemandes);
 
-    // 7. Close modal
+    // 8. Close modal
     closeActionModal();
     toast.update(toastId, {
       render: `Demande ${actionType === "approve" ? "approuvée" : "rejetée"}`,
@@ -406,6 +416,7 @@ const handleAction = async () => {
     });
 
   } catch (error) {
+    console.error("Action error:", error);
     toast.update(toastId, {
       render: error.message || "Erreur",
       type: "error",

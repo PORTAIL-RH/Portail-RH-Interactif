@@ -1,8 +1,25 @@
 "use client"
+import { useState } from "react"
 import "./PersonnelsModal.css"
 
 const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
+  const [copiedField, setCopiedField] = useState(null)
+
   if (!personnel) return null
+
+  const copyToClipboard = (text, field) => {
+    if (!text || text === "N/A") return
+
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        setCopiedField(field)
+        setTimeout(() => setCopiedField(null), 2000)
+      })
+      .catch((err) => {
+        console.error("Failed to copy: ", err)
+      })
+  }
 
   return (
     <div className={`modal-overlay ${theme}`}>
@@ -43,15 +60,141 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
               </div>
               <div className="detail-item">
                 <span className="detail-label">Email:</span>
-                <span className="detail-value">{personnel.email || "N/A"}</span>
+                <div className="detail-value-with-copy">
+                  <span className="detail-value">{personnel.email || "N/A"}</span>
+                  {personnel.email && (
+                    <button
+                      className="copy-button"
+                      onClick={() => copyToClipboard(personnel.email, "email")}
+                      aria-label="Copy email"
+                    >
+                      {copiedField === "email" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon success"
+                        >
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="detail-item">
                 <span className="detail-label">Phone:</span>
-                <span className="detail-value">{personnel.telephone || "N/A"}</span>
+                <div className="detail-value-with-copy">
+                  <span className="detail-value">{personnel.telephone || "N/A"}</span>
+                  {personnel.telephone && (
+                    <button
+                      className="copy-button"
+                      onClick={() => copyToClipboard(personnel.telephone, "phone")}
+                      aria-label="Copy phone number"
+                    >
+                      {copiedField === "phone" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon success"
+                        >
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="detail-item">
                 <span className="detail-label">CIN:</span>
-                <span className="detail-value">{personnel.cin || "N/A"}</span>
+                <div className="detail-value-with-copy">
+                  <span className="detail-value">{personnel.cin || "N/A"}</span>
+                  {personnel.cin && (
+                    <button
+                      className="copy-button"
+                      onClick={() => copyToClipboard(personnel.cin, "cin")}
+                      aria-label="Copy CIN"
+                    >
+                      {copiedField === "cin" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon success"
+                        >
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="copy-icon"
+                        >
+                          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -118,4 +261,3 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
 }
 
 export default PersonnelDetailsModal
-

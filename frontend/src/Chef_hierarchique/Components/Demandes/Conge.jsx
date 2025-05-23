@@ -519,8 +519,6 @@ const handleActionButtonClick = (e, demande, action) => {
   openActionModal(demande.id, action);
 };
 
-
-
   const openModal = (demande) => {
     setSelectedDemande(demande);
     setIsModalOpen(true);

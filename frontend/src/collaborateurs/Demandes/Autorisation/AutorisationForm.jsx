@@ -55,12 +55,42 @@ const AutorisationForm = () => {
     setFile(e.target.files[0])
   }
 
+  const validateTime = (time) => {
+    if (!time) return false;
+    
+    const [hours, minutes] = time.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes;
+    
+    // 9h = 540 minutes, 18h = 1080 minutes
+    return totalMinutes >= 540 && totalMinutes <= 1080;
+  }
+
   const validateForm = () => {
     const newErrors = {}
 
     if (!formData.dateDebut) newErrors.dateDebut = "La date est requise"
-    if (!formData.heureSortie) newErrors.heureSortie = "L'heure de sortie est requise"
-    if (!formData.heureRetour) newErrors.heureRetour = "L'heure de retour est requise"
+    if (!formData.heureSortie) {
+      newErrors.heureSortie = "L'heure de sortie est requise"
+    } else if (!validateTime(formData.heureSortie)) {
+      newErrors.heureSortie = "L'heure de sortie doit être entre 9h et 18h"
+    }
+    
+    if (!formData.heureRetour) {
+      newErrors.heureRetour = "L'heure de retour est requise"
+    } else if (!validateTime(formData.heureRetour)) {
+      newErrors.heureRetour = "L'heure de retour doit être entre 9h et 18h"
+    }
+    
+    // Vérifier que l'heure de retour est après l'heure de sortie
+    if (formData.heureSortie && formData.heureRetour) {
+      const sortie = new Date(`2000-01-01T${formData.heureSortie}`);
+      const retour = new Date(`2000-01-01T${formData.heureRetour}`);
+      
+      if (retour <= sortie) {
+        newErrors.heureRetour = "L'heure de retour doit être après l'heure de sortie"
+      }
+    }
+
     if (!formData.texteDemande) newErrors.texteDemande = "Le texte de la demande est requis"
 
     setErrors(newErrors)
@@ -173,7 +203,7 @@ const AutorisationForm = () => {
                 <div className="form-group">
                   <label htmlFor="heureSortie">
                     <FiClock className="form-icon" />
-                    Heure de Sortie
+                    Heure de Sortie (9h-18h)
                   </label>
                   <input
                     type="time"
@@ -182,6 +212,8 @@ const AutorisationForm = () => {
                     value={formData.heureSortie}
                     onChange={handleChange}
                     className={errors.heureSortie ? "error" : ""}
+                    min="09:00"
+                    max="18:00"
                   />
                   {errors.heureSortie && <span className="error-text">{errors.heureSortie}</span>}
                 </div>
@@ -189,7 +221,7 @@ const AutorisationForm = () => {
                 <div className="form-group">
                   <label htmlFor="heureRetour">
                     <FiClock className="form-icon" />
-                    Heure de Retour
+                    Heure de Retour (9h-18h)
                   </label>
                   <input
                     type="time"
@@ -198,6 +230,8 @@ const AutorisationForm = () => {
                     value={formData.heureRetour}
                     onChange={handleChange}
                     className={errors.heureRetour ? "error" : ""}
+                    min="09:00"
+                    max="18:00"
                   />
                   {errors.heureRetour && <span className="error-text">{errors.heureRetour}</span>}
                 </div>
@@ -249,4 +283,3 @@ const AutorisationForm = () => {
 }
 
 export default AutorisationForm
-

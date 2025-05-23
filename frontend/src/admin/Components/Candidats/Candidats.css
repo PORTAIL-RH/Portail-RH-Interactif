@@ -6,7 +6,7 @@
   --text-light: #f9fafb;
   --text-dark: #1f2937;
   --bg-light: #ffffff;
-  --bg-dark: #1e1e2d;
+  --bg-dark: #06051f;
   --border-light: #e5e7eb;
   --border-dark: #374151;
   --card-bg-light: #ffffff;
@@ -68,8 +68,24 @@
   padding: 1.5rem;
   min-height: calc(100vh - var(--navbar-height));
 }
-/* Back button styling */
 
+/* Header section */
+.header-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.candidate-count {
+  font-size: 0.875rem;
+  color: var(--muted-text);
+  background-color: var(--skill-bar-bg);
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* Back button styling */
 .back-button {
   display: flex;
   align-items: center;
@@ -164,7 +180,7 @@
   flex: 1;
 }
 
-.candidat-name {
+.candidat-info h3 {
   font-size: 1.125rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
@@ -178,15 +194,10 @@
   color: var(--muted-text);
 }
 
-.candidat-experience,
-.candidat-location {
+.candidat-meta span {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-}
-
-.meta-icon {
-  color: var(--warning-color);
 }
 
 /* Status badge */
@@ -234,99 +245,50 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.contact-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   font-size: 0.875rem;
 }
 
-.contact-icon {
-  color: var(--primary-color);
-  flex-shrink: 0;
+.candidat-contact div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Skills section */
-/* Adding to your existing CSS - just the skills section with show more/less functionality */
-
-/* Skills section with show more/less */
 .skills-section {
-  margin-bottom: 0.75rem;
-  position: relative;
+  margin-bottom: 1rem;
 }
 
 .skills-section h4 {
   font-size: 0.875rem;
   font-weight: 600;
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.5rem 0;
   color: var(--text-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .skills-container {
-  max-height: 70px; /* Show approximately 2-3 rows of skills */
-  overflow: hidden;
-  position: relative;
-  transition: max-height 0.3s ease;
-}
-
-.skills-container.expanded {
-  max-height: 500px; /* Large enough to show all skills */
-}
-
-/* Gradient fade for collapsed state */
-.skills-container:not(.expanded)::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 30px;
-  background: linear-gradient(to bottom, transparent, var(--card-bg));
-  pointer-events: none;
-}
-
-.skills-toggle {
-  color: var(--primary-color);
-  background: none;
-  border: none;
-  font-size: 0.75rem;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 0.25rem 0;
   display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.skills-toggle:hover {
-  color: var(--primary-hover);
-  text-decoration: underline;
-}
-
-.skills-toggle-wrapper {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Keep your existing skill item styling */
 .skill-item {
-  display: inline-block;
-  margin: 0 0.5rem 0.5rem 0;
-  padding: 0.375rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
   background-color: var(--skill-bar-bg);
   border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
-  font-weight: 500;
+}
+
+.skill-info {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
 }
 
 .skill-name {
-  margin-right: 0.25rem;
+  font-weight: 500;
 }
 
 .skill-percentage {
@@ -334,30 +296,43 @@
   font-weight: 600;
 }
 
-
-/* Candidat details */
-.candidat-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: auto;
+/* Hide the progress bars for a simpler design */
+.skill-bar-container {
+  display: none;
 }
 
-.detail-item {
-  flex: 1;
-  min-width: 120px;
-}
-
-.detail-label {
-  display: block;
+.no-skills {
   font-size: 0.75rem;
   color: var(--muted-text);
-  margin-bottom: 0.25rem;
+  font-style: italic;
 }
 
-.detail-value {
+.skills-toggle {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 0.75rem;
+  padding: 0.25rem 0;
+  margin-top: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+}
+
+.skills-toggle:hover {
+  text-decoration: underline;
+}
+
+/* Detail item */
+.detail-item {
+  display: flex;
+  justify-content: space-between;
   font-size: 0.875rem;
-  font-weight: 500;
+}
+
+.detail-item span:first-child {
+  color: var(--muted-text);
 }
 
 /* Candidat footer */
@@ -369,7 +344,7 @@
   gap: 0.75rem;
 }
 
-.action-button {
+.candidat-footer button {
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -378,101 +353,48 @@
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.action-button.download {
   background-color: var(--primary-color);
   color: white;
   border: none;
+  transition: background-color 0.2s ease;
 }
 
-.action-button.download:hover {
+.candidat-footer button:hover {
   background-color: var(--primary-hover);
+}
+
+.candidat-footer button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* Loading container */
 .loading-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
   justify-content: center;
-  padding: 3rem;
-  background-color: var(--card-bg);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-color);
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: var(--primary-color);
-  animation: spin 1s linear infinite;
-  margin-bottom: 1rem;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+  align-items: center;
+  height: 200px;
+  font-size: 1rem;
+  color: var(--muted-text);
 }
 
 /* Error container */
 .error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: 0.5rem;
+  color: var(--danger-color);
+}
+
+/* Empty state */
+.empty-state {
   padding: 3rem;
   text-align: center;
   background-color: var(--card-bg);
   border-radius: 0.75rem;
   border: 1px solid var(--border-color);
-}
-
-.error-icon {
-  color: var(--danger-color);
-  margin-bottom: 1rem;
-}
-
-.error-container h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0 0 0.5rem 0;
-}
-
-.error-container p {
   color: var(--muted-text);
-  margin-bottom: 1.5rem;
-}
-
-.retry-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.retry-button:hover {
-  background-color: var(--primary-hover);
-}
-
-/* Dark mode specific adjustments */
-:root.dark .loading-spinner {
-  border-color: rgba(255, 255, 255, 0.1);
-  border-top-color: var(--primary-color);
 }
 
 /* Responsive adjustments */
@@ -500,7 +422,7 @@
     gap: 0.75rem;
   }
 
-  .candidat-status {
+  .status-badge {
     align-self: flex-start;
   }
 
@@ -512,6 +434,4 @@
   .candidat-footer {
     justify-content: center;
   }
-
-  
 }

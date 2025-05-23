@@ -35,8 +35,7 @@ const Accueil = () => {
   const [dashboardStats, setDashboardStats] = useState(() => 
     getCache('dashboardStats', {
       personnel: { activated: 0, nonActivated: 0, total: 0 },
-      gender: { male: 0, female: 0, total: 0 },
-      notifications: { unread: 0, total: 0 }
+      gender: { male: 0, female: 0, total: 0 }
     })
   )
 
@@ -126,8 +125,6 @@ const Accueil = () => {
         stats: {
           activation: `${API_URL}/api/Personnel/activation-status${cacheBuster}`,
           gender: `${API_URL}/api/Personnel/gender-distribution${cacheBuster}`,
-          //unread: `${API_URL}/api/notifications/unreadnbr?role=RH${cacheBuster}`,
-          total: `${API_URL}/api/notifications/nbr?role=RH${cacheBuster}`,
           personnel: `${API_URL}/api/Personnel/active${cacheBuster}`
         },
         demandes: {
@@ -143,8 +140,6 @@ const Accueil = () => {
       const [
         activationRes,
         genderRes,
-        unreadRes,
-        totalRes,
         personnelRes,
         congeRes,
         formationRes,
@@ -154,8 +149,6 @@ const Accueil = () => {
       ] = await Promise.all([
         fetch(endpoints.stats.activation),
         fetch(endpoints.stats.gender),
-        fetch(endpoints.stats.unread),
-        fetch(endpoints.stats.total),
         fetch(endpoints.stats.personnel),
         fetch(endpoints.demandes.conge),
         fetch(endpoints.demandes.formation),
@@ -165,7 +158,7 @@ const Accueil = () => {
       ])
 
       // Check for any failed responses
-      const responses = [activationRes, genderRes, unreadRes, totalRes, personnelRes, 
+      const responses = [activationRes, genderRes, personnelRes, 
                          congeRes, formationRes, documentRes, preAvanceRes, autorisationRes]
       
       const failed = responses.some(res => !res.ok)
@@ -177,8 +170,6 @@ const Accueil = () => {
       const [
         activationData,
         genderData,
-        unreadData,
-        totalData,
         personnelData,
         congeData,
         formationData,
@@ -199,10 +190,6 @@ const Accueil = () => {
             male: genderData.male,
             female: genderData.female,
             total: genderData.male + genderData.female
-          },
-          notifications: {
-            unread: unreadData,
-            total: totalData
           }
         })
 
@@ -227,10 +214,6 @@ const Accueil = () => {
             male: genderData.male,
             female: genderData.female,
             total: genderData.male + genderData.female
-          },
-          notifications: {
-            unread: unreadData,
-            total: totalData
           }
         })
 
@@ -314,13 +297,7 @@ const Accueil = () => {
         <Navbar theme={theme} toggleTheme={toggleTheme} />
         
         <div className="dashboard-content">
-          {/* Loading and error indicators */}
-          {isRefreshing && (
-            <div className="refreshing-indicator">
-              <FiRefreshCw className="spinning" />
-              <span>Actualisation en cours...</span>
-            </div>
-          )}
+          
           
           {error && (
             <div className="error-message">
@@ -332,20 +309,10 @@ const Accueil = () => {
           <div className="dashboard-header">
             <div className="header-top">
               <h1>Aperçu du Tableau de Bord</h1>
-              <button 
-                className={`refresh-btn ${isRefreshing ? 'disabled' : ''}`}
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <FiRefreshCw /> Rafraîchir
-              </button>
+ 
             </div>
             <p>Bienvenue, RH. Voici ce qui se passe avec votre équipe aujourd'hui.</p>
-            {lastUpdated && (
-              <div className="last-updated">
-                <FiClock /> Dernière mise à jour: {lastUpdated}
-              </div>
-            )}
+
           </div>
 
           <div className="dashboard-grid">
@@ -365,7 +332,24 @@ const Accueil = () => {
                       <p className="stat-value">{dashboardStats.personnel.activated}</p>
                     </div>
                   </div>
-
+                  <div className="stat-card">
+                    <div className="stat-icon non-activated">
+                      <FiUserX />
+                    </div>
+                    <div className="stat-details">
+                      <h3>Non Activé</h3>
+                      <p className="stat-value">{dashboardStats.personnel.nonActivated}</p>
+                    </div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="stat-icon total">
+                      <FiUsers />
+                    </div>
+                    <div className="stat-details">
+                      <h3>Total</h3>
+                      <p className="stat-value">{dashboardStats.personnel.total}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

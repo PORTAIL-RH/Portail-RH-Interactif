@@ -163,8 +163,7 @@ def analyze_cv(cv_text: str, skills_dict: Dict[str, Any]) -> Dict:
                 "matched_skills": [],
                 "missing_skills": [],
                 "match_score": 0,
-                "strengths": "N/A - No required skills provided.",
-                "weaknesses": "N/A - No required skills provided."
+
             }
 
         # --- LLM Prompt ---
@@ -184,8 +183,7 @@ Analyze the provided CV text based ONLY on the "Required Skills" list below.
 1. Identify ONLY skills from the **"Required Skills"** list mentioned or strongly implied in the CV. List these in `matched_skills`.
 2. List ONLY skills from the **"Required Skills"** list NOT found in the CV in `missing_skills`.
 3. Calculate `match_score` (integer 0-100): (Number of Matched Skills / Total Required Skills) * 100. Round to nearest integer.
-4. Provide brief `strengths` (string, max 150 chars) based ONLY on matched required skills.
-5. Provide brief `weaknesses` (string, max 150 chars) based ONLY on missing required skills.
+
 
 **Output Format:**
 Return *ONLY* a single, valid JSON object containing ONLY the following 5 keys. NO extra text, comments, or markdown.
@@ -193,8 +191,7 @@ Return *ONLY* a single, valid JSON object containing ONLY the following 5 keys. 
   "matched_skills": ["Skill A", "Skill B", ...],
   "missing_skills": ["Skill C", "Skill D", ...],
   "match_score": <integer_percentage>,
-  "strengths": "Summary...",
-  "weaknesses": "Summary..."
+
 }}
 """
         # --- End Prompt ---

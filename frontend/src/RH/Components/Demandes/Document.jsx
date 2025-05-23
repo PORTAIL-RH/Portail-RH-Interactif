@@ -546,53 +546,84 @@ const DemandesDocument = () => {
   };
 
   const fetchFileBlobUrl = async (fileId) => {
-    if (!fileId) throw new Error("File ID is missing");
+    if (!fileId) {
+      throw new Error("ID de fichier manquant");
+    }
+
     const token = localStorage.getItem("authToken");
     try {
       const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error(await response.text());
-      return await response.blob();
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `Erreur HTTP: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      return URL.createObjectURL(blob);
     } catch (error) {
-      console.error("Error fetching file:", error);
+      console.error("Erreur de récupération du fichier:", error);
       throw error;
     }
   };
 
-  const handlePreview = async (fileId, filename) => {
-    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+  const handlePreview = async (fileId) => {
+    if (!fileId) {
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
     if (previewFileId === fileId) {
       setPreviewFileId(null);
       setPreviewFileUrl(null);
       return;
     }
+    
     try {
-      const blob = await fetchFileBlobUrl(fileId);
-      const url = URL.createObjectURL(blob);
+      const url = await fetchFileBlobUrl(fileId);
       setPreviewFileId(fileId);
       setPreviewFileUrl(url);
     } catch (err) {
-      toast.error(`Erreur d'aperçu: ${err.message}`);
+      toast.error("Impossible d'afficher la pièce jointe: " + err.message);
     }
   };
 
-  const handleDownload = async (fileId, filename = "document_formation.pdf") => {
-    if (!fileId) return toast.warning("Aucun fichier sélectionné");
+  const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
+    if (!fileId) {
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
+    const toastId = toast.loading("Préparation du téléchargement...");
+    
     try {
-      const blob = await fetchFileBlobUrl(fileId);
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const url = await fetchFileBlobUrl(fileId);
+      const link = document.createElement("a");
       link.href = url;
-      link.download = filename;
+      link.download = filename || "document.pdf";
       document.body.appendChild(link);
       link.click();
+      
+      toast.update(toastId, {
+        render: "Téléchargement en cours...",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+      
       setTimeout(() => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
       }, 100);
     } catch (err) {
-      toast.error(`Échec du téléchargement: ${err.message}`);
+      toast.update(toastId, {
+        render: "Échec du téléchargement: " + err.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
     }
   };
 
@@ -776,6 +807,7 @@ const DemandesDocument = () => {
                   <tr>
                     <th>Date Demande</th>
                     <th>Employé</th>
+                                        <th>type Document</th>
                     <th>Texte Demande</th>
                     <th>Piéce Jointe</th>
                     <th>Statut</th>
@@ -801,6 +833,11 @@ const DemandesDocument = () => {
                           {demande.matPers?.prenom && (
                             <span className="employee-details">{demande.matPers.prenom}</span>
                           )}
+                        </div>
+                      </td>
+                                            <td>
+                        <div className="demande-text">
+                          {demande.typeDocument || <span className="no-content">Aucun texte</span>}
                         </div>
                       </td>
                       <td>
@@ -849,42 +886,55 @@ const DemandesDocument = () => {
                            demande.reponseRH === "T" ? "Traité" : "Rejeté"}
                         </span>
                       </td>
-                      <td>
-                        {demande.filesReponse && demande.filesReponse.length > 0 ? (
-                          <div className="response-files">
-                            {demande.filesReponse
-                              .filter(file => file !== null && file.filename)
-                              .map((file, index) => (
-                                <div key={index} className="response-file-item">
-                                  <span className="file-link" onClick={() => downloadFile(file.filename)}>
-                                    <FiFileText /> {file.filename}
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                        ) : demande.reponseRH === "I" ? (
-                          <div className="file-input-container">
-                            <label
-                              htmlFor={`response-file-upload-${demande.id}`}
-                              className="file-upload-label"
-                            >
-                              <FiUpload /> {uploadedResponseFiles[demande.id] ? "Changer fichier" : "Ajouter fichier (optionnel)"}
-                            </label>
-                            <input
-                              id={`response-file-upload-${demande.id}`}
-                              type="file"
-                              onChange={(e) => handleResponseFileChange(e, demande.id)}
-                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                              style={{ display: "none" }}
-                            />
-                            {uploadedResponseFiles[demande.id] && (
-                              <span className="file-name">{uploadedResponseFiles[demande.id].name}</span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="no-file">Aucun document</span>
+                  <td>
+                    {demande.filesReponse && demande.filesReponse.length > 0 ? (
+                      <div className="response-files">
+                        {demande.filesReponse
+                          .filter(file => file !== null && file.fileId) // Changed to check fileId instead of filename
+                          .map((file, index) => (
+                            <div key={index} className="response-file-item">
+                              <div className="file-buttons">
+                                <button
+                                  className="btn-preview"
+                                  onClick={() => handlePreview(file.fileId)}
+                                  title={`Aperçu: ${file.filename}`}
+                                >
+                                  <FiEye />
+                                </button>
+                                <button
+                                  className="btn-download"
+                                  onClick={() => handleDownload(file.fileId, file.filename)}
+                                  title={`Télécharger: ${file.filename}`}
+                                >
+                                  <FiDownload />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    ) : demande.reponseRH === "I" ? (
+                      <div className="file-input-container">
+                        <label
+                          htmlFor={`response-file-upload-${demande.id}`}
+                          className="file-upload-label"
+                        >
+                          <FiUpload /> {uploadedResponseFiles[demande.id] ? "Changer fichier" : "Ajouter fichier (optionnel)"}
+                        </label>
+                        <input
+                          id={`response-file-upload-${demande.id}`}
+                          type="file"
+                          onChange={(e) => handleResponseFileChange(e, demande.id)}
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                          style={{ display: "none" }}
+                        />
+                        {uploadedResponseFiles[demande.id] && (
+                          <span className="file-name">{uploadedResponseFiles[demande.id].name}</span>
                         )}
-                      </td>
+                      </div>
+                    ) : (
+                      <span className="no-file">Aucun document</span>
+                    )}
+                  </td>
                       <td>
                         <div className="action-buttons">
                           <button
@@ -944,47 +994,48 @@ const DemandesDocument = () => {
             </div>
           )}
 
-          {previewFileUrl && (
-            <div className="file-preview-modal">
-              <div className="file-preview-content">
-                <div className="file-preview-header">
-                  <h3>Aperçu du fichier</h3>
-                  <button 
-                    className="close-preview"
-                    onClick={() => {
-                      setPreviewFileId(null);
-                      setPreviewFileUrl(null);
-                      URL.revokeObjectURL(previewFileUrl);
-                    }}
-                  >
-                    <FiX />
-                  </button>
-                </div>
-                <div className="file-preview-container">
-                  <iframe 
-                    src={previewFileUrl} 
-                    title="File Preview"
-                    className="file-iframe"
-                  />
-                </div>
-                <div className="file-preview-footer">
-                  <button 
-                    className="btn-download"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = previewFileUrl;
-                      link.download = `formation_${previewFileId}.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                  >
-                    <FiDownload /> Télécharger
-                  </button>
-                </div>
-              </div>
+  {previewFileUrl && (
+        <div className="file-preview-modal">
+          <div className="file-preview-content">
+            <div className="file-preview-header">
+              <h3>Aperçu du fichier</h3>
+              <button 
+                className="close-preview"
+                onClick={() => {
+                  setPreviewFileId(null);
+                  setPreviewFileUrl(null);
+                  URL.revokeObjectURL(previewFileUrl);
+                }}
+              >
+                <FiX />
+              </button>
             </div>
-          )}
+            <div className="file-preview-container">
+              <iframe 
+                src={previewFileUrl} 
+                title="File Preview"
+                className="file-iframe"
+              />
+            </div>
+            <div className="file-preview-footer">
+              <button 
+                className="btn-download"
+                onClick={() => {
+                  const filename = `document_${previewFileId}.pdf`;
+                  const link = document.createElement("a");
+                  link.href = previewFileUrl;
+                  link.download = filename;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+              >
+                <FiDownload /> Télécharger
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
           {isModalOpen && selectedDemande && (
             <DemandeDetailsModal

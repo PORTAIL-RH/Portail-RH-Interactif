@@ -1,71 +1,34 @@
 import { useState, useEffect } from "react"
-import { FiFileText, FiUpload, FiSend, FiList } from "react-icons/fi"
+import { FiFileText, FiList, FiUpload } from "react-icons/fi"
+import RequestNavBar from "./RequestNavBar"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import { useNavigate } from "react-router-dom"
+import "./ajout-dem.css"
 import Sidebar from "../Sidebar/Sidebar";
-import Navbar from "../Navbar/Navbar"; 
-import "./ajoutDemande.css"
-import { API_URL } from "../../../config"; 
+import Navbar from "../Navbar/Navbar";
 
 const DocumentForm = () => {
   const [formData, setFormData] = useState({
-    typeDemande: 'Document',
-    texteDemande: '',
-    codeSoc: '',
-    typeDocument: '',
-    matPers: { id: '' },
+    typeDemande: "Document",
+    texteDemande: "",
+    codeSoc: "",
+    typeDocument: "",
+    matPers: { id: "" },
   })
-  const [activeTab, setActiveTab] = useState("AjoutDemandeAutorisation")
-  const [file, setFile] = useState(null)
-  const [fileName, setFileName] = useState("")
+
   const [errors, setErrors] = useState({})
+  const [file, setFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const navigate = useNavigate()
   const [theme, setTheme] = useState("light")
 
-
-    // Theme management
-    useEffect(() => {
-      const savedTheme = localStorage.getItem("theme") || "light"
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-  
-      // Listen for theme changes
-      const handleStorageChange = () => {
-        const currentTheme = localStorage.getItem("theme") || "light"
-        setTheme(currentTheme)
-        applyTheme(currentTheme)
-      }
-  
-      window.addEventListener("storage", handleStorageChange)
-      window.addEventListener("themeChanged", (e) => {
-        setTheme(e.detail || "light")
-        applyTheme(e.detail || "light")
-      })
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange)
-        window.removeEventListener("themeChanged", handleStorageChange)
-      }
-    }, [])
-  
-    const applyTheme = (theme) => {
-      document.documentElement.classList.remove("light", "dark")
-      document.documentElement.classList.add(theme)
-      document.body.className = theme
-    }
-  
-    const toggleTheme = () => {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      applyTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
-    }
   useEffect(() => {
-    const userId = localStorage.getItem('userId')
-    const userCodeSoc = localStorage.getItem('userCodeSoc')
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    document.documentElement.classList.add(savedTheme)
+    document.body.className = savedTheme
+
+    const userId = localStorage.getItem("userId")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
 
     if (userId && userCodeSoc) {
       setFormData((prevData) => ({
@@ -78,14 +41,11 @@ const DocumentForm = () => {
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
-    if (selectedFile) {
-      if (selectedFile.size > 5 * 1024 * 1024) {
-        toast.error('La taille du fichier ne doit pas dépasser 5 Mo.')
-        return
-      }
-      setFile(selectedFile)
-      setFileName(selectedFile.name)
+    if (selectedFile && selectedFile.size > 5 * 1024 * 1024) {
+      toast.error("La taille du fichier ne doit pas dépasser 5 Mo.")
+      return
     }
+    setFile(selectedFile)
   }
 
   const handleChange = (e) => {
@@ -94,269 +54,231 @@ const DocumentForm = () => {
       ...formData,
       [name]: value,
     })
-    
-    // Clear error for this field when user starts typing
+
     if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: "",
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
       })
     }
   }
 
   const validateForm = () => {
     const newErrors = {}
-
-    if (!formData.typeDocument) {
-      newErrors.typeDocument = "Le type de document est requis"
-    }
-
-    if (!formData.texteDemande) {
-      newErrors.texteDemande = "Le texte de la demande est requis"
-    }
+    if (!formData.typeDocument) newErrors.typeDocument = "Le type de document est requis"
+    if (!formData.texteDemande) newErrors.texteDemande = "Le texte de la demande est requis"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!validateForm()) {
-      toast.error('Veuillez corriger les erreurs dans le formulaire')
-      return
-    }
+  if (!validateForm()) {
+    toast.error("Veuillez corriger les erreurs dans le formulaire");
+    return;
+  }
 
-    setIsSubmitting(true)
+  setIsSubmitting(true);
 
-    const authToken = localStorage.getItem('authToken')
-    const userId = localStorage.getItem('userId')
-    
-    if (!authToken || !userId) {
-      toast.error('Token d\'authentification manquant')
-      setIsSubmitting(false)
-      return
-    }
+  const authToken = localStorage.getItem("authToken");
+  const userId = localStorage.getItem("userId");
 
-    const formDataToSend = new FormData()
-    formDataToSend.append('typeDemande', formData.typeDemande)
-    formDataToSend.append('texteDemande', formData.texteDemande)
-    formDataToSend.append('codeSoc', formData.codeSoc)
-    formDataToSend.append('typeDocument', formData.typeDocument)
-    formDataToSend.append('matPersId', userId)
+  // Enhanced validation
+  if (!authToken) {
+    toast.error("Session expirée. Veuillez vous reconnecter.");
+    setIsSubmitting(false);
+    return;
+  }
 
-    if (file) {
-      formDataToSend.append('file', file)
-    }
+  if (!userId) {
+    toast.error("ID utilisateur manquant. Veuillez vous reconnecter.");
+    setIsSubmitting(false);
+    return;
+  }
 
-    try {
-      const response = await fetch(`${API_URL}/api/demande-document/create`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: formDataToSend,
-      })
+  console.log("Current user ID from localStorage:", userId); // Debug
 
-      const contentType = response.headers.get('content-type')
+  const formDataToSend = new FormData();
+  formDataToSend.append("typeDemande", formData.typeDemande);
+  formDataToSend.append("texteDemande", formData.texteDemande);
+  formDataToSend.append("codeSoc", formData.codeSoc);
+  formDataToSend.append("typeDocument", formData.typeDocument);
+  formDataToSend.append("matPersId", userId); // Use directly from localStorage
+
+  if (file) {
+    formDataToSend.append("file", file);
+  }
+
+  // Debug: Log FormData contents
+  for (const [key, value] of formDataToSend.entries()) {
+    console.log(key, value);
+  }
+
+  try {
+    const response = await fetch("http://localhost:8080/api/demande-document/create", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${authToken}`,
+        // Don't set Content-Type for FormData - let browser set it with boundary
+      },
+      body: formDataToSend,
+    });
+
+    console.log("Response status:", response.status); // Debug
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Server error details:", errorData); // Debug
       
-      if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
-          const errorResult = await response.json()
-          toast.error('Erreur lors de la soumission du formulaire : ' + (errorResult.message || 'Erreur inconnue'))
-        } else {
-          const errorText = await response.text()
-          toast.error('Erreur lors de la soumission du formulaire : ' + errorText)
-        }
-        setIsSubmitting(false)
-        return
+      if (response.status === 404 && errorData.error === "Personnel not found") {
+        throw new Error("Votre compte utilisateur n'a pas été trouvé. Veuillez contacter l'administrateur.");
       }
+      throw new Error(errorData.message || "Erreur lors de la soumission");
+    }
 
-      // Reset form on success
-      setFormData({
-        typeDemande: 'Document',
-        texteDemande: '',
-        codeSoc: formData.codeSoc,
-        typeDocument: '',
-        matPers: { id: userId },
-      })
-      setFile(null)
-      setFileName("")
-      
-      toast.success('Demande de document soumise avec succès !')
-    } catch (error) {
-      console.error('Erreur lors de la soumission du formulaire :', error)
-      toast.error('Erreur lors de la soumission du formulaire : ' + error.message)
-    } finally {
-      setIsSubmitting(false)
-    }
+    const result = await response.json();
+    console.log("Success response:", result); // Debug
+    
+    toast.success("Demande de document soumise avec succès !");
+    
+    // Reset form
+    setFormData(prev => ({
+      ...prev,
+      texteDemande: "",
+      typeDocument: "",
+    }));
+    setFile(null);
+
+  } catch (error) {
+    console.error("Submission error:", error);
+    toast.error(error.message || "Une erreur est survenue lors de la soumission");
+  } finally {
+    setIsSubmitting(false);
   }
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "formation":
-        navigate("/AjoutDemandeFormationRH");
-        break;
-      case "conge":
-        navigate("/AjoutDemandeCongeRH");
-        break;
-      case "document":
-        navigate("/AjoutDemandeDocumentRH");
-        break;
-      case "preAvance":
-        navigate("/AjoutDemandePreAvanceRH");
-        break;
-      case "autorisation":
-        navigate("/AjoutDemandeAutorisationRH");
-        break;
-      default:
-        navigate("/AjoutDemandeAutorisationRH");
-    }
+};
+
+  const handleNavigate = (path) => {
+    window.location.href = path
   }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    document.documentElement.className = newTheme
+    document.body.className = newTheme
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar theme={theme} />
       <div className="demande-container">
-      <Navbar theme={theme} toggleTheme={toggleTheme} />
-        <div className="document-form-container">
-                {/* Navigation Bar */}
-      <div className="request-nav-bar">
-        <div
-          className={`request-nav-item ${activeTab === "formation" ? "active" : ""}`}
-          onClick={() => handleTabClick("formation")}
-        >
-          Formation
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "conge" ? "active" : ""}`}
-          onClick={() => handleTabClick("conge")}
-        >
-          Congé
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "document" ? "active" : ""}`}
-          onClick={() => handleTabClick("document")}
-        >
-          Document
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "preAvance" ? "active" : ""}`}
-          onClick={() => handleTabClick("preAvance")}
-        >
-          PréAvance
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "autorisation" ? "active" : ""}`}
-          onClick={() => handleTabClick("AjoutDemandeAutorisation")}
-        >
-          Autorisation
-        </div>
-      </div>
-          <div className="form-card">
-            <div className="form-header">
-              <h2>Demande de Document</h2>
-              <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande de document</p>
-            </div>
+        <Navbar theme={theme} toggleTheme={toggleTheme}/>
+        <div className="demande-content">
+          <div className="page-header">
+            <h1>Demande de Document</h1>
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de document</p>
+          </div>
 
-            <form onSubmit={handleSubmit} className="document-form">
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiList className="section-icon" />
-                  <span>Type de Document</span>
-                </h3>
-                
-                <div className="form-group">
-                  <label htmlFor="typeDocument">Sélectionnez le type de document</label>
+          <RequestNavBar activeRequest="document" onNavigate={handleNavigate} />
+
+          <div className="form-card">
+            <form onSubmit={handleSubmit}>
+              <div className="form-grid">
+                <div className="form-group full-width">
+                  <label htmlFor="typeDocument">
+                    <FiList className="form-icon" />
+                    Type de Document
+                  </label>
                   <select
                     id="typeDocument"
                     name="typeDocument"
                     value={formData.typeDocument}
                     onChange={handleChange}
                     className={errors.typeDocument ? "error" : ""}
+                    required
                   >
                     <option value="">Sélectionnez un type</option>
                     <option value="Documents administratifs et légaux">Documents administratifs et légaux</option>
                     <option value="Documents fiscaux">Documents fiscaux</option>
                     <option value="Documents sociaux">Documents sociaux</option>
-                    <option value="Documents de formation et de développement professionnel">Documents de formation et de développement professionnel</option>
+                    <option value="Documents de formation et de développement professionnel">
+                      Documents de formation et de développement professionnel
+                    </option>
                     <option value="Documents liés à la sécurité sociale">Documents liés à la sécurité sociale</option>
-                    <option value="Documents liés à la santé et à la sécurité">Documents liés à la santé et à la sécurité</option>
+                    <option value="Documents liés à la santé et à la sécurité">
+                      Documents liés à la santé et à la sécurité
+                    </option>
                     <option value="Documents de fin de contrat">Documents de fin de contrat</option>
                   </select>
-                  {errors.typeDocument && <div className="error-message">{errors.typeDocument}</div>}
+                  {errors.typeDocument && <span className="error-text">{errors.typeDocument}</span>}
                 </div>
               </div>
 
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiFileText className="section-icon" />
-                  <span>Détails de la Demande</span>
-                </h3>
-                
-                <div className="form-group">
-                  <label htmlFor="texteDemande">Motif de la Demande</label>
-                  <textarea
-                    id="texteDemande"
-                    name="texteDemande"
-                    value={formData.texteDemande}
-                    onChange={handleChange}
-                    placeholder="Veuillez expliquer le motif de votre demande de document..."
-                    rows="4"
-                    className={errors.texteDemande ? "error" : ""}
-                  ></textarea>
-                  {errors.texteDemande && <div className="error-message">{errors.texteDemande}</div>}
-                </div>
+              <div className="form-group full-width">
+                <label htmlFor="texteDemande">
+                  <FiFileText className="form-icon" />
+                  Description de la demande
+                </label>
+                <textarea
+                  id="texteDemande"
+                  name="texteDemande"
+                  value={formData.texteDemande}
+                  onChange={handleChange}
+                  rows="4"
+                  className={errors.texteDemande ? "error" : ""}
+                  placeholder="Décrivez votre demande de document..."
+                  required
+                ></textarea>
+                {errors.texteDemande && <span className="error-text">{errors.texteDemande}</span>}
               </div>
 
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiUpload className="section-icon" />
-                  <span>Document Justificatif</span>
-                </h3>
-                
-                <div className="form-group">
-                  <label htmlFor="file">Pièce Jointe (optionnel)</label>
-                  <div className="file-upload-container">
-                    <input
-                      type="file"
-                      id="file"
-                      name="file"
-                      onChange={handleFileChange}
-                      className="file-input"
-                    />
-                    <div className="file-upload-box">
-                      <FiUpload className="upload-icon" />
-                      <span className="upload-text">
-                        {fileName ? fileName : "Glissez un fichier ou cliquez pour parcourir"}
-                      </span>
-                    </div>
+              <div className="form-group full-width">
+                <label htmlFor="file">
+                  <FiUpload className="form-icon" />
+                  Pièce jointe (optionnel)
+                </label>
+                <div className="file-input-container">
+                  <input 
+                    type="file" 
+                    id="file" 
+                    name="file" 
+                    onChange={handleFileChange} 
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                  <div className="file-input-text">
+                    {file ? `${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)` : "Choisir un fichier"}
                   </div>
-                  <p className="file-size-note">Taille maximale: 5 Mo</p>
                 </div>
+                <small className="file-hint">Formats acceptés: PDF, DOC, DOCX, JPG, JPEG, PNG (max 5MB)</small>
               </div>
 
               <div className="form-actions">
-                <button type="submit" className="submit-button" disabled={isSubmitting}>
+                <button type="button" className="cancel-button" onClick={() => window.history.back()}>
+                  Annuler
+                </button>
+                <button 
+                  type="submit" 
+                  className="submit-button" 
+                  disabled={isSubmitting}
+                >
                   {isSubmitting ? (
                     <>
-                      <div className="spinner"></div>
-                      <span>Envoi en cours...</span>
+                      <span className="spinner"></span>
+                      Soumission en cours...
                     </>
-                  ) : (
-                    <>
-                      <FiSend />
-                      <span>Soumettre la Demande</span>
-                    </>
-                  )}
+                  ) : "Soumettre la demande"}
                 </button>
               </div>
             </form>
-          </div>          </div>
           </div>
-
-
-
-      <ToastContainer
+        </div>
+      </div>
+      <ToastContainer 
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
@@ -366,6 +288,7 @@ const DocumentForm = () => {
         pauseOnFocusLoss
         draggable
         pauseOnHover
+        theme={theme}
       />
     </div>
   )

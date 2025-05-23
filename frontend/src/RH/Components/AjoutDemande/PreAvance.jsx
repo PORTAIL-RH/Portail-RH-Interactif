@@ -1,105 +1,39 @@
-
 import { useState, useEffect } from "react"
-import { FiDollarSign, FiFileText, FiUpload, FiSend, FiInfo } from "react-icons/fi"
+import { FiDollarSign, FiFileText, FiList, FiUpload } from "react-icons/fi"
+import RequestNavBar from "./RequestNavBar"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import "./ajoutDemande.css"
-import { useNavigate } from "react-router-dom"
+import "./ajout-dem.css"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-import { API_URL } from "../../../config"; 
 
-const PreAvanceForm = () => {
+const AvanceForm = () => {
   const [formData, setFormData] = useState({
-    type: '',
+    type: "",
     montant: 0,
-    codeSoc: '',
-    texteDemande: '',
-    matPersId: '',
+    codeSoc: "",
+    texteDemande: "",
+    matPersId: "",
+    file: null,
   })
-  const [activeTab, setActiveTab] = useState()
-  const navigate = useNavigate()
 
   const [file, setFile] = useState(null)
-  const [fileName, setFileName] = useState("")
   const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [typesPreAvance, setTypesPreAvance] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [theme, setTheme] = useState("light")
 
-
-    // Theme management
-    useEffect(() => {
-      const savedTheme = localStorage.getItem("theme") || "light"
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-  
-      // Listen for theme changes
-      const handleStorageChange = () => {
-        const currentTheme = localStorage.getItem("theme") || "light"
-        setTheme(currentTheme)
-        applyTheme(currentTheme)
-      }
-  
-      window.addEventListener("storage", handleStorageChange)
-      window.addEventListener("themeChanged", (e) => {
-        setTheme(e.detail || "light")
-        applyTheme(e.detail || "light")
-      })
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange)
-        window.removeEventListener("themeChanged", handleStorageChange)
-      }
-    }, [])
-  
-    const applyTheme = (theme) => {
-      document.documentElement.classList.remove("light", "dark")
-      document.documentElement.classList.add(theme)
-      document.body.className = theme
-    }
-  
-    const toggleTheme = () => {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      applyTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
-    }
   useEffect(() => {
-    const fetchTypesPreAvance = async () => {
-      try {
-        const authToken = localStorage.getItem('authToken')
-        if (!authToken) {
-          toast.error('Token d\'authentification manquant')
-          return
-        }
-
-        const response = await fetch(`${API_URL}/api/demande-pre-avance/types`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('Erreur lors de la récupération des types de pré-avances')
-        }
-
-        const data = await response.json()
-        setTypesPreAvance(data)
-      } catch (error) {
-        console.error('Erreur lors de la récupération des types de pré-avances :', error)
-        toast.error('Erreur lors de la récupération des types de pré-avances')
-      }
-    }
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    document.documentElement.classList.add(savedTheme)
+    document.body.className = savedTheme
 
     fetchTypesPreAvance()
-  }, [])
 
-  useEffect(() => {
-    const userId = localStorage.getItem('userId')
-    const userCodeSoc = localStorage.getItem('userCodeSoc')
+    const userId = localStorage.getItem("userId")
+    const userCodeSoc = localStorage.getItem("userCodeSoc")
 
     if (userId && userCodeSoc) {
       setFormData((prevData) => ({
@@ -110,28 +44,41 @@ const PreAvanceForm = () => {
     }
   }, [])
 
-  const validateMontant = (type, montant) => {
-    if (!type) {
-      return "Veuillez sélectionner un type de pré-avance"
+  const fetchTypesPreAvance = async () => {
+    try {
+      setLoading(true)
+      const authToken = localStorage.getItem("authToken")
+      if (!authToken) {
+        toast.error("Token d'authentification manquant")
+        return
+      }
+
+      const response = await fetch("http://localhost:8080/api/demande-pre-avance/types", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la récupération des types de pré-avances")
+      }
+
+      const data = await response.json()
+      setTypesPreAvance(data)
+    } catch (error) {
+      console.error("Erreur lors de la récupération des types de pré-avances :", error)
+      toast.error("Erreur lors de la récupération des types de pré-avances")
+    } finally {
+      setLoading(false)
     }
-    
-    if (!montant || montant <= 0) {
-      return "Le montant doit être supérieur à 0"
-    }
-    
-    if (typesPreAvance[type] && parseFloat(montant) > typesPreAvance[type]) {
-      return `Le montant ne doit pas dépasser ${typesPreAvance[type]} euros pour ce type de demande`
-    }
-    
-    return null
   }
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-      setFileName(selectedFile.name)
+  const validateMontant = (type, montant) => {
+    if (typesPreAvance[type] && montant > typesPreAvance[type]) {
+      return `Le montant ne doit pas dépasser ${typesPreAvance[type]} euros pour ce type de demande.`
     }
+    return null
   }
 
   const handleChange = (e) => {
@@ -140,51 +87,42 @@ const PreAvanceForm = () => {
       ...formData,
       [name]: value,
     })
-    
-    // Clear error for this field when user starts typing
+
+    // Clear error for this field if it exists
     if (errors[name]) {
-      setErrors({
-        ...errors,
-        [name]: "",
+      setErrors((prev) => {
+        const newErrors = { ...prev }
+        delete newErrors[name]
+        return newErrors
       })
     }
-    
-    // Validate montant when type or montant changes
-    if (name === 'montant' || name === 'type') {
-      const montantError = validateMontant(
-        name === 'type' ? value : formData.type, 
-        name === 'montant' ? value : formData.montant
-      )
-      
-      if (montantError) {
-        setErrors({
-          ...errors,
-          montant: montantError
-        })
-      } else {
-        setErrors({
-          ...errors,
-          montant: ""
-        })
+
+    if (name === "montant" && formData.type) {
+      const errorMessage = validateMontant(formData.type, value)
+      if (errorMessage) {
+        setErrors((prev) => ({
+          ...prev,
+          montant: errorMessage,
+        }))
       }
     }
+  }
+
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0])
   }
 
   const validateForm = () => {
     const newErrors = {}
 
-    if (!formData.type) {
-      newErrors.type = "Le type de pré-avance est requis"
-    }
+    if (!formData.type) newErrors.type = "Le type de demande est requis"
+    if (!formData.montant) newErrors.montant = "Le montant est requis"
+    if (formData.montant <= 0) newErrors.montant = "Le montant doit être supérieur à 0"
 
     const montantError = validateMontant(formData.type, formData.montant)
-    if (montantError) {
-      newErrors.montant = montantError
-    }
+    if (montantError) newErrors.montant = montantError
 
-    if (!formData.texteDemande) {
-      newErrors.texteDemande = "Le texte de la demande est requis"
-    }
+    if (!formData.texteDemande) newErrors.texteDemande = "Le texte de la demande est requis"
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -194,152 +132,135 @@ const PreAvanceForm = () => {
     e.preventDefault()
 
     if (!validateForm()) {
-      toast.error('Veuillez corriger les erreurs dans le formulaire')
+      toast.error("Veuillez corriger les erreurs dans le formulaire")
       return
     }
 
     setIsSubmitting(true)
 
-    const authToken = localStorage.getItem('authToken')
-    const userId = localStorage.getItem('userId')
-    
+    const authToken = localStorage.getItem("authToken")
+    const userId = localStorage.getItem("userId")
+
     if (!authToken || !userId) {
-      toast.error('Token d\'authentification manquant')
+      toast.error("Token ou ID utilisateur manquant")
       setIsSubmitting(false)
       return
     }
 
     const formDataToSend = new FormData()
-    formDataToSend.append('type', formData.type)
-    formDataToSend.append('montant', formData.montant.toString())
-    formDataToSend.append('texteDemande', formData.texteDemande)
-    formDataToSend.append('codeSoc', formData.codeSoc)
-    formDataToSend.append('matPersId', userId)
+    formDataToSend.append("type", formData.type)
+    formDataToSend.append("montant", formData.montant.toString())
+    formDataToSend.append("texteDemande", formData.texteDemande)
+    formDataToSend.append("codeSoc", formData.codeSoc)
+    formDataToSend.append("matPersId", userId)
 
     if (file) {
-      formDataToSend.append('file', file)
+      formDataToSend.append("file", file)
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/demande-pre-avance/create`, {
-        method: 'POST',
+      const response = await fetch("http://localhost:8080/api/demande-pre-avance/create", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${authToken}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: formDataToSend,
       })
 
-      const contentType = response.headers.get('content-type')
-      
       if (!response.ok) {
-        if (contentType && contentType.includes('application/json')) {
+        const contentType = response.headers.get("content-type")
+        if (contentType && contentType.includes("application/json")) {
           const errorResult = await response.json()
-          toast.error('Erreur lors de la soumission du formulaire : ' + (errorResult.message || 'Erreur inconnue'))
+          throw new Error(errorResult.message || "Erreur inconnue")
         } else {
           const errorText = await response.text()
-          toast.error('Erreur lors de la soumission du formulaire : ' + errorText)
+          throw new Error(errorText || "Erreur inconnue")
         }
-        setIsSubmitting(false)
-        return
       }
 
-      // Reset form on success
+      toast.success("Demande de pré-avance soumise avec succès !")
+
+      // Reset form
       setFormData({
-        type: '',
+        type: "",
         montant: 0,
         codeSoc: formData.codeSoc,
-        texteDemande: '',
-        matPersId: formData.matPersId,
+        texteDemande: "",
+        matPersId: userId,
+        file: null,
       })
       setFile(null)
-      setFileName("")
-      
-      toast.success('Demande de pré-avance soumise avec succès !')
     } catch (error) {
-      console.error('Erreur lors de la soumission du formulaire :', error)
-      toast.error('Erreur lors de la soumission du formulaire : ' + error.message)
+      console.error("Erreur lors de la soumission du formulaire:", error)
+      toast.error(`Erreur lors de la soumission du formulaire: ${error.message}`)
     } finally {
       setIsSubmitting(false)
     }
   }
-  const handleTabClick = (tab) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "formation":
-        navigate("/AjoutDemandeFormationRH");
-        break;
-      case "conge":
-        navigate("/AjoutDemandeCongeRH");
-        break;
-      case "document":
-        navigate("/AjoutDemandeDocumentRH");
-        break;
-      case "preAvance":
-        navigate("/AjoutDemandePreAvanceRH");
-        break;
-      case "autorisation":
-        navigate("/AjoutDemandeAutorisationRH");
-        break;
-      default:
-        navigate("/AjoutDemandeAutorisationRH");
-    }
+
+  const handleNavigate = (path) => {
+    window.location.href = path
   }
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    setTheme(savedTheme);
+    document.documentElement.classList.add(savedTheme);
+    document.body.className = savedTheme;
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light";
+      setTheme(currentTheme);
+      document.documentElement.className = currentTheme;
+      document.body.className = currentTheme;
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("themeChanged", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("themeChanged", handleStorageChange);
+    };
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+    document.documentElement.className = newTheme;
+    document.body.className = newTheme;
+    localStorage.setItem("theme", newTheme);
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+  };
   return (
     <div className={`app-container ${theme}`}>
-      <Sidebar theme={theme} />
+        <Sidebar theme={theme} />
       <div className="demande-container">
-      <Navbar theme={theme} toggleTheme={toggleTheme} />
-        <div className="preavance-form-container">
-                          {/* Navigation Bar */}
-      <div className="request-nav-bar">
-        <div
-          className={`request-nav-item ${activeTab === "formation" ? "active" : ""}`}
-          onClick={() => handleTabClick("formation")}
-        >
-          Formation
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "conge" ? "active" : ""}`}
-          onClick={() => handleTabClick("conge")}
-        >
-          Congé
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "document" ? "active" : ""}`}
-          onClick={() => handleTabClick("document")}
-        >
-          Document
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "preAvance" ? "active" : ""}`}
-          onClick={() => handleTabClick("preAvance")}
-        >
-          PréAvance
-        </div>
-        <div
-          className={`request-nav-item ${activeTab === "autorisation" ? "active" : ""}`}
-          onClick={() => handleTabClick("AjoutDemandeAutorisation")}
-        >
-          Autorisation
-        </div>
-      </div>
-          <div className="form-card">
-            <div className="form-header">
-              <h2>Demande de Pré-Avance</h2>
-              <p className="form-subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p><br/>
-              <bold><p className="subtitle">NB: Si tu veux avoir un montant élevé tu doit contacter votre direction de département directement</p></bold>
-            </div>
+        <Navbar theme={theme} toggleTheme={toggleTheme}/>
+        <div className="demande-content">
+          <div className="page-header">
+            <h1>Demande de Pré-Avance</h1>
+            <p className="subtitle">Remplissez le formulaire pour soumettre une demande de pré-avance</p>
+            <p className="subtitle">
+              <strong>NB:</strong> Si vous voulez avoir un montant élevé, vous devez contacter votre direction de département directement
+            </p>
+          </div>
 
-            <form onSubmit={handleSubmit} className="preavance-form">
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiDollarSign className="section-icon" />
-                  <span>Informations de la Pré-Avance</span>
-                </h3>
-                
-                <div className="form-row two-columns">
+          <RequestNavBar activeRequest="avance" onNavigate={handleNavigate} />
+
+          <div className="form-card">
+            {loading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Chargement des données...</p>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit}>
+                <div className="form-grid">
                   <div className="form-group">
-                    <label htmlFor="type">Type de Pré-Avance</label>
+                    <label htmlFor="type">
+                      <FiList className="form-icon" />
+                      Type de Demande
+                    </label>
                     <select
                       id="type"
                       name="type"
@@ -354,111 +275,71 @@ const PreAvanceForm = () => {
                         </option>
                       ))}
                     </select>
-                    {errors.type && <div className="error-message">{errors.type}</div>}
+                    {errors.type && <span className="error-text">{errors.type}</span>}
                   </div>
 
                   <div className="form-group">
                     <label htmlFor="montant">
-                      Montant {formData.type && `(Max: ${typesPreAvance[formData.type]} €)`}
+                      <FiDollarSign className="form-icon" />
+                      Montant {formData.type ? `(Max: ${typesPreAvance[formData.type]} €)` : ""}
                     </label>
-                    <div className="input-wrapper">
-                      <input
-                        type="number"
-                        id="montant"
-                        name="montant"
-                        value={formData.montant}
-                        onChange={handleChange}
-                        min="0"
-                        step="0.01"
-                        className={errors.montant ? "error" : ""}
-                      />
-                    </div>
-                    {errors.montant && <div className="error-message">{errors.montant}</div>}
+                    <input
+                      type="number"
+                      id="montant"
+                      name="montant"
+                      value={formData.montant}
+                      onChange={handleChange}
+                      min="1"
+                      className={errors.montant ? "error" : ""}
+                    />
+                    {errors.montant && <span className="error-text">{errors.montant}</span>}
                   </div>
                 </div>
-              </div>
 
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiFileText className="section-icon" />
-                  <span>Détails de la Demande</span>
-                </h3>
-                
-                <div className="form-group">
-                  <label htmlFor="texteDemande">Motif de la Demande</label>
+                <div className="form-group full-width">
+                  <label htmlFor="texteDemande">
+                    <FiFileText className="form-icon" />
+                    Description de la demande
+                  </label>
                   <textarea
                     id="texteDemande"
                     name="texteDemande"
                     value={formData.texteDemande}
                     onChange={handleChange}
-                    placeholder="Veuillez expliquer le motif de votre demande de pré-avance..."
                     rows="4"
                     className={errors.texteDemande ? "error" : ""}
+                    placeholder="Décrivez votre demande de pré-avance..."
                   ></textarea>
-                  {errors.texteDemande && <div className="error-message">{errors.texteDemande}</div>}
+                  {errors.texteDemande && <span className="error-text">{errors.texteDemande}</span>}
                 </div>
-              </div>
 
-              <div className="form-section">
-                <h3 className="section-title">
-                  <FiUpload className="section-icon" />
-                  <span>Document Justificatif</span>
-                </h3>
-                
-                <div className="form-group">
-                  <label htmlFor="file">Pièce Jointe (optionnel)</label>
-                  <div className="file-upload-container">
-                    <input
-                      type="file"
-                      id="file"
-                      name="file"
-                      onChange={handleFileChange}
-                      className="file-input"
-                    />
-                    <div className="file-upload-box">
-                      <FiUpload className="upload-icon" />
-                      <span className="upload-text">
-                        {fileName ? fileName : "Glissez un fichier ou cliquez pour parcourir"}
-                      </span>
-                    </div>
+                <div className="form-group full-width">
+                  <label htmlFor="file">
+                    <FiUpload className="form-icon" />
+                    Pièce jointe (optionnel)
+                  </label>
+                  <div className="file-input-container">
+                    <input type="file" id="file" name="file" onChange={handleFileChange} />
+                    <div className="file-input-text">{file ? file.name : "Choisir un fichier"}</div>
                   </div>
                 </div>
-              </div>
 
-              <div className="form-actions">
-                <button type="submit" className="submit-button" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <div className="spinner"></div>
-                      <span>Envoi en cours...</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiSend />
-                      <span>Soumettre la Demande</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+                <div className="form-actions">
+                  <button type="button" className="cancel-button" onClick={() => window.history.back()}>
+                    Annuler
+                  </button>
+                  <button type="submit" className="submit-button" disabled={isSubmitting}>
+                    {isSubmitting ? "Soumission en cours..." : "Soumettre la demande"}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
-          </div>
-          </div>
-
-
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+        </div>
+      </div>
+      <ToastContainer position="top-right" autoClose={5000} />
     </div>
   )
 }
 
-export default PreAvanceForm
+export default AvanceForm

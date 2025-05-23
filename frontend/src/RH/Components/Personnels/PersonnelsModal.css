@@ -11,6 +11,10 @@
   --modal-header-bg-light: #f0f5ff;
   --modal-header-bg-dark: #111827;
   --modal-transition: all 0.3s ease;
+  --primary-color: #4f46e5;
+  --primary-color-dark: #6366f1;
+  --success-color: #10b981;
+  --success-color-dark: #059669;
 }
 
 /* Modal Overlay */
@@ -45,7 +49,8 @@
 }
 
 .dark .modal-container,
-body.dark .modal-container {
+body.dark .modal-container,
+.modal-container.dark {
   background-color: var(--modal-bg-dark);
   color: var(--modal-text-dark);
   border-color: var(--modal-border-dark);
@@ -68,7 +73,8 @@ body.dark .modal-container {
 }
 
 .dark .modal-header,
-body.dark .modal-header {
+body.dark .modal-header,
+.modal-container.dark .modal-header {
   background-color: var(--modal-header-bg-dark);
   border-color: var(--modal-border-dark);
 }
@@ -81,8 +87,9 @@ body.dark .modal-header {
 }
 
 .dark .modal-header h3,
-body.dark .modal-header h3 {
-  color: #818cf8;
+body.dark .modal-header h3,
+.modal-container.dark .modal-header h3 {
+  color: var(--primary-color-dark);
 }
 
 /* Close Button */
@@ -105,9 +112,10 @@ body.dark .modal-header h3 {
 }
 
 .dark .close-button:hover,
-body.dark .close-button:hover {
+body.dark .close-button:hover,
+.modal-container.dark .close-button:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  color: #818cf8;
+  color: var(--primary-color-dark);
 }
 
 /* Personnel Details Content */
@@ -125,7 +133,8 @@ body.dark .close-button:hover {
 }
 
 .dark .details-section,
-body.dark .details-section {
+body.dark .details-section,
+.modal-container.dark .details-section {
   border-color: var(--modal-border-dark);
 }
 
@@ -143,8 +152,9 @@ body.dark .details-section {
 }
 
 .dark .details-section h4,
-body.dark .details-section h4 {
-  color: #818cf8;
+body.dark .details-section h4,
+.modal-container.dark .details-section h4 {
+  color: var(--primary-color-dark);
 }
 
 /* Details Grid */
@@ -168,13 +178,63 @@ body.dark .details-section h4 {
 }
 
 .dark .detail-label,
-body.dark .detail-label {
+body.dark .detail-label,
+.modal-container.dark .detail-label {
   color: #9ca3af;
 }
 
 .detail-value {
   font-size: 1rem;
   font-weight: 500;
+}
+
+/* Copy functionality styles */
+.detail-value-with-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+}
+
+.copy-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.copy-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--primary-color);
+  opacity: 1;
+}
+
+.dark .copy-button:hover,
+body.dark .copy-button:hover,
+.modal-container.dark .copy-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--primary-color-dark);
+}
+
+.copy-icon {
+  transition: all 0.2s ease;
+}
+
+.copy-icon.success {
+  color: var(--success-color);
+}
+
+.dark .copy-icon.success,
+body.dark .copy-icon.success,
+.modal-container.dark .copy-icon.success {
+  color: var(--success-color-dark);
 }
 
 /* Status Badge */
@@ -185,6 +245,7 @@ body.dark .detail-label {
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 500;
+  width: fit-content;
 }
 
 .status-badge.active {
@@ -198,13 +259,17 @@ body.dark .detail-label {
 }
 
 .dark .status-badge.active,
-body.dark .status-badge.active {
+body.dark .status-badge.active,
+.modal-container.dark .status-badge.active {
   background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
 }
 
 .dark .status-badge.inactive,
-body.dark .status-badge.inactive {
+body.dark .status-badge.inactive,
+.modal-container.dark .status-badge.inactive {
   background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 /* Modal Footer */
@@ -217,7 +282,8 @@ body.dark .status-badge.inactive {
 }
 
 .dark .modal-footer,
-body.dark .modal-footer {
+body.dark .modal-footer,
+.modal-container.dark .modal-footer {
   border-color: var(--modal-border-dark);
   background-color: var(--modal-header-bg-dark);
 }
@@ -239,14 +305,16 @@ body.dark .modal-footer {
 }
 
 .dark .close-modal-button,
-body.dark .close-modal-button {
+body.dark .close-modal-button,
+.modal-container.dark .close-modal-button {
   background-color: #374151;
   color: #e5e7eb;
   border-color: #4b5563;
 }
 
 .dark .close-modal-button:hover,
-body.dark .close-modal-button:hover {
+body.dark .close-modal-button:hover,
+.modal-container.dark .close-modal-button:hover {
   background-color: #4b5563;
 }
 
@@ -261,4 +329,3 @@ body.dark .close-modal-button:hover {
     max-height: 80vh;
   }
 }
-

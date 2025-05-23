@@ -36,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
@@ -891,7 +892,7 @@ public class PersonnelController {
     @GetMapping("/collaborateurs-by-chef/{chefId}")
     public ResponseEntity<?> getPersonnelWithSameServiceAsChef(@PathVariable String chefId) {
         try {
-            // 1. Try both query patterns
+            // 1. Try both query patterns for chef's validator entries
             List<Validator> chefValidators = validatorRepository.findByChefId(chefId);
             if (chefValidators.isEmpty()) {
                 chefValidators = validatorRepository.findByChefIdWithFullDBRef(chefId);
@@ -918,7 +919,7 @@ public class PersonnelController {
             }
 
             // 2. Extract service IDs
-            List<String> serviceIds = chefValidators.stream()
+            final List<String> serviceIds = chefValidators.stream()
                     .map(v -> {
                         String serviceId = v.getService().getId();
                         log.debug("📌 Validator entry - Service ID: {}", serviceId);
@@ -926,8 +927,8 @@ public class PersonnelController {
                     })
                     .collect(Collectors.toList());
 
-            // 3. Build query
-            List<ObjectId> objectIds = serviceIds.stream()
+            // 3. Build and execute personnel query
+            final List<ObjectId> objectIds = serviceIds.stream()
                     .map(ObjectId::new)
                     .collect(Collectors.toList());
 
@@ -936,9 +937,16 @@ public class PersonnelController {
             Query query = new Query(Criteria.where("service.$id").in(objectIds));
             log.debug("🔎 Final query: {}", query);
 
-            // 4. Execute query
-            List<Personnel> personnelList = mongoTemplate.find(query, Personnel.class);
+            final List<Personnel> personnelList = mongoTemplate.find(query, Personnel.class);
             log.debug("👥 Found {} personnel records", personnelList.size());
+
+            // 4. Pre-fetch all potential chefs (all validators for the services)
+            Query validatorsQuery = new Query(Criteria.where("service.$id").in(objectIds));
+            List<Validator> allValidators = mongoTemplate.find(validatorsQuery, Validator.class);
+
+            // Create a map of serviceId to list of validators (chefs)
+            Map<String, List<Validator>> serviceValidatorsMap = allValidators.stream()
+                    .collect(Collectors.groupingBy(v -> v.getService().getId()));
 
             // 5. Format response
             List<Map<String, Object>> collaborators = personnelList.stream()
@@ -952,15 +960,57 @@ public class PersonnelController {
                     })
                     .map(p -> {
                         Map<String, Object> map = new HashMap<>();
+                        // Basic information
                         map.put("id", p.getId());
                         map.put("matricule", p.getMatricule());
+                        map.put("nom", p.getNom());
+                        map.put("prenom", p.getPrenom());
                         map.put("nomComplet", p.getNom() + " " + p.getPrenom());
                         map.put("email", p.getEmail());
-                        map.put("role", p.getRole());
+                        map.put("telephone", p.getTelephone());
+                        map.put("CIN", p.getCIN());
+                        map.put("sexe", p.getSexe());
+                        map.put("situation", p.getSituation());
+                        map.put("nbr_enfants", p.getNbr_enfants());
+                        map.put("date_naiss", p.getDate_naiss());
+                        map.put("date_embauche", p.getDate_embauche());
+                        map.put("code_soc", p.getCode_soc());
 
+                        // Professional information
+                        map.put("role", p.getRole());
+                        map.put("active", p.isActive());
+                        map.put("accountLocked", p.isAccountLocked());
+                        map.put("failedLoginAttempts", p.getFailedLoginAttempts());
+
+                        // Service
                         Service service = p.getService();
                         map.put("serviceId", service.getId());
                         map.put("serviceName", service.getServiceName());
+
+                        // Hierarchical chefs (up to 3 levels)
+                        List<Map<String, Object>> chefsHierarchiques = new ArrayList<>();
+
+                        // Get validators for this personnel's service
+                        List<Validator> serviceValidators = serviceValidatorsMap.getOrDefault(service.getId(), Collections.emptyList());
+
+                        // Add up to 3 chefs from validators
+                        serviceValidators.stream()
+                                .limit(3) // Limit to 3 chefs
+                                .forEach(validator -> {
+                                    Personnel chef = validator.getChef();
+                                    if (chef != null) {
+                                        Map<String, Object> chefMap = new HashMap<>();
+                                        chefMap.put("id", chef.getId());
+                                        chefMap.put("matricule", chef.getMatricule());
+                                        chefMap.put("email", chef.getEmail());
+
+                                        chefMap.put("nomComplet", chef.getNom() + " " + chef.getPrenom());
+                                        chefMap.put("poid", validator.getPoid()); // Add weight from validator
+                                        chefsHierarchiques.add(chefMap);
+                                    }
+                                });
+
+                        map.put("chefsHierarchiques", chefsHierarchiques);
 
                         return map;
                     })

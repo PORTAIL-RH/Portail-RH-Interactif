@@ -452,7 +452,6 @@ public class DemandeAutorisationController {
             // 6. Sauvegarde de la réponse
             responseChefsDemAutorisationRepository.save(response);
 
-            // 9. Notification de l'employé
             if (demande.getMatPers() != null) {
                 String message = String.format("Demande d'autorisation de personnel %s a été approuvée - Validation reçue (Chef %d)",
                         demande.getMatPers().getNom(), poidChef);
@@ -466,6 +465,7 @@ public class DemandeAutorisationController {
                 );
             }
 
+
             // 7. Vérification si toutes les validations sont complètes
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
@@ -475,7 +475,6 @@ public class DemandeAutorisationController {
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
             demande.setResponseChefs(response);
             demandeAutorisationRepository.save(demande);
-
 
 
             // 10. Mise à jour SSE
@@ -636,6 +635,7 @@ public class DemandeAutorisationController {
             }
 
             // 9. Mise à jour SSE
+            sseController.sendUpdate("updated", demande);
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -855,7 +855,9 @@ public class DemandeAutorisationController {
                 "id", personnel.getId(),
                 "nomComplet", personnel.getNom() + " " + personnel.getPrenom(),
                 "role", personnel.getRole(),
-                "email", personnel.getEmail()
+                "email", personnel.getEmail(),
+                "service", personnel.getServiceName()
+
         );
     }
 

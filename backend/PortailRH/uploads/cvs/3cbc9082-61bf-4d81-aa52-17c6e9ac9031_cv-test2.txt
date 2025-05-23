@@ -1,0 +1,1 @@
+Highly motivated Java developer with 4 years of experience in building robust and scalable backend systems.  Proficient in Spring Boot, Hibernate, and RESTful API design.  Experience with SQL databases (MySQL, PostgreSQL).  Strong problem-solving abilities and a passion for clean code.

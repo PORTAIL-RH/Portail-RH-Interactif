@@ -14,8 +14,8 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
   }
 
   const handleEmailAllChefs = () => {
-    if (personnel.chefs && personnel.chefs.length > 0) {
-      const emails = personnel.chefs.map(chef => chef.email).join(';')
+    if (personnel.chefsHierarchiques && personnel.chefsHierarchiques.length > 0) {
+      const emails = personnel.chefsHierarchiques.map(chef => chef.email).join(';')
       window.location.href = `mailto:${emails}`
     }
   }
@@ -112,9 +112,9 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
               <div className="detail-item chefs-section">
                 <span className="detail-label">Hierarchical Chiefs:</span>
                 <span className="detail-value">
-                  {personnel.chefs && personnel.chefs.length > 0 ? (
+                  {personnel.chefsHierarchiques && personnel.chefsHierarchiques.length > 0 ? (
                     <div className="chefs-container">
-                      {personnel.chefs.map((chef, index) => (
+                      {personnel.chefsHierarchiques.map((chef, index) => (
                         <div key={index} className="chef-card">
                           <div className="chef-info">
                             <div className="chef-name">{chef.nomComplet}</div>
@@ -151,7 +151,7 @@ const PersonnelDetailsModal = ({ personnel, onClose, theme }) => {
                       <button 
                         className="email-all-button" 
                         onClick={handleEmailAllChefs}
-                        disabled={!personnel.chefs || personnel.chefs.length === 0}
+                        disabled={!personnel.chefsHierarchiques || personnel.chefsHierarchiques.length === 0}
                       >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>

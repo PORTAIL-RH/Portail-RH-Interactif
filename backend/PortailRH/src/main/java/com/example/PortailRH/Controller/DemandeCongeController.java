@@ -519,20 +519,6 @@ public class DemandeCongeController {
             // 6. Save validation response
             responseChefsDemCongeRepository.save(response);
 
-            // 9. Notify employee
-            if (demande.getMatPers() != null) {
-                String message = String.format("Demande de congé de personnel %s a été approuvée - Validation reçue (Chef %d)",
-                        demande.getMatPers().getNom(), poidChef);
-
-                notificationService.createNotification(
-                        message,
-                        "RH",
-                        null,
-                        null,
-                        demande.getMatPers().getCode_soc()
-                );
-            }
-
             // 7. Check if all validations are complete
             boolean tousValides = "O".equals(response.getResponseChef1())
                     && "O".equals(response.getResponseChef2())
@@ -542,6 +528,21 @@ public class DemandeCongeController {
             demande.setReponseChef(tousValides ? Reponse.O : Reponse.I);
             demande.setResponseChefs(response);
             demandeCongeRepository.save(demande);
+
+            // 9. Notify employee
+            if (demande.getMatPers() != null ) {
+                String message = String.format("Demande de congé de personnel %s a été approuvée - Validation reçue (Chef %d)",
+                        demande.getMatPers().getNom(), poidChef);
+
+                notificationService.createNotification(
+                         message,
+                        null,
+                        demande.getMatPers().getId(),
+                        null,
+                        null
+                );
+            }
+
 
 
 
@@ -698,6 +699,7 @@ public class DemandeCongeController {
                         demande.getMatPers().getCode_soc()
                 );
             }
+
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
@@ -1068,19 +1070,29 @@ public class DemandeCongeController {
     @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
     public ResponseEntity<?> getDemandesApprovedByChef1ForService(@PathVariable String chefserviceid) {
         try {
-            // 1. Validate ID format
+            // 1. Validate ID is not null or empty
+            if (chefserviceid == null || chefserviceid.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(Map.of(
+                                "status", "error",
+                                "message", "ID du chef est requis",
+                                "providedId", chefserviceid
+                        ));
+            }
+
+            // 2. Validate ID format
             if (!ObjectId.isValid(chefserviceid)) {
                 return ResponseEntity.badRequest()
                         .body(Map.of(
                                 "status", "error",
-                                "message", "ID invalide",
+                                "message", "ID du chef invalide",
                                 "providedId", chefserviceid
                         ));
             }
 
             ObjectId chefId = new ObjectId(chefserviceid);
 
-            // 2. Get chef information
+            // 3. Get chef information
             Personnel chef = mongoTemplate.findOne(
                     new Query(Criteria.where("_id").is(chefId)),
                     Personnel.class
@@ -1089,7 +1101,7 @@ public class DemandeCongeController {
                 return ResponseEntity.notFound().build();
             }
 
-            // 3. Find services where chef is validator with weight 1
+            // 4. Find services where chef is validator with weight 1
             List<Validator> chefValidators = mongoTemplate.find(
                     new Query(Criteria.where("chef.$id").is(chefId).and("poid").is(1)),
                     Validator.class
@@ -1104,42 +1116,94 @@ public class DemandeCongeController {
                 ));
             }
 
-            // 4. Get service IDs
+            // 5. Get service IDs - with null checks
             List<ObjectId> serviceIds = chefValidators.stream()
-                    .map(v -> v.getService())
+                    .map(Validator::getService)
                     .filter(Objects::nonNull)
-                    .map(s -> new ObjectId(s.getId()))
+                    .map(s -> {
+                        try {
+                            return new ObjectId(s.getId());
+                        } catch (IllegalArgumentException e) {
+                            log.warn("Invalid service ID found: {}", s.getId());
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
 
-            // 5. Get all personnel in these services (excluding current chef)
+            if (serviceIds.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Aucun service valide trouvé pour ce validateur",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 6. Get all personnel in these services (excluding current chef)
             List<Personnel> servicePersonnel = mongoTemplate.find(
                     new Query(Criteria.where("service.$id").in(serviceIds)
                             .and("_id").ne(chefId)),
                     Personnel.class
             );
 
-            // 6. Get demandes for these personnel that are approved by chef1
+            // 7. Get personnel IDs with null checks
             List<ObjectId> personnelIds = servicePersonnel.stream()
-                    .map(p -> new ObjectId(p.getId()))
+                    .map(p -> {
+                        try {
+                            return new ObjectId(p.getId());
+                        } catch (IllegalArgumentException e) {
+                            log.warn("Invalid personnel ID found: {}", p.getId());
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
                     .collect(Collectors.toList());
 
-            // First find all responses approved by chef1
+            if (personnelIds.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Aucun personnel trouvé dans les services gérés",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 8. Find all responses approved by chef1
             List<Response_chefs_dem_conge> approvedResponses = responseChefsDemCongeRepository.findByResponseChef1("O");
 
-            // Then get the demandes that:
-            // 1. Belong to personnel in the service
-            // 2. Have responses approved by chef1
+            // 9. Get demande IDs from responses with null checks
+            List<ObjectId> approvedDemandeIds = approvedResponses.stream()
+                    .map(r -> {
+                        try {
+                            return new ObjectId(r.getDemandeId());
+                        } catch (IllegalArgumentException e) {
+                            log.warn("Invalid demande ID in response: {}", r.getDemandeId());
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            if (approvedDemandeIds.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                        "status", "success",
+                        "message", "Aucune demande approuvée trouvée",
+                        "chef", buildPersonnelMap(chef),
+                        "demandes", Collections.emptyList()
+                ));
+            }
+
+            // 10. Get the approved demandes
             List<DemandeConge> approvedDemandes = mongoTemplate.find(
                     new Query(Criteria.where("matPers.$id").in(personnelIds)
-                            .and("_id").in(approvedResponses.stream()
-                                    .map(r -> new ObjectId(r.getDemandeId()))
-                                    .collect(Collectors.toList()))
-                    ).with(Sort.by(Sort.Direction.DESC, "dateDemande")),
+                            .and("_id").in(approvedDemandeIds))
+                            .with(Sort.by(Sort.Direction.DESC, "dateDemande")),
                     DemandeConge.class
             );
 
-            // 7. Prepare response
+            // 11. Prepare response
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "chef", buildPersonnelMap(chef),

@@ -10,6 +10,7 @@ import {
   FiLoader,
   FiFilter,
 } from "react-icons/fi";
+import { toast } from "react-toastify";
 import "./Calendar.css";
 import Navbar from "../Navbar/Navbar";
 import Sidebar from "../Sidebar/Sidebar";
@@ -87,87 +88,111 @@ const CalendrierConge = () => {
   const userId = getUserId();
 
   // Transform leave data to consistent format
+
+useEffect(() => {
+  const fetchLeaveData = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Check localStorage for cached data under "approvedLeaves"
+      const cachedData = localStorage.getItem("approvedLeaves");
+      const cacheTimestamp = localStorage.getItem("approvedLeavesTimestamp");
+      const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      // Use cached data if it exists and is less than 1 day old
+      if (cachedData && cacheTimestamp && (Date.now() - parseInt(cacheTimestamp))) {
+        const parsedData = JSON.parse(cachedData);
+        setLeaveData(transformLeaveData(parsedData));
+        setLoading(false);
+        
+        // Fetch fresh data in background
+        fetchFreshData();
+      } else {
+        // If no valid cached data, fetch from API
+        await fetchFreshData();
+      }
+    } catch (error) {
+      console.error("Error in initial data fetch:", error);
+      setError(error.message);
+      setLoading(false);
+    }
+  };
+
+  const fetchFreshData = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+      
+      const response = await fetch(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch leave data: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Transform and set data
+      const transformedData = transformLeaveData(data);
+      setLeaveData(transformedData);
+      
+      // Cache the data in localStorage
+      localStorage.setItem("approvedLeaves", JSON.stringify(data));
+      localStorage.setItem("approvedLeavesTimestamp", Date.now().toString());
+    } catch (error) {
+      console.error("Error fetching fresh leave data:", error);
+      if (leaveData.length === 0) {
+        setError("Impossible de charger les données. Veuillez vérifier votre connexion.");
+      } else {
+        toast.warning("Les données peuvent ne pas être à jour. Vérifiez votre connexion.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (userId) {
+    fetchLeaveData();
+  } else {
+    setError("Identifiant utilisateur non trouvé");
+    setLoading(false);
+  }
+}, [userId]);
+
+  // Enhanced transformLeaveData function
   const transformLeaveData = (rawData) => {
     // Handle both array and object with demandes property
     const rawLeaves = Array.isArray(rawData) ? rawData : (rawData.demandes || []);
     
-    return rawLeaves.map(leave => ({
-      id: leave.id || leave._id,
-      employeeName: `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
-      startDate: leave.dateDebut,
-      endDate: leave.dateFin,
-      type: "ANNUAL",
-      status: "ACCEPTED",
-      duration: calculateDuration(leave.dateDebut, leave.dateFin),
-      department: leave.matPers?.serviceName || "Unknown",
-      approvedBy: "Manager",
-      description: leave.texteDemande || "Congé annuel"
-    }));
-  };
-
-  // Fetch approved leave data
-  useEffect(() => {
-    const fetchLeaveData = async () => {
-      setLoading(true);
-      setError(null);
+    return rawLeaves.map(leave => {
+      // Extract employee name from nested structure if available
+      let employeeName = "";
+      if (leave.matPers) {
+        employeeName = `${leave.matPers.nom || ''} ${leave.matPers.prenom || ''}`.trim();
+      } else if (leave.personnel) {
+        employeeName = `${leave.personnel.nom || ''} ${leave.personnel.prenom || ''}`.trim();
+      }
       
-      try {
-        // First check localStorage for cached data
-        const cachedData = localStorage.getItem("approvedCongesCalendar");
-        
-        if (cachedData) {
-          const parsedData = JSON.parse(cachedData);
-          setLeaveData(transformLeaveData(parsedData));
-          setLoading(false);
-          
-          // Still fetch fresh data in background
-          fetchFreshData();
-          return;
-        }
-        
-        // If no cached data, fetch from API
-        await fetchFreshData();
-      } catch (error) {
-        console.error("Error fetching leave data:", error);
-        setError(error.message);
-        setLoading(false);
-      }
-    };
-
-    const fetchFreshData = async () => {
-      try {
-        const token = localStorage.getItem("authToken");
-        
-        const response = await fetch(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch leave data: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        // Transform and set data
-        const transformedData = transformLeaveData(data);
-        setLeaveData(transformedData);
-        
-        // Cache the data in localStorage
-        localStorage.setItem("approvedCongesCalendar", JSON.stringify(data));
-      } catch (error) {
-        console.error("Error fetching fresh leave data:", error);
-        // Don't set error state here to avoid overwriting cached data display
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (userId) {
-      fetchLeaveData();
-    }
-  }, [userId]);
+      return {
+        id: leave.id || leave._id,
+        employeeName: employeeName || "Inconnu",
+        startDate: leave.dateDebut,
+        endDate: leave.dateFin,
+        type: leave.typeConge?.nom || "ANNUAL",
+        status: leave.statut || "ACCEPTED",
+        duration: calculateDuration(leave.dateDebut, leave.dateFin),
+        department: leave.matPers?.serviceName || leave.service?.nom || "Unknown",
+        approvedBy: leave.approuvePar || "Manager",
+        description: leave.texteDemande || leave.motif || "Congé annuel"
+      };
+    });
+  };
 
   const calculateDuration = (startDate, endDate) => {
     const start = new Date(startDate);
@@ -176,7 +201,7 @@ const CalendrierConge = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  // Fonctions du calendrier...
+  // Calendar functions
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
@@ -184,7 +209,7 @@ const CalendrierConge = () => {
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const goToToday = () => setCurrentDate(new Date());
 
-  // Filtres...
+  // Filters
   const toggleFilters = () => setShowFilters(prev => !prev);
 
   const handleFilterChange = (e) => {
