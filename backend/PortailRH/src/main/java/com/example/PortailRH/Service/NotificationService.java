@@ -144,7 +144,7 @@ public class NotificationService {
     public List<Notification> getNotificationsByRoleCodeSoc(String role, String codeSoc) {
         return notificationRepository.findByRoleAndCodeSoc(role, codeSoc);
     }
-//for new groupe notification
+    //for new groupe notification
     public Notification findById(String id) {
         return notificationRepository.findById(id).orElse(null);
     }
@@ -171,18 +171,18 @@ public class NotificationService {
     }
 
 
-// mark all notifications as read for a specific user.
-public void markAllAsReadByUser(String personnelId, String role, String[] serviceIdArray, String codeSoc) {
-    if ("RH".equalsIgnoreCase(role)) {
-        // Pour RH, on ignore les serviceId
-        notificationRepository.markAllAsReadByUser(personnelId, role, null, codeSoc);
-    } else {
-        // Pour les autres rôles, parcourir chaque serviceId
-        for (String serviceId : serviceIdArray) {
-            notificationRepository.markAllAsReadByUser(personnelId, role, serviceId, codeSoc);
+    // mark all notifications as read for a specific user.
+    public void markAllAsReadByUser(String personnelId, String role, String[] serviceIdArray, String codeSoc) {
+        if ("RH".equalsIgnoreCase(role)) {
+            // Pour RH, on ignore les serviceId
+            notificationRepository.markAllAsReadByUser(personnelId, role, null, codeSoc);
+        } else {
+            // Pour les autres rôles, parcourir chaque serviceId
+            for (String serviceId : serviceIdArray) {
+                notificationRepository.markAllAsReadByUser(personnelId, role, serviceId, codeSoc);
+            }
         }
     }
-}
 
 
     // Alternative implementation if bulk update doesn't work

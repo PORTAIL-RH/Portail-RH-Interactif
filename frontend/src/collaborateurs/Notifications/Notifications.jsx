@@ -19,7 +19,7 @@ const Notifications = () => {
   const userId = localStorage.getItem("userId")
 
   // Use the notifications hook with personnelId
-  const { notifications, loading, error, fetchNotifications, markAsRead, markAllAsRead } = useNotifications(
+  const { notifications, loading, error, fetchNotifications, markAsRead } = useNotifications(
     userRole,
     userId,
   )
@@ -122,15 +122,7 @@ const Notifications = () => {
                 <button className="refresh-button" onClick={fetchNotifications}>
                   <FiRefreshCw />
                 </button>
-                <button
-                  className="mark-all-button"
-                  onClick={async () => {
-                    await markAllAsRead()
-                    fetchNotifications()
-                  }}
-                >
-                  Marquer tout comme lu
-                </button>
+                
               </div>
             </div>
           </div>

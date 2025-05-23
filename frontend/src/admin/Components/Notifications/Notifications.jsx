@@ -78,22 +78,7 @@ const Notifications = () => {
               <span>Toutes</span>
               <span className="filter-count">{totalCount}</span>
             </button>
-            <button
-              className={`filter-btn ${activeFilter === "unread" ? "active" : ""}`}
-              onClick={() => setActiveFilter("unread")}
-            >
-              <FiBell />
-              <span>Non lues</span>
-              <span className="filter-count">{unreadCount}</span>
-            </button>
-            <button
-              className={`filter-btn ${activeFilter === "read" ? "active" : ""}`}
-              onClick={() => setActiveFilter("read")}
-            >
-              <FiEye />
-              <span>Lues</span>
-              <span className="filter-count">{readCount}</span>
-            </button>
+          
           </div>
 
           <div className="notifications-page-list-container">
@@ -124,8 +109,7 @@ const Notifications = () => {
                 <FiBell size={48} />
                 <p>
                   {activeFilter === "all" && "Vous n'avez aucune notification."}
-                  {activeFilter === "unread" && "Vous n'avez aucune notification non lue."}
-                  {activeFilter === "read" && "Vous n'avez aucune notification lue."}
+                  
                 </p>
               </div>
             )}

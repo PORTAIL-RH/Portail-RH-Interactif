@@ -530,18 +530,20 @@ public class DemandeCongeController {
             demandeCongeRepository.save(demande);
 
             // 9. Notify employee
-            if (demande.getMatPers() != null) {
+            if (demande.getMatPers() != null ) {
                 String message = String.format("Demande de congé de personnel %s a été approuvée - Validation reçue (Chef %d)",
                         demande.getMatPers().getNom(), poidChef);
 
                 notificationService.createNotification(
-                        message,
-                        "RH",
+                         message,
                         null,
+                        demande.getMatPers().getId(),
                         null,
-                        demande.getMatPers().getCode_soc()
+                        null
                 );
             }
+
+
 
 
             return ResponseEntity.ok(Map.of(
