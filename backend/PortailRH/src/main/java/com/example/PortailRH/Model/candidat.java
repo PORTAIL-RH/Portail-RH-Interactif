@@ -20,12 +20,10 @@ public class candidat {
     private String numTel;
     private String cvFilePath;
     private Date dateCandidature = new Date();
-    private String aiResponse;
     private List<String> matchedSkills;
     private List<String> missingSkills ;
-    private Double matchScore;
-    private String strengths;
-    private String weaknesses;
+
+    private String aiResponse;
 // + their getters and setters
 
     private Double score;
@@ -38,33 +36,6 @@ public class candidat {
     // Getters and Setters
 
 
-    public Double getMatchScore() {
-        return matchScore;
-    }
-
-    public void setMatchScore(Double matchScore) {
-        this.matchScore = matchScore;
-    }
-
-    public String getStrengths() {
-        return strengths;
-    }
-
-    public void setStrengths(String strengths) {
-        this.strengths = strengths;
-    }
-
-    public String getWeaknesses() {
-        return weaknesses;
-    }
-
-    public void setWeaknesses(String weaknesses) {
-        this.weaknesses = weaknesses;
-    }
-
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-
     public String getAiResponse() {
         return aiResponse;
     }
@@ -73,6 +44,8 @@ public class candidat {
         this.aiResponse = aiResponse;
     }
 
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
     public String getNom() { return nom; }
     public void setNom(String nom) { this.nom = nom; }
 

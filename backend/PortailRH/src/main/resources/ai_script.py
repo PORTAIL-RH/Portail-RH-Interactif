@@ -302,11 +302,10 @@ Return *ONLY* a single, valid JSON object containing ONLY the following 5 keys. 
         final_result["match_score"] = max(0, min(100, score_val))
 
         # Process strengths and weaknesses (ensure they are strings)
-        final_result["strengths"] = str(data.get("strengths", "")).strip()
-        final_result["weaknesses"] = str(data.get("weaknesses", "")).strip()
+
 
         # Check for any extra keys returned and log them (they won't be included in final_result)
-        expected_keys = {"matched_skills", "missing_skills", "match_score", "strengths", "weaknesses"}
+        expected_keys = {"matched_skills", "missing_skills", "match_score"}
         extra_keys = set(data.keys()) - expected_keys
         if extra_keys:
             logging.warning(f"LLM response contained unexpected extra keys (ignored): {extra_keys}")

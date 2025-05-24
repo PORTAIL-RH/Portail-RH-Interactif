@@ -143,17 +143,17 @@ public class PersonnelController {
                 ));
             }
 
-            // 2. Handle existing user
+            // 2. Handle existing user (this is the only case we want to handle)
             Optional<Personnel> existingUser = personnelRepository.findByMatricule(request.getMatricule());
 
             if (existingUser.isPresent()) {
                 Personnel personnel = existingUser.get();
 
-                // 2a. Email change attempt
+                // 2a. Verify email matches existing record
                 if (!personnel.getEmail().equalsIgnoreCase(request.getEmail())) {
                     session.setAttribute("registrationAttempts", sessionAttempts + 1);
                     return ResponseEntity.badRequest().body(Map.of(
-                            "error", "Email cannot be changed for existing user",
+                            "error", "Email does not match our records",
                             "status", "error"
                     ));
                 }
@@ -198,23 +198,26 @@ public class PersonnelController {
                     ));
                 }
 
-                personnelRepository.save(personnel);
+                // Track if we need to save changes
+                boolean needsUpdate = false;
 
-                // Create notification
-                notificationService.createNotification(
-                        "Enregistrement réussi d'un nouveau personnel avec le matricule -> " + personnel.getMatricule(),
-                        "Admin",
-                        null,
-                        null,
-                        null
-                );
+                // 2d. Update nom if changed
+                if (request.getNom() != null && !request.getNom().equals(personnel.getNom())) {
+                    personnel.setNom(request.getNom());
+                    needsUpdate = true;
+                }
 
-                // 2d. Password update if changed
+                // 2e. Update prenom if changed
+                if (request.getPrenom() != null && !request.getPrenom().equals(personnel.getPrenom())) {
+                    personnel.setPrenom(request.getPrenom());
+                    needsUpdate = true;
+                }
+
+                // 2f. Update password if changed
                 if (!bCryptPasswordEncoder.matches(request.getPassword(), personnel.getMotDePasse())) {
                     personnel.setMotDePasse(bCryptPasswordEncoder.encode(request.getPassword()));
-                    personnelRepository.save(personnel);
+                    needsUpdate = true;
                     sendPasswordUpdateEmail(personnel);
-
 
                     // Create notification
                     notificationService.createNotification(
@@ -226,64 +229,28 @@ public class PersonnelController {
                     );
                 }
 
+                // Only save if there were actual changes
+                if (needsUpdate) {
+                    personnelRepository.save(personnel);
+
+                    // Send registration confirmation email
+                    sendRegistrationConfirmationEmail(personnel);
+                }
+
                 return ResponseEntity.ok(Map.of(
-                        "message", "Account information updated",
+                        "message", "Registration successful",
                         "action", "update",
                         "status", "success"
                 ));
             }
 
-            // 3. Handle new registration with invalid matricule
-            if (!isValidMatricule(request.getMatricule())) {
-                session.setAttribute("registrationAttempts", sessionAttempts + 1);
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Invalid matricule",
-                        "message", "Matricule must be 5 digits",
-                        "attemptsLeft", MAX_REGISTRATION_ATTEMPTS - (sessionAttempts + 1),
-                        "status", "error"
-                ));
-            }
-
-            // 4. Handle email conflict
-            if (personnelRepository.existsByEmail(request.getEmail())) {
-                session.setAttribute("registrationAttempts", sessionAttempts + 1);
-                return ResponseEntity.badRequest().body(Map.of(
-                        "error", "Email already in use",
-                        "status", "error"
-                ));
-            }
-
-            // 5. Successful new registration
-            session.removeAttribute("registrationAttempts");
-
-            Personnel newPersonnel = new Personnel();
-            newPersonnel.setMatricule(request.getMatricule());
-            newPersonnel.setEmail(request.getEmail());
-            newPersonnel.setNom(request.getNom());
-            newPersonnel.setPrenom(request.getPrenom());
-            newPersonnel.setMotDePasse(bCryptPasswordEncoder.encode(request.getPassword()));
-            newPersonnel.setActive(false);
-            newPersonnel.setRole("Employee");
-
-            personnelRepository.save(newPersonnel);
-
-            // Create notification
-            notificationService.createNotification(
-                    "Enregistrement réussi d'un nouveau personnel avec le matricule : " + newPersonnel.getMatricule(),
-                    "Admin",
-                    null,
-                    null,
-                    null
-            );
-
-
-
-            sendWelcomeEmail(newPersonnel);
-
-            return ResponseEntity.ok(Map.of(
-                    "message", "Registration successful. Account pending activation.",
-                    "action", "register",
-                    "status", "success"
+            // 3. If we reach here, the matricule doesn't exist in the system
+            session.setAttribute("registrationAttempts", sessionAttempts + 1);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid credentials",
+                    "message", "Matricule not found in our system",
+                    "attemptsLeft", MAX_REGISTRATION_ATTEMPTS - (sessionAttempts + 1),
+                    "status", "error"
             ));
 
         } catch (Exception e) {
@@ -293,6 +260,41 @@ public class PersonnelController {
                     "message", e.getMessage(),
                     "status", "error"
             ));
+        }
+    }
+
+    private void sendRegistrationConfirmationEmail(Personnel personnel) {
+        String subject = "Registration Successful - Your Account Details";
+        String body = String.format(
+                "<html>" +
+                        "<head><style>body{font-family:Arial,sans-serif;line-height:1.6}</style></head>" +
+                        "<body>" +
+                        "<h2>Dear %s %s,</h2>" +
+                        "<p>Your registration was successful with the following details:</p>" +
+                        "<ul>" +
+                        "<li><strong>Matricule:</strong> %s</li>" +
+                        "<li><strong>Email:</strong> %s</li>" +
+                        "<li><strong>Full Name:</strong> %s %s</li>" +
+                        "</ul>" +
+                        "<p>Your account is pending activation by the administration. You will receive another email once your account is activated and you can login.</p>" +
+                        "<p>If you encounter any issues or have questions, please contact the administration.</p>" +
+                        "<p>Best regards,</p>" +
+                        "<p>HR Team</p>" +
+                        "</body>" +
+                        "</html>",
+                personnel.getPrenom(),
+                personnel.getNom(),
+                personnel.getMatricule(),
+                personnel.getEmail(),
+                personnel.getPrenom(),
+                personnel.getNom()
+        );
+
+        try {
+            emailService.sendHtmlEmail(personnel.getEmail(), subject, body);
+            logger.info("Registration confirmation email sent to {}", personnel.getEmail());
+        } catch (Exception e) {
+            logger.error("Failed to send registration confirmation email to {}: {}", personnel.getEmail(), e.getMessage());
         }
     }
 
