@@ -145,15 +145,12 @@ public class AIService {
             candidate.setMissingSkills(missing);
 
             // Handle score
-            double score = result.has("match_score") ?
-                    result.get("match_score").asDouble() : 0.0;
-            candidate.setMatchScore(score);
+
 
         } catch (Exception e) {
             logger.error("Error processing AI response", e);
             candidate.setMatchedSkills(Collections.emptyList());
             candidate.setMissingSkills(Collections.emptyList());
-            candidate.setMatchScore(0.0);
         }
     }    public boolean verifyPythonEnvironment() {
         try {

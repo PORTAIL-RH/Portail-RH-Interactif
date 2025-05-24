@@ -11,10 +11,6 @@ public class CandidatResponse {
     private String numTel;
     private String cvFilePath;
     private Date dateCandidature;
-    private Map<String, Double> technicalSkills;
-    private Map<String, Double> languageSkills;
-    private List<String> strengths;
-    private List<String> weaknesses;
     private Double score;
     private Double matchPercentage;
     private Long totalCandidates;
@@ -93,37 +89,6 @@ public class CandidatResponse {
         this.dateCandidature = dateCandidature;
     }
 
-    public Map<String, Double> getTechnicalSkills() {
-        return technicalSkills;
-    }
-
-    public void setTechnicalSkills(Map<String, Double> technicalSkills) {
-        this.technicalSkills = technicalSkills;
-    }
-
-    public Map<String, Double> getLanguageSkills() {
-        return languageSkills;
-    }
-
-    public void setLanguageSkills(Map<String, Double> languageSkills) {
-        this.languageSkills = languageSkills;
-    }
-
-    public List<String> getStrengths() {
-        return strengths;
-    }
-
-    public void setStrengths(List<String> strengths) {
-        this.strengths = strengths;
-    }
-
-    public List<String> getWeaknesses() {
-        return weaknesses;
-    }
-
-    public void setWeaknesses(List<String> weaknesses) {
-        this.weaknesses = weaknesses;
-    }
 
     public Double getScore() {
         return score;

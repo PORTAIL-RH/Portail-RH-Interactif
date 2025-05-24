@@ -50,7 +50,6 @@ public class ScoreCalculationService {
                         "Final score will be based on direct AI match_score or default to 0.", candidate.getId());
                 // Use the AI's direct match_score if available (already set in candidate by processAiResponse)
                 // or the default from initializeCandidateDefaults if AI response was missing/bad
-                setScoresBasedOnDirectAiMatch(candidate);
                 return;
             }
 
@@ -116,10 +115,7 @@ public class ScoreCalculationService {
         } catch (Exception e) {
             logger.error("Error during score calculation for candidate {}: {}",
                     (candidate != null ? candidate.getId() : "null"), e.getMessage(), e);
-            // Fallback to default/AI scores in case of any unexpected error during calculation
-            if (candidate != null) {
-                setScoresBasedOnDirectAiMatch(candidate);
-            }
+
         }
     }
 
@@ -127,9 +123,7 @@ public class ScoreCalculationService {
         if (candidate.getMatchPercentage() == null) candidate.setMatchPercentage(0.0);
         if (candidate.getScore() == null) candidate.setScore(0.0);
         if (candidate.getAccepted() == null) candidate.setAccepted(false);
-        if (candidate.getMatchScore() == null) candidate.setMatchScore(0.0); // Direct AI score
-        if (candidate.getMatchedSkills() == null) candidate.setMatchedSkills(new ArrayList<>());
-        if (candidate.getMissingSkills() == null) candidate.setMissingSkills(new ArrayList<>());
+
         // Strengths/Weaknesses are usually set by AIService or processAiResponse
     }
 
@@ -180,13 +174,6 @@ public class ScoreCalculationService {
                 logger.warn("AI response for candidate {} missing or invalid 'missing_skills' array.", candidate.getId());
             }
 
-            // Optional: Also extract strengths and weaknesses from the AI response
-            if (aiResponseNode.hasNonNull("strengths")) {
-                candidate.setStrengths(aiResponseNode.get("strengths").asText(""));
-            }
-            if (aiResponseNode.hasNonNull("weaknesses")) {
-                candidate.setWeaknesses(aiResponseNode.get("weaknesses").asText(""));
-            }
 
         } catch (Exception e) {
             logger.error("Failed to parse AI response JSON for candidate {}: {}. Raw response: {}",
@@ -197,25 +184,12 @@ public class ScoreCalculationService {
             missingSkills = new ArrayList<>();
         } finally {
             // Update candidate object with extracted data
-            candidate.setMatchScore(aiDirectMatchScore); // Store the AI's direct percentage score
             candidate.setMatchedSkills(matchedSkills.stream().distinct().collect(Collectors.toList())); // Ensure distinct
             candidate.setMissingSkills(missingSkills.stream().distinct().collect(Collectors.toList())); // Ensure distinct
         }
     }
 
-    // Sets final scores based purely on the direct AI match_score
-    // Used when weighted calculation isn't possible (e.g., no job skills)
-    private void setScoresBasedOnDirectAiMatch(candidat candidate) {
-        double directAiScorePercent = candidate.getMatchScore() != null ? candidate.getMatchScore() : 0.0;
-        candidate.setMatchPercentage(roundToOneDecimal(directAiScorePercent));
-        candidate.setScore(roundToOneDecimal((directAiScorePercent / 100.0) * 10.0));
-        candidate.setAccepted(directAiScorePercent >= QUALIFIED_THRESHOLD);
-        logger.info("Set scores for candidate {} based on direct AI match_score: Match={}%, Score={}, Accepted={}",
-                candidate.getId(),
-                candidate.getMatchPercentage(),
-                candidate.getScore(),
-                candidate.getAccepted());
-    }
+
 
     private double roundToOneDecimal(double value) {
         if (Double.isNaN(value) || Double.isInfinite(value)) {
