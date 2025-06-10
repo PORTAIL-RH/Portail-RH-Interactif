@@ -61,6 +61,23 @@
   --update-bg: #2d3748;
 }
 
+/* Icône par défaut */
+.stat-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Icône en mode clair : noir */
+.stat-icon svg.light {
+  color: black;
+}
+
+/* Icône en mode sombre : blanc */
+.stat-icon svg.dark {
+  color: white;
+}
+
+
 /* Base Styles */
 * {
   margin: 0;

@@ -72,11 +72,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.5rem;
+  padding: 1rem;
   height: 64px;
-  background-color: var(--sidebar-header-bg-light); /* Blue background */
+}
+
+.sidebar.light .sidebar-header {
+  background-color: var(--sidebar-header-bg-light);
   color: var(--sidebar-header-text-light);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sidebar.dark .sidebar-header {

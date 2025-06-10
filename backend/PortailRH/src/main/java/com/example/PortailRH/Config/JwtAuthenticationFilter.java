@@ -70,6 +70,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/demande-formation/create") ||
                 requestURI.startsWith("/api/demande-formation") ||
                 requestURI.startsWith("/api/demande-formation/{id}") ||
+                requestURI.startsWith("/api/demande-formation/{id}/details") ||
                 requestURI.startsWith("/api/demande-formation/personnel/{matPersId}") ||
                 requestURI.startsWith("/api/demande-formation/valider/{id}") ||
                 requestURI.startsWith("/api/demande-formation/refuser/{id}") ||

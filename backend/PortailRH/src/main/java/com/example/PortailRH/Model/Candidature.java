@@ -13,7 +13,7 @@ public class Candidature {
     private String id;
     private Date dateAjoutPostulation;
     private Date dateFermeturePostulation;
-    private String emplacement; // Changed to lowercase for convention
+    private String emplacement;
     private String description;
     private String service;
     private int anneeExperiences;

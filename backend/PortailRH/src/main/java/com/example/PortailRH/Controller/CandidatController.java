@@ -708,10 +708,7 @@ public class CandidatController {
         // Initialize lists to avoid NullPointerExceptions
         candidate.setMatchedSkills(new ArrayList<>());
         candidate.setMissingSkills(new ArrayList<>());
-        // Set AI results to null initially
-        candidate.setMatchScore(null);
-        candidate.setStrengths(null);
-        candidate.setWeaknesses(null);
+
         // Set calculated scores to default
         candidate.setScore(0.0);
         candidate.setMatchPercentage(0.0);
