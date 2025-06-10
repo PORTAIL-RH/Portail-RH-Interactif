@@ -684,10 +684,11 @@ public class PersonnelController {
     }
 
     // Request password reset
-    @PostMapping("/request-password-reset")
-    public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> request) {
+    @PostMapping("/request-password-reset-mobile")
+    public ResponseEntity<?> requestPasswordResetMobile(@RequestBody Map<String, String> request) {
         try {
             String email = request.get("email");
+
             if (email == null || email.isEmpty()) {
                 return ResponseEntity.badRequest().body("Email is required");
             }
@@ -700,7 +701,148 @@ public class PersonnelController {
             Personnel personnel = personnelOpt.get();
             String resetToken = jwtUtil.generatePasswordResetToken(personnel.getEmail());
 
-            String resetLink = "http://localhost:3000/reset-password?token=" + resetToken;
+            // Mobile deep link
+            String mobileDeepLink = "http://localhost:8081/reset-password?token=" + resetToken;
+
+
+            String subject = "Réinitialisation de votre mot de passe";
+            String body = "Bonjour " + personnel.getPrenom() + " " + personnel.getNom() + ",<br><br>" +
+                    "Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous :<br>" +
+                    "<a href=\"" + mobileDeepLink + "\">Réinitialiser le mot de passe</a><br><br>" +
+
+                    // Add the URL as plain text for visibility
+                    "Ou copiez-collez ce lien dans votre navigateur mobile :<br>" +
+                    "<strong>" + mobileDeepLink + "</strong><br><br>" +
+                    "Ce lien expirera dans 24 heures.<br><br>" +
+                    "Si vous n'avez pas fait cette demande, veuillez ignorer cet email.<br><br>" +
+                    "Cordialement,<br>" +
+                    "Votre équipe RH";
+
+            emailService.sendHtmlEmail(email, subject, body);
+
+            return ResponseEntity.ok("Si un compte existe avec cet email, un lien de réinitialisation a été envoyé");
+        } catch (Exception ex) {
+            logger.error("Error in requestPasswordResetMobile", ex);
+            return ResponseEntity.internalServerError().body("Erreur lors de la demande de réinitialisation");
+        }
+    }
+
+    // Reset password - works for both web and mobile
+    @PostMapping("/reset-password-mobile")
+    public ResponseEntity<?> resetPasswordmobile(@RequestBody ResetPasswordRequest request) {
+        try {
+            String token = request.getToken();
+            String newPassword = request.getNewPassword();
+            String confirmPassword = request.getConfirmPassword();
+
+            if (token == null || token.isEmpty()) {
+                return ResponseEntity.badRequest().body("Token de réinitialisation requis");
+            }
+
+            if (newPassword == null || newPassword.isEmpty()) {
+                return ResponseEntity.badRequest().body("Nouveau mot de passe requis");
+            }
+
+            if (!newPassword.equals(confirmPassword)) {
+                return ResponseEntity.badRequest().body("Les mots de passe ne correspondent pas");
+            }
+
+            String email;
+            try {
+                email = jwtUtil.extractUsername(token);
+                if (!jwtUtil.validateToken(token, email) || !jwtUtil.isPasswordResetToken(token)) {
+                    return ResponseEntity.badRequest().body("Token invalide ou expiré");
+                }
+            } catch (Exception e) {
+                return ResponseEntity.badRequest().body("Token invalide ou expiré");
+            }
+
+            Optional<Personnel> personnelOpt = personnelRepository.findByEmail(email);
+            if (personnelOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body("Token invalide");
+            }
+
+            Personnel personnel = personnelOpt.get();
+            personnel.setMotDePasse(bCryptPasswordEncoder.encode(newPassword));
+            personnelRepository.save(personnel);
+
+            // Create notification update for password reset
+            notificationService.createNotification(
+                    "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
+                    "Admin",
+                    null,
+                    null,
+                    null
+            );
+
+            String subject = "Mot de passe mis à jour";
+            String body = "Bonjour " + personnel.getPrenom() + ",<br><br>" +
+                    "Votre mot de passe a été modifié avec succès.<br><br>" +
+                    "Si vous n'avez pas effectué cette modification, veuillez contacter immédiatement le support.<br><br>" +
+                    "Cordialement,<br>" +
+                    "Votre équipe RH";
+
+            emailService.sendHtmlEmail(email, subject, body);
+
+            return ResponseEntity.ok("Mot de passe réinitialisé avec succès");
+        } catch (Exception ex) {
+            logger.error("Error in resetPassword", ex);
+            return ResponseEntity.internalServerError().body("Erreur lors de la réinitialisation du mot de passe");
+        }
+    }
+
+    // Validate reset token - works for both web and mobile
+    @PostMapping("/validate-reset-token-mobile")
+    public ResponseEntity<?> validateResetTokenmobile(@RequestBody Map<String, String> request) {
+        try {
+            String token = request.get("token");
+            if (token == null || token.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Token is required"));
+            }
+
+            if (!jwtUtil.validatePasswordResetToken(token)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid or expired token"));
+            }
+
+            String email = jwtUtil.extractUsername(token);
+            return ResponseEntity.ok(Map.of(
+                    "message", "Token is valid",
+                    "email", email
+            ));
+        } catch (Exception ex) {
+            logger.error("Error in validateResetToken", ex);
+            return ResponseEntity.internalServerError().body("Error validating token");
+        }
+    }
+
+    // Request password reset
+    @PostMapping("/request-password-reset")
+    public ResponseEntity<?> requestPasswordReset(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            String clientType = request.get("clientType"); // "web" or "mobile"
+
+            if (email == null || email.isEmpty()) {
+                return ResponseEntity.badRequest().body("Email is required");
+            }
+
+            Optional<Personnel> personnelOpt = personnelRepository.findByEmail(email);
+            if (personnelOpt.isEmpty()) {
+                return ResponseEntity.ok("If an account exists with this email, a reset link has been sent");
+            }
+
+            Personnel personnel = personnelOpt.get();
+            String resetToken = jwtUtil.generatePasswordResetToken(personnel.getEmail());
+
+            // Determine reset link based on client type
+            String resetLink;
+            if ("mobile".equalsIgnoreCase(clientType)) {
+                resetLink = "http://localhost:8081/reset-password?token=" + resetToken;
+            } else {
+                // Default to web
+                resetLink = "http://localhost:3000/reset-password?token=" + resetToken;
+            }
+
             String subject = "Réinitialisation de votre mot de passe";
             String body = "Bonjour " + personnel.getPrenom() + " " + personnel.getNom() + ",<br><br>" +
                     "Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le lien ci-dessous :<br>" +
@@ -719,7 +861,7 @@ public class PersonnelController {
         }
     }
 
-    // Reset password
+    // Reset password - works for both web and mobile
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest request) {
         try {
@@ -783,7 +925,7 @@ public class PersonnelController {
         }
     }
 
-    // Validate reset token
+    // Validate reset token - works for both web and mobile
     @PostMapping("/validate-reset-token")
     public ResponseEntity<?> validateResetToken(@RequestBody Map<String, String> request) {
         try {

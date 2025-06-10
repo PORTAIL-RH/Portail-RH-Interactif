@@ -344,9 +344,8 @@ public class DemandeAutorisationController {
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeAutorisation>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandeAutorisation> demandes = demandeAutorisationRepository.findByMatPers_Id(matPersId);
-        return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
+        return ResponseEntity.ok(demandes); // Always returns 200 with [] if empty
     }
-
 
     @PutMapping("/valider/{id}")
     public ResponseEntity<?> validerDemandeAutorisation(
