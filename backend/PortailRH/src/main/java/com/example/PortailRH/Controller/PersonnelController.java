@@ -36,7 +36,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @RestController
@@ -221,7 +220,7 @@ public class PersonnelController {
 
                     // Create notification
                     notificationService.createNotification(
-                            "Mot de passe changé de personnel avec le matricule : " + personnel.getMatricule(),
+                            "Nouveau personnel enregistré avec le matricule : " + personnel.getMatricule(),
                             "Admin",
                             null,
                             null,
@@ -354,6 +353,15 @@ public class PersonnelController {
                     personnel.setLockTime(new Date());
                     personnel.setLockReason("Too many failed attempts in single session");
                     personnelRepository.save(personnel);
+
+                    // Send WebSocket notification to admins
+                    notificationService.createNotification(
+                            "Too many failed login attempts: " + personnel.getMatricule(),
+                            "Admin",
+                            null,
+                            null,
+                            null
+                    );
 
                     // Send SSE update for account lock
                     sseController.sendUpdate("account_locked", Map.of(

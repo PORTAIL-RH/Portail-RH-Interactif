@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   FiCalendar,
   FiChevronLeft,
@@ -10,198 +10,176 @@ import {
   FiLoader,
   FiFilter,
 } from "react-icons/fi";
-import { toast } from "react-toastify";
 import "./Calendar.css";
 import Navbar from "../Navbar/Navbar";
 import Sidebar from "../Sidebar/Sidebar";
 import { API_URL } from "../../../config";
-import "../../Colors.css";
+import { toast } from "react-toastify";
+import 'react-toastify/dist/ReactToastify.css';
 
 const CalendrierConge = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [leaveData, setLeaveData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
   const [theme, setTheme] = useState("light");
-
   const [filters, setFilters] = useState({
-    dateRange: "current",
+    dateRange: "current", // "current", "past", "future", "all"
   });
-  const [viewMode, setViewMode] = useState("month");
+  const [viewMode, setViewMode] = useState("month"); // "month", "list"
 
   // Theme management
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") || "light";
     setTheme(savedTheme);
-    applyTheme(savedTheme);
-
-    const handleStorageChange = () => {
-      const currentTheme = localStorage.getItem("theme") || "light";
-      setTheme(currentTheme);
-      applyTheme(currentTheme);
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("themeChanged", (e) => {
-      setTheme(e.detail || "light");
-      applyTheme(e.detail || "light");
-    });
-
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("themeChanged", handleStorageChange);
-    };
+    document.documentElement.className = savedTheme;
   }, []);
-
-  const applyTheme = (theme) => {
-    document.documentElement.classList.remove("light", "dark");
-    document.documentElement.classList.add(theme);
-    document.body.className = theme;
-  };
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    applyTheme(newTheme);
     localStorage.setItem("theme", newTheme);
-    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }));
+    document.documentElement.className = newTheme;
   };
 
-  const getUserId = () => {
+  const calculateDuration = (startDate, endDate) => {
     try {
-      const userData = localStorage.getItem("userId");
-      if (!userData) return null;
-      
-      try {
-        const parsed = JSON.parse(userData);
-        return parsed?.userId || parsed?.id || null;
-      } catch {
-        return userData;
-      }
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (isNaN(start.getTime())) throw new Error("Invalid start date");
+      if (isNaN(end.getTime())) throw new Error("Invalid end date");
+      const diffTime = Math.abs(end - start);
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
     } catch (e) {
-      console.error("Error reading userId from localStorage:", e);
-      return null;
+      console.error("Error calculating duration:", e);
+      return 1;
     }
   };
 
-  const userId = getUserId();
-
-  // Transform leave data to consistent format
-
-useEffect(() => {
-  const fetchLeaveData = async () => {
+  // Fetch annual leave data with caching and polling
+  const fetchLeaveData = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Check localStorage for cached data under "approvedLeaves"
-      const cachedData = localStorage.getItem("approvedLeaves");
-      const cacheTimestamp = localStorage.getItem("approvedLeavesTimestamp");
-      const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      // First try to load from localStorage
+      const cached = localStorage.getItem('demandes');
+      console.log("Checking localStorage for cached data...");
       
-      // Use cached data if it exists and is less than 1 day old
-      if (cachedData && cacheTimestamp && (Date.now() - parseInt(cacheTimestamp))) {
-        const parsedData = JSON.parse(cachedData);
-        setLeaveData(transformLeaveData(parsedData));
-        setLoading(false);
+      if (cached) {
+        const parsedData = JSON.parse(cached);
+        console.log("Found cached data in localStorage:", parsedData);
         
-        // Fetch fresh data in background
-        fetchFreshData();
-      } else {
-        // If no valid cached data, fetch from API
-        await fetchFreshData();
+        if (parsedData.conge && parsedData.conge.length > 0) {
+          const transformedData = transformLeaveData(parsedData.conge);
+          setLeaveData(transformedData);
+          console.log("Using cached leave data from localStorage");
+          setLoading(false);
+          return;
+        }
       }
-    } catch (error) {
-      console.error("Error in initial data fetch:", error);
-      setError(error.message);
-      setLoading(false);
-    }
-  };
 
-  const fetchFreshData = async () => {
-    try {
+      console.log("No valid cached data found, fetching from API...");
       const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
       
-      const response = await fetch(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
+      const response = await fetch(`${API_URL}/api/demande-conge/approved`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch leave data: ${response.status}`);
-      }
-
-      const data = await response.json();
+      if (!response.ok) throw new Error(await response.text());
       
-      // Transform and set data
+      const data = await response.json();
+      console.log("API response data:", data);
+      
+      // Transform and set the new data
       const transformedData = transformLeaveData(data);
       setLeaveData(transformedData);
       
-      // Cache the data in localStorage
-      localStorage.setItem("approvedLeaves", JSON.stringify(data));
-      localStorage.setItem("approvedLeavesTimestamp", Date.now().toString());
+      // Update the complete demandes structure in localStorage
+      const updatedAllDemandes = {
+        conge: data,
+        formation: [],
+        document: [],
+        preAvance: [],
+        autorisation: []
+      };
+      localStorage.setItem("demandes", JSON.stringify(updatedAllDemandes));
+      console.log("Updated localStorage with new data");
+      
     } catch (error) {
-      console.error("Error fetching fresh leave data:", error);
-      if (leaveData.length === 0) {
-        setError("Impossible de charger les données. Veuillez vérifier votre connexion.");
-      } else {
-        toast.warning("Les données peuvent ne pas être à jour. Vérifiez votre connexion.");
+      console.error("Error fetching leave data:", error);
+      setError(error.message);
+      
+      // If we have cached data, don't show error to user
+      const cached = localStorage.getItem('demandes');
+      if (!cached) {
+        toast.error("Erreur de chargement des congés");
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  if (userId) {
-    fetchLeaveData();
-  } else {
-    setError("Identifiant utilisateur non trouvé");
-    setLoading(false);
-  }
-}, [userId]);
-
-  // Enhanced transformLeaveData function
-  const transformLeaveData = (rawData) => {
-    // Handle both array and object with demandes property
-    const rawLeaves = Array.isArray(rawData) ? rawData : (rawData.demandes || []);
-    
-    return rawLeaves.map(leave => {
-      // Extract employee name from nested structure if available
-      let employeeName = "";
-      if (leave.matPers) {
-        employeeName = `${leave.matPers.nom || ''} ${leave.matPers.prenom || ''}`.trim();
-      } else if (leave.personnel) {
-        employeeName = `${leave.personnel.nom || ''} ${leave.personnel.prenom || ''}`.trim();
+  // Helper function to transform leave data with validation
+  const transformLeaveData = (data) => {
+    return data.map(leave => {
+      try {
+        const startDate = new Date(leave.dateDebut);
+        const endDate = new Date(leave.dateFin);
+        
+        if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
+        if (isNaN(endDate.getTime())) throw new Error("Invalid end date");
+        
+        return {
+          id: leave.id || leave._id,
+          employeeName: `${leave.employee?.nom || ''} ${leave.employee?.prenom || ''}`.trim(),
+          startDate: leave.dateDebut,
+          endDate: leave.dateFin,
+          type: "ANNUAL",
+          status: "ACCEPTED",
+          duration: calculateDuration(leave.dateDebut, leave.dateFin),
+          department: leave.employee?.serviceName || "Unknown",
+          approvedBy: leave.approvedBy || "System",
+          description: leave.description || "Congé annuel"
+        };
+      } catch (e) {
+        console.error("Invalid leave data:", leave, e);
+        return null;
       }
-      
-      return {
-        id: leave.id || leave._id,
-        employeeName: employeeName || "Inconnu",
-        startDate: leave.dateDebut,
-        endDate: leave.dateFin,
-        type: leave.typeConge?.nom || "ANNUAL",
-        status: leave.statut || "ACCEPTED",
-        duration: calculateDuration(leave.dateDebut, leave.dateFin),
-        department: leave.matPers?.serviceName || leave.service?.nom || "Unknown",
-        approvedBy: leave.approuvePar || "Manager",
-        description: leave.texteDemande || leave.motif || "Congé annuel"
-      };
-    });
+    }).filter(Boolean); // Remove any null entries from invalid data
   };
 
-  const calculateDuration = (startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end - start);
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  };
+  // Initial data fetch and setup polling
+  useEffect(() => {
+    console.log("Initializing component...");
+    
+    // First try to load from localStorage
+    const cached = localStorage.getItem('demandes');
+    if (cached) {
+      console.log("Found cached data, loading initially from localStorage");
+      const parsedData = JSON.parse(cached);
+      if (parsedData.conge && parsedData.conge.length > 0) {
+        const transformedData = transformLeaveData(parsedData.conge);
+        setLeaveData(transformedData);
+      }
+    }
 
-  // Calendar functions
+    // Then fetch from API
+    fetchLeaveData();
+    
+    // Set up polling every 30 seconds
+    const intervalId = setInterval(fetchLeaveData, 30000);
+    console.log("Set up polling interval (30s)");
+
+    return () => {
+      clearInterval(intervalId);
+      console.log("Cleaned up polling interval");
+    };
+  }, [fetchLeaveData]);
+  // Calendar helper functions
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
   const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
 
@@ -209,7 +187,7 @@ useEffect(() => {
   const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
   const goToToday = () => setCurrentDate(new Date());
 
-  // Filters
+  // Filter functions
   const toggleFilters = () => setShowFilters(prev => !prev);
 
   const handleFilterChange = (e) => {
@@ -222,22 +200,31 @@ useEffect(() => {
     today.setHours(0, 0, 0, 0);
 
     return leaves.filter(leave => {
-      const start = new Date(leave.startDate);
-      const end = new Date(leave.endDate);
-      
-      switch(filters.dateRange) {
-        case "current":
-          const currentMonth = currentDate.getMonth();
-          const currentYear = currentDate.getFullYear();
-          return (start.getMonth() === currentMonth && start.getFullYear() === currentYear) || 
-                 (end.getMonth() === currentMonth && end.getFullYear() === currentYear) ||
-                 (start < new Date(currentYear, currentMonth, 1) && end > new Date(currentYear, currentMonth + 1, 0));
-        case "past":
-          return end < today;
-        case "future":
-          return start > today;
-        default:
-          return true;
+      try {
+        if (!leave.startDate || !leave.endDate) return false;
+        
+        const start = new Date(leave.startDate);
+        const end = new Date(leave.endDate);
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+        
+        switch(filters.dateRange) {
+          case "current":
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            return (start.getMonth() === currentMonth && start.getFullYear() === currentYear) || 
+                   (end.getMonth() === currentMonth && end.getFullYear() === currentYear) ||
+                   (start < new Date(currentYear, currentMonth, 1) && end > new Date(currentYear, currentMonth + 1, 0));
+          case "past":
+            return end < today;
+          case "future":
+            return start > today;
+          default:
+            return true;
+        }
+      } catch (e) {
+        console.error("Error filtering leave:", leave, e);
+        return false;
       }
     });
   };
@@ -256,18 +243,36 @@ useEffect(() => {
 
     const days = [];
 
+    // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       days.push(<div key={`empty-${i}`} className="calendar-day empty"></div>);
     }
 
+    // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateString = date.toISOString().split('T')[0];
 
+      // Find leaves for this day with proper date validation
       const leavesOnDay = leaveData.filter(leave => {
-        const leaveStart = new Date(leave.startDate).toISOString().split('T')[0];
-        const leaveEnd = new Date(leave.endDate).toISOString().split('T')[0];
-        return dateString >= leaveStart && dateString <= leaveEnd;
+        try {
+          // Validate dates first
+          if (!leave.startDate || !leave.endDate) return false;
+          
+          const startDate = new Date(leave.startDate);
+          const endDate = new Date(leave.endDate);
+          
+          if (isNaN(startDate.getTime())) return false;
+          if (isNaN(endDate.getTime())) return false;
+          
+          const leaveStart = startDate.toISOString().split('T')[0];
+          const leaveEnd = endDate.toISOString().split('T')[0];
+          
+          return dateString >= leaveStart && dateString <= leaveEnd;
+        } catch (e) {
+          console.error("Invalid date in leave data:", leave, e);
+          return false;
+        }
       });
 
       const hasLeaves = leavesOnDay.length > 0;
@@ -289,18 +294,28 @@ useEffect(() => {
                   {day} {monthNames[month]} {year}
                   <span className="tooltip-count"> ({leavesOnDay.length} congé{leavesOnDay.length > 1 ? 's' : ''})</span>
                 </div>
-                {leavesOnDay.map((leave, idx) => (
-                  <div key={idx} className="tooltip-item">
-                    <FiUser className="icon" />
-                    <div>
-                      <div>{leave.employeeName}</div>
-                      <div className="tooltip-dates">
-                        {new Date(leave.startDate).toLocaleDateString("fr-FR")} - {' '}
-                        {new Date(leave.endDate).toLocaleDateString("fr-FR")}
+                {leavesOnDay.map((leave, idx) => {
+                  try {
+                    const startDate = new Date(leave.startDate);
+                    const endDate = new Date(leave.endDate);
+                    
+                    return (
+                      <div key={idx} className="tooltip-item">
+                        <FiUser className="icon" />
+                        <div>
+                          <div>{leave.employeeName}</div>
+                          <div className="tooltip-dates">
+                            {!isNaN(startDate.getTime()) ? startDate.toLocaleDateString("fr-FR") : 'Date invalide'} - {' '}
+                            {!isNaN(endDate.getTime()) ? endDate.toLocaleDateString("fr-FR") : 'Date invalide'}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                    );
+                  } catch (e) {
+                    console.error("Error rendering leave tooltip:", leave, e);
+                    return null;
+                  }
+                })}
               </div>
             </>
           )}
@@ -349,43 +364,53 @@ useEffect(() => {
 
     return (
       <div className="leaves-list">
-        {filteredLeaves.map((leave, index) => (
-          <div key={leave.id || index} className="leave-card leave-accepted">
-            <div className="leave-card-header">
-              <div className="leave-employee">
-                <FiUser className="icon" />
-                <span>{leave.employeeName}</span>
-              </div>
-              <div className="leave-status accepted">
-                <FiCheck className="icon" />
-                <span>Accepté</span>
-              </div>
-            </div>
+        {filteredLeaves.map((leave, index) => {
+          try {
+            const startDate = new Date(leave.startDate);
+            const endDate = new Date(leave.endDate);
+            
+            return (
+              <div key={index} className="leave-card leave-accepted">
+                <div className="leave-card-header">
+                  <div className="leave-employee">
+                    <FiUser className="icon" />
+                    <span>{leave.employeeName}</span>
+                  </div>
+                  <div className="leave-status accepted">
+                    <FiCheck className="icon" />
+                    <span>Accepté</span>
+                  </div>
+                </div>
 
-            <div className="leave-card-body">
-              <div className="leave-dates">
-                <FiCalendar className="icon" />
-                <span>
-                  {new Date(leave.startDate).toLocaleDateString("fr-FR")} - {' '}
-                  {new Date(leave.endDate).toLocaleDateString("fr-FR")}
-                </span>
-              </div>
-              <div className="leave-duration">
-                <FiClock className="icon" />
-                <span>{leave.duration} jour{leave.duration > 1 ? 's' : ''}</span>
-              </div>
-              <div className="leave-description">
-                <p>{leave.description}</p>
-              </div>
-            </div>
+                <div className="leave-card-body">
+                  <div className="leave-dates">
+                    <FiCalendar className="icon" />
+                    <span>
+                      {!isNaN(startDate.getTime()) ? startDate.toLocaleDateString("fr-FR") : 'Date invalide'} - {' '}
+                      {!isNaN(endDate.getTime()) ? endDate.toLocaleDateString("fr-FR") : 'Date invalide'}
+                    </span>
+                  </div>
+                  <div className="leave-duration">
+                    <FiClock className="icon" />
+                    <span>{leave.duration} jour{leave.duration > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="leave-description">
+                    <p>{leave.description}</p>
+                  </div>
+                </div>
 
-            <div className="leave-card-footer">
-              <div className="leave-department">
-                <span>Service: {leave.department}</span>
+                <div className="leave-card-footer">
+                  <div className="leave-approved-by">
+                    <span>Approuvé par: {leave.approvedBy}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        ))}
+            );
+          } catch (e) {
+            console.error("Error rendering leave card:", leave, e);
+            return null;
+          }
+        })}
       </div>
     );
   };
@@ -442,6 +467,40 @@ useEffect(() => {
     </div>
   );
 
+  // Show loading only when we have no cached data and are loading
+  const showLoading = loading && leaveData.length === 0;
+
+  if (showLoading) {
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
+        <div className="calendar-content">
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <div className="loading-container">
+            <FiLoader className="loading-spinner" />
+            <p>Chargement des congés...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && leaveData.length === 0) {
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar theme={theme} />
+        <div className="calendar-content">
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <div className="error-container">
+            <FiX className="error-icon" />
+            <p>Erreur: {error}</p>
+            <button onClick={() => fetchLeaveData()}>Réessayer</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar theme={theme} />
@@ -460,38 +519,25 @@ useEffect(() => {
 
           {renderFilters()}
 
-          {loading ? (
-            <div className="loading-container">
-              <FiLoader className="loading-spinner" />
-              <p>Chargement des données...</p>
-            </div>
-          ) : error ? (
-            <div className="error-container">
-              <FiX className="error-icon" />
-              <p>Erreur: {error}</p>
-              <button onClick={() => window.location.reload()}>Réessayer</button>
-            </div>
-          ) : (
-            <div className="calendrier-content">
-              {viewMode === "month" ? (
-                <>
-                  <div className="calendar-section">
-                    {renderCalendar()}
-                    {renderLegend()}
-                  </div>
-                  <div className="leaves-section">
-                    <h2>Congés Acceptés</h2>
-                    {renderLeavesList()}
-                  </div>
-                </>
-              ) : (
-                <div className="list-view">
-                  <h2>Liste des Congés Acceptés</h2>
+          <div className="calendrier-content">
+            {viewMode === "month" ? (
+              <>
+                <div className="calendar-section">
+                  {renderCalendar()}
+                  {renderLegend()}
+                </div>
+                <div className="leaves-section">
+                  <h2>Congés Acceptés</h2>
                   {renderLeavesList()}
                 </div>
-              )}
-            </div>
-          )}
+              </>
+            ) : (
+              <div className="list-view">
+                <h2>Liste des Congés Acceptés</h2>
+                {renderLeavesList()}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

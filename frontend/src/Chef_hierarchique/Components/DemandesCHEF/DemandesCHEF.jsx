@@ -1,26 +1,17 @@
-import { useState, useEffect } from "react"
-import {
-  FiSearch,
-  FiFilter,
-  FiCalendar,
-  FiX,
-  FiClock,
-  FiRefreshCw,
-  FiFileText,
-  FiDownload,
-  FiEye,
-  FiUsers,
-  FiCheckCircle,
-  FiXCircle,
-  FiEdit,
-  FiTrash2,
-} from "react-icons/fi"
+"use client"
+
+import { useState, useEffect, useCallback, useRef } from "react"
+import { FiSearch, FiFilter, FiCalendar, FiX, FiRefreshCw, FiFileText, FiEye, FiEdit, FiTrash2 } from "react-icons/fi"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
+import DemandesModal from "./DemandesModal"
 import "./DemandesCHEF.css"
 import { API_URL } from "../../../config"
 
-const DemandesCHEF = () => {
+// Constante pour la durée du cache
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes en millisecondes
+
+const DemandesChef = () => {
   const [demandes, setDemandes] = useState([])
   const [filteredDemandes, setFilteredDemandes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -39,20 +30,10 @@ const DemandesCHEF = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(5)
 
-  // Selected demande for details view
+  // Modal states
   const [selectedDemande, setSelectedDemande] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [editFormData, setEditFormData] = useState({})
-
-  // File preview states
-  const [previewFile, setPreviewFile] = useState({
-    url: null,
-    type: null,
-    loading: false,
-    error: null
-  })
 
   // Stats
   const [stats, setStats] = useState({
@@ -61,6 +42,9 @@ const DemandesCHEF = () => {
     approved: 0,
     rejected: 0,
   })
+
+  // Référence pour le debounce
+  const filterTimeoutRef = useRef(null)
 
   // Theme management
   useEffect(() => {
@@ -101,128 +85,227 @@ const DemandesCHEF = () => {
     fetchDemandes()
   }, [])
 
-  const fetchDemandes = async () => {
-    setLoading(true)
-    setError(null)
+  // Fonction pour mettre à jour les statistiques
+  const updateStats = useCallback((data) => {
+    const pendingCount = data.filter((d) => d.reponseChef === "I").length
+    const approvedCount = data.filter((d) => d.reponseChef === "O").length
+    const rejectedCount = data.filter((d) => d.reponseChef === "N").length
 
-    try {
-      const userId = localStorage.getItem("userId")
-      const authToken = localStorage.getItem("authToken")
+    setStats({
+      total: data.length,
+      pending: pendingCount,
+      approved: approvedCount,
+      rejected: rejectedCount,
+    })
+  }, [])
 
-      if (!authToken || !userId) {
-        throw new Error("Authentification requise")
-      }
+  // Fonction optimisée pour récupérer les demandes
+  const fetchDemandes = useCallback(
+    async (forceRefresh = false) => {
+      setLoading(true)
+      setError(null)
 
-      const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
-      let allDemandes = []
-      const errors = []
+      try {
+        const userId = localStorage.getItem("userId")
+        const authToken = localStorage.getItem("authToken")
 
-      for (const type of types) {
-        try {
-          const response = await fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
+        if (!authToken || !userId) {
+          throw new Error("Authentification requise")
+        }
+
+        // Vérifier le cache si on ne force pas le rafraîchissement
+        const cacheKey = `demandes_${userId}`
+        const cachedData = localStorage.getItem(cacheKey)
+
+        if (!forceRefresh && cachedData) {
+          try {
+            const { data, timestamp } = JSON.parse(cachedData)
+            // Vérifier si le cache est encore valide (moins de 5 minutes)
+            if (Date.now() - timestamp < CACHE_DURATION) {
+              console.log("Utilisation des données en cache")
+              setDemandes(data)
+              setFilteredDemandes(data)
+              updateStats(data)
+              setLoading(false)
+              return
+            }
+          } catch (e) {
+            console.warn("Erreur lors de la lecture du cache:", e)
+          }
+        }
+
+        // Utiliser Promise.all pour paralléliser les requêtes API
+        const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
+        const apiPromises = types.map((type) =>
+          fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${authToken}`,
             },
           })
+            .then(async (response) => {
+              if (!response.ok) {
+                const clonedResponse = response.clone()
+                let errorMessage
 
-          if (!response.ok) {
-            throw new Error(`Erreur ${response.status} lors de la récupération des demandes de ${type}`)
+                try {
+                  const errorData = await response.json()
+                  errorMessage = errorData.message || `Erreur ${response.status}`
+                } catch (e) {
+                  errorMessage = (await clonedResponse.text()) || `Erreur ${response.status}`
+                }
+
+                throw new Error(`Erreur lors de la récupération des demandes de ${type}: ${errorMessage}`)
+              }
+
+              const text = await response.text()
+              if (!text) return { type, data: [] }
+
+              try {
+                const data = JSON.parse(text)
+                if (!Array.isArray(data)) {
+                  throw new Error(`Format de données invalide pour ${type}`)
+                }
+                return { type, data }
+              } catch (e) {
+                console.error(`Erreur de parsing JSON pour ${type}:`, e)
+                return { type, data: [], error: e.message }
+              }
+            })
+            .catch((err) => {
+              console.error(`Erreur pour ${type}:`, err)
+              return { type, data: [], error: err.message }
+            }),
+        )
+
+        // Attendre que toutes les requêtes soient terminées
+        const results = await Promise.all(apiPromises)
+
+        // Traiter les résultats
+        let allDemandes = []
+        const errors = []
+
+        results.forEach(({ type, data, error }) => {
+          if (error) {
+            errors.push(`${type}: ${error}`)
           }
 
-          const text = await response.text()
-          const data = text ? JSON.parse(text) : []
+          if (data && data.length > 0) {
+            const typedData = data.map((item) => ({
+              ...item,
+              demandeType: type,
+              typeDemande: type,
+            }))
 
-          if (!Array.isArray(data)) {
-            throw new Error(`Format de données invalide pour ${type}`)
+            allDemandes = [...allDemandes, ...typedData]
           }
+        })
 
-          const typedData = data.map((item) => ({
-            ...item,
-            demandeType: type,
-          }))
-
-          allDemandes = [...allDemandes, ...typedData]
-        } catch (err) {
-          console.error(`Erreur lors de la récupération des demandes de ${type}:`, err)
-          errors.push(err.message)
+        // Afficher les erreurs s'il y en a
+        if (errors.length > 0) {
+          if (allDemandes.length === 0) {
+            setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
+          } else {
+            console.warn(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
+          }
         }
+
+        // Trier par date (plus récent d'abord)
+        allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande))
+
+        // Mettre à jour le cache
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              data: allDemandes,
+              timestamp: Date.now(),
+            }),
+          )
+        } catch (e) {
+          console.warn("Erreur lors de la mise en cache des données:", e)
+        }
+
+        // Mettre à jour l'état
+        setDemandes(allDemandes)
+        setFilteredDemandes(allDemandes)
+        updateStats(allDemandes)
+      } catch (err) {
+        setError(err.message || "Une erreur est survenue lors de la récupération des demandes")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [updateStats],
+  )
+
+  // Fonction optimisée pour appliquer les filtres
+  const applyFilters = useCallback(() => {
+    // Utiliser un debounce pour éviter les filtres trop fréquents
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current)
+    }
+
+    filterTimeoutRef.current = setTimeout(() => {
+      console.log("Applying filters...")
+
+      // Optimisation: ne filtrer que si nécessaire
+      if (!searchQuery && selectedType === "all" && selectedStatus === "all" && !startDate && !endDate) {
+        setFilteredDemandes(demandes)
+        setCurrentPage(1)
+        return
       }
 
-      if (errors.length > 0 && allDemandes.length === 0) {
-        setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
-      } else if (errors.length > 0) {
-        console.warn(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
-      }
+      // Utiliser des filtres optimisés
+      const filtered = demandes.filter((demande) => {
+        // Filtre de recherche
+        const matchesSearch =
+          !searchQuery ||
+          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      // Sort by date descending
-      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande))
+        // Filtre de type
+        const matchesType = selectedType === "all" || demande.demandeType === selectedType
 
-      // Calculate stats
-      const pendingCount = allDemandes.filter((d) => d.reponseChef === "I").length
-      const approvedCount = allDemandes.filter((d) => d.reponseChef === "O").length
-      const rejectedCount = allDemandes.filter((d) => d.reponseChef === "N").length
+        // Filtre de statut
+        let matchesStatus = true
+        if (selectedStatus !== "all") {
+          if (selectedStatus === "pending") matchesStatus = demande.reponseChef === "I"
+          else if (selectedStatus === "approved") matchesStatus = demande.reponseChef === "O"
+          else if (selectedStatus === "rejected") matchesStatus = demande.reponseChef === "N"
+        }
 
-      setStats({
-        total: allDemandes.length,
-        pending: pendingCount,
-        approved: approvedCount,
-        rejected: rejectedCount,
+        // Filtre de date
+        let matchesDate = true
+        if (startDate && endDate) {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          end.setHours(23, 59, 59)
+
+          const demandeDate = new Date(demande.dateDemande)
+          matchesDate = demandeDate >= start && demandeDate <= end
+        }
+
+        return matchesSearch && matchesType && matchesStatus && matchesDate
       })
 
-      setDemandes(allDemandes)
-      setFilteredDemandes(allDemandes)
-    } catch (err) {
-      setError(err.message || "Une erreur est survenue lors de la récupération des demandes")
-    } finally {
-      setLoading(false)
-    }
-  }
+      setFilteredDemandes(filtered)
+      setCurrentPage(1)
+    }, 300) // Délai de 300ms pour le debounce
+  }, [demandes, searchQuery, selectedType, selectedStatus, startDate, endDate])
 
+  // Appliquer les filtres quand les dépendances changent
   useEffect(() => {
     applyFilters()
-  }, [searchQuery, selectedType, selectedStatus, startDate, endDate, demandes])
 
-  const applyFilters = () => {
-    let filtered = [...demandes]
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (demande) =>
-          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
-          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)),
-      )
+    // Nettoyage du timeout lors du démontage
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current)
+      }
     }
-
-    if (selectedType !== "all") {
-      filtered = filtered.filter((demande) => demande.demandeType === selectedType)
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => {
-        if (selectedStatus === "pending") return demande.reponseChef === "I"
-        if (selectedStatus === "approved") return demande.reponseChef === "O"
-        if (selectedStatus === "rejected") return demande.reponseChef === "N"
-        return true
-      })
-    }
-
-    if (startDate && endDate) {
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59)
-
-      filtered = filtered.filter((demande) => {
-        const demandeDate = new Date(demande.dateDemande)
-        return demandeDate >= start && demandeDate <= end
-      })
-    }
-
-    setFilteredDemandes(filtered)
-    setCurrentPage(1)
-  }
+  }, [applyFilters])
 
   const clearFilters = () => {
     setSearchQuery("")
@@ -236,26 +319,25 @@ const DemandesCHEF = () => {
     setIsFilterExpanded(!isFilterExpanded)
   }
 
-  const handleViewDetails = (demande) => {
+  const handleViewDetails = useCallback((demande) => {
     setSelectedDemande(demande)
     setShowDetailsModal(true)
-  }
+  }, [])
 
   const closeDetailsModal = () => {
     setShowDetailsModal(false)
     setSelectedDemande(null)
-    setPreviewFile({
-      url: null,
-      type: null,
-      loading: false,
-      error: null
-    })
   }
 
-  const handleDeleteDemande = async () => {
+  const handleDeleteDemande = (demande) => {
+    setSelectedDemande(demande)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteDemande = async () => {
     try {
       const authToken = localStorage.getItem("authToken")
-      
+
       const response = await fetch(`${API_URL}/api/demande-${selectedDemande.demandeType}/${selectedDemande.id}`, {
         method: "DELETE",
         headers: {
@@ -264,142 +346,84 @@ const DemandesCHEF = () => {
       })
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la suppression de la demande")
+        const responseClone = response.clone()
+        let errorMessage
+
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || `Erreur HTTP ${response.status}`
+        } catch (jsonError) {
+          try {
+            const errorText = await responseClone.text()
+            errorMessage = errorText || `Erreur HTTP ${response.status}`
+          } catch (textError) {
+            errorMessage = `Erreur HTTP ${response.status}`
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
-      toast.success("Demande supprimée avec succès")
-      fetchDemandes()
+      // Mettre à jour l'état localement sans refaire un appel API complet
+      const updatedDemandes = demandes.filter(
+        (d) => !(d.id === selectedDemande.id && d.demandeType === selectedDemande.demandeType),
+      )
+      setDemandes(updatedDemandes)
+      setFilteredDemandes((prev) =>
+        prev.filter((d) => !(d.id === selectedDemande.id && d.demandeType === selectedDemande.demandeType)),
+      )
+      updateStats(updatedDemandes)
+
+      // Mettre à jour le cache
+      const cacheKey = `demandes_${localStorage.getItem("userId")}`
+      try {
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            data: updatedDemandes,
+            timestamp: Date.now(),
+          }),
+        )
+      } catch (e) {
+        console.warn("Erreur lors de la mise à jour du cache:", e)
+      }
+
+      alert("Demande supprimée avec succès")
       setShowDeleteModal(false)
       closeDetailsModal()
     } catch (error) {
       console.error("Erreur lors de la suppression:", error)
-      toast.error("Erreur lors de la suppression de la demande")
+      alert(`Erreur lors de la suppression de la demande: ${error.message}`)
     }
   }
 
-  const handleUpdateDemande = async () => {
+  // Fonction pour mettre à jour une demande après modification
+  const handleDemandeUpdated = (updatedDemande) => {
+    const updatedDemandes = demandes.map((d) =>
+      d.id === updatedDemande.id && d.demandeType === updatedDemande.demandeType ? { ...d, ...updatedDemande } : d,
+    )
+
+    setDemandes(updatedDemandes)
+    setFilteredDemandes((prev) =>
+      prev.map((d) =>
+        d.id === updatedDemande.id && d.demandeType === updatedDemande.demandeType ? { ...d, ...updatedDemande } : d,
+      ),
+    )
+    updateStats(updatedDemandes)
+
+    // Mettre à jour le cache
+    const cacheKey = `demandes_${localStorage.getItem("userId")}`
     try {
-      const authToken = localStorage.getItem("authToken")
-      
-      const response = await fetch(`${API_URL}/api/demande-${selectedDemande.demandeType}/${selectedDemande.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(editFormData),
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la modification de la demande")
-      }
-
-      toast.success("Demande modifiée avec succès")
-      fetchDemandes()
-      setShowEditModal(false)
-      closeDetailsModal()
-    } catch (error) {
-      console.error("Erreur lors de la modification:", error)
-      toast.error("Erreur lors de la modification de la demande")
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          data: updatedDemandes,
+          timestamp: Date.now(),
+        }),
+      )
+    } catch (e) {
+      console.warn("Erreur lors de la mise à jour du cache:", e)
     }
-  }
-
-  const handleDownloadAttachment = async (demande, isResponse = false) => {
-    try {
-      const authToken = localStorage.getItem("authToken")
-
-      const endpoint = isResponse 
-        ? `${API_URL}/api/demande-${demande.demandeType}/files-reponse/${demande.id}`
-        : `${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`
-
-      const response = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors du téléchargement du fichier")
-      }
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = isResponse 
-        ? `reponse-${demande.id}.pdf` 
-        : `piece-jointe-${demande.id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error("Erreur lors du téléchargement:", error)
-      toast.error("Erreur lors du téléchargement du fichier")
-    }
-  }
-
-  const handlePreviewFile = async (demande, isResponse = false) => {
-    try {
-      setPreviewFile({
-        url: null,
-        type: null,
-        loading: true,
-        error: null
-      })
-
-      const authToken = localStorage.getItem("authToken")
-
-      const endpoint = isResponse 
-        ? `${API_URL}/api/demande-${demande.demandeType}/files-reponse/${demande.id}`
-        : `${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`
-
-      const response = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error("Erreur lors du chargement du fichier")
-      }
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
-      const fileType = isResponse 
-        ? (demande.fileReponseType || "application/pdf")
-        : (demande.pieceJointeType || "application/pdf")
-
-      setPreviewFile({
-        url,
-        type: fileType,
-        loading: false,
-        error: null
-      })
-    } catch (error) {
-      console.error("Erreur lors du chargement:", error)
-      setPreviewFile({
-        url: null,
-        type: null,
-        loading: false,
-        error: error.message
-      })
-      toast.error("Erreur lors du chargement du fichier")
-    }
-  }
-
-  const closePreview = () => {
-    if (previewFile.url) {
-      URL.revokeObjectURL(previewFile.url)
-    }
-    setPreviewFile({
-      url: null,
-      type: null,
-      loading: false,
-      error: null
-    })
   }
 
   // Pagination logic
@@ -605,6 +629,14 @@ const DemandesCHEF = () => {
             <p>
               <span className="results-count">{filteredDemandes.length}</span> demandes trouvées
             </p>
+            <button
+              className="refresh-button"
+              onClick={() => fetchDemandes(true)}
+              title="Rafraîchir les données"
+              disabled={loading}
+            >
+              <FiRefreshCw className={loading ? "spinning" : ""} />
+            </button>
           </div>
 
           {/* Demandes Table */}
@@ -645,20 +677,12 @@ const DemandesCHEF = () => {
                         <td>
                           <div className="file-actions">
                             {demande.pieceJointe && (
-                              <button
-                                className="file-action"
-                                onClick={() => handlePreviewFile(demande)}
-                                title="Voir la pièce jointe"
-                              >
+                              <button className="file-action" title="Voir la pièce jointe">
                                 <FiEye /> PJ
                               </button>
                             )}
                             {hasFileResponse(demande) && (
-                              <button
-                                className="file-action"
-                                onClick={() => handlePreviewFile(demande, true)}
-                                title="Voir la réponse"
-                              >
+                              <button className="file-action" title="Voir la réponse">
                                 <FiEye /> Réponse
                               </button>
                             )}
@@ -677,25 +701,14 @@ const DemandesCHEF = () => {
                               <>
                                 <button
                                   className="action-button edit"
-                                  onClick={() => {
-                                    setSelectedDemande(demande)
-                                    setEditFormData({
-                                      texteDemande: demande.texteDemande,
-                                      dateDebut: demande.dateDebut,
-                                      dateFin: demande.dateFin,
-                                    })
-                                    setShowEditModal(true)
-                                  }}
+                                  onClick={() => handleViewDetails(demande)}
                                   title="Modifier"
                                 >
                                   <FiEdit />
                                 </button>
                                 <button
                                   className="action-button delete"
-                                  onClick={() => {
-                                    setSelectedDemande(demande)
-                                    setShowDeleteModal(true)
-                                  }}
+                                  onClick={() => handleDeleteDemande(demande)}
                                   title="Supprimer"
                                 >
                                   <FiTrash2 />
@@ -746,168 +759,14 @@ const DemandesCHEF = () => {
             </div>
           )}
 
-          {/* Details Modal */}
+          {/* Modals */}
           {showDetailsModal && selectedDemande && (
-            <div className="modal-overlay" onClick={closeDetailsModal}>
-              <div className="demande-modal" onClick={(e) => e.stopPropagation()}>
-                <div
-                  className="modal-header"
-                  data-status={getStatusInfo(selectedDemande.reponseChef).className.replace("status-", "")}
-                >
-                  <div className="header-content">
-                    <div className="header-text">
-                      <h2>Détails de la Demande</h2>
-                      <div className="status-text">{getStatusInfo(selectedDemande.reponseChef).text}</div>
-                    </div>
-                  </div>
-                  <button className="close-button" onClick={closeDetailsModal}>
-                    <FiX />
-                  </button>
-                </div>
-
-                <div className="modal-content">
-                  <div className="demande-info-section">
-                    <div className="section-header">
-                      <FiFileText />
-                      <h3>Informations Générales</h3>
-                    </div>
-                    <div className="info-grid">
-                      <div className="info-item">
-                        <div className="info-label">Type de Demande</div>
-                        <div className="info-value">
-                          <span className={`type-badge ${selectedDemande.demandeType}`}>
-                            {getTypeText(selectedDemande.demandeType)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="info-item">
-                        <div className="info-label">Date de Soumission</div>
-                        <div className="info-value">{formatDate(selectedDemande.dateDemande)}</div>
-                      </div>
-                      {selectedDemande.dateDebut && (
-                        <div className="info-item">
-                          <div className="info-label">Date de Début</div>
-                          <div className="info-value">{formatDate(selectedDemande.dateDebut)}</div>
-                        </div>
-                      )}
-                      {selectedDemande.dateFin && (
-                        <div className="info-item">
-                          <div className="info-label">Date de Fin</div>
-                          <div className="info-value">{formatDate(selectedDemande.dateFin)}</div>
-                        </div>
-                      )}
-                      {selectedDemande.nbrJours && (
-                        <div className="info-item">
-                          <div className="info-label">Nombre de Jours</div>
-                          <div className="info-value">{selectedDemande.nbrJours}</div>
-                        </div>
-                      )}
-                      {selectedDemande.montant && (
-                        <div className="info-item">
-                          <div className="info-label">Montant</div>
-                          <div className="info-value">{selectedDemande.montant} €</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="demande-info-section">
-                    <div className="section-header">
-                      <FiFileText />
-                      <h3>Description de la Demande</h3>
-                    </div>
-                    <div className="demande-text-full">
-                      {selectedDemande.texteDemande || <span className="no-content">Aucune description fournie</span>}
-                    </div>
-                  </div>
-
-                  {selectedDemande.pieceJointe && (
-                    <div className="demande-info-section">
-                      <div className="section-header">
-                        <FiFileText />
-                        <h3>Pièce Jointe</h3>
-                      </div>
-                      <div className="file-actions">
-                        <button 
-                          className="btn btn-primary"
-                          onClick={() => handlePreviewFile(selectedDemande)}
-                        >
-                          <FiEye /> Prévisualiser
-                        </button>
-                        <button 
-                          className="btn btn-secondary"
-                          onClick={() => handleDownloadAttachment(selectedDemande)}
-                        >
-                          <FiDownload /> Télécharger
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {hasFileResponse(selectedDemande) && (
-                    <div className="demande-info-section">
-                      <div className="section-header">
-                        <FiFileText />
-                        <h3>Réponse du Document</h3>
-                      </div>
-                      <div className="file-actions">
-                        <button 
-                          className="btn btn-primary"
-                          onClick={() => handlePreviewFile(selectedDemande, true)}
-                        >
-                          <FiEye /> Prévisualiser
-                        </button>
-                        <button 
-                          className="btn btn-secondary"
-                          onClick={() => handleDownloadAttachment(selectedDemande, true)}
-                        >
-                          <FiDownload /> Télécharger
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedDemande.texteReponse && (
-                    <div className="demande-info-section">
-                      <div className="section-header">
-                        <FiFileText />
-                        <h3>Réponse</h3>
-                      </div>
-                      <div className="response-text">{selectedDemande.texteReponse}</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="modal-footer">
-                  {selectedDemande.reponseChef === "I" && (
-                    <>
-                      <button 
-                        className="btn btn-warning"
-                        onClick={() => {
-                          setEditFormData({
-                            texteDemande: selectedDemande.texteDemande,
-                            dateDebut: selectedDemande.dateDebut,
-                            dateFin: selectedDemande.dateFin,
-                          })
-                          setShowEditModal(true)
-                        }}
-                      >
-                        <FiEdit /> Modifier
-                      </button>
-                      <button 
-                        className="btn btn-danger"
-                        onClick={() => setShowDeleteModal(true)}
-                      >
-                        <FiTrash2 /> Supprimer
-                      </button>
-                    </>
-                  )}
-                  <button className="btn btn-secondary" onClick={closeDetailsModal}>
-                    Fermer
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DemandesModal
+              demande={selectedDemande}
+              onClose={closeDetailsModal}
+              onDemandeUpdated={handleDemandeUpdated}
+              theme={theme}
+            />
           )}
 
           {/* Delete Confirmation Modal */}
@@ -927,118 +786,9 @@ const DemandesCHEF = () => {
                   <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
                     Annuler
                   </button>
-                  <button className="btn btn-danger" onClick={handleDeleteDemande}>
+                  <button className="btn btn-danger" onClick={confirmDeleteDemande}>
                     <FiTrash2 /> Confirmer la suppression
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Edit Modal */}
-          {showEditModal && (
-            <div className="modal-overlay">
-              <div className="edit-modal">
-                <div className="modal-header">
-                  <h2>Modifier la Demande</h2>
-                  <button className="close-button" onClick={() => setShowEditModal(false)}>
-                    <FiX />
-                  </button>
-                </div>
-                <div className="modal-body">
-                  <div className="form-group">
-                    <label>Description</label>
-                    <textarea
-                      value={editFormData.texteDemande || ""}
-                      onChange={(e) => setEditFormData({...editFormData, texteDemande: e.target.value})}
-                      rows={4}
-                    />
-                  </div>
-                  {selectedDemande?.dateDebut && (
-                    <div className="form-group">
-                      <label>Date de Début</label>
-                      <input
-                        type="date"
-                        value={editFormData.dateDebut || ""}
-                        onChange={(e) => setEditFormData({...editFormData, dateDebut: e.target.value})}
-                      />
-                    </div>
-                  )}
-                  {selectedDemande?.dateFin && (
-                    <div className="form-group">
-                      <label>Date de Fin</label>
-                      <input
-                        type="date"
-                        value={editFormData.dateFin || ""}
-                        onChange={(e) => setEditFormData({...editFormData, dateFin: e.target.value})}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="modal-footer">
-                  <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
-                    Annuler
-                  </button>
-                  <button className="btn btn-primary" onClick={handleUpdateDemande}>
-                    <FiEdit /> Enregistrer les modifications
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* File Preview Modal */}
-          {previewFile.loading && (
-            <div className="modal-overlay">
-              <div className="file-preview-modal">
-                <div className="loading-container">
-                  <div className="loading-spinner"></div>
-                  <p>Chargement du fichier...</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {previewFile.url && (
-            <div className="modal-overlay" onClick={closePreview}>
-              <div className="file-preview-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                  <h2>Prévisualisation du fichier</h2>
-                  <button className="close-button" onClick={closePreview}>
-                    <FiX />
-                  </button>
-                </div>
-                <div className="modal-body">
-                  {previewFile.type.includes("pdf") ? (
-                    <embed 
-                      src={previewFile.url} 
-                      type="application/pdf" 
-                      width="100%" 
-                      height="500px" 
-                    />
-                  ) : previewFile.type.includes("image") ? (
-                    <img 
-                      src={previewFile.url} 
-                      alt="Preview" 
-                      style={{ maxWidth: '100%', maxHeight: '500px' }}
-                    />
-                  ) : (
-                    <div className="unsupported-preview">
-                      <FiFileText size={48} />
-                      <p>Prévisualisation non disponible pour ce type de fichier</p>
-                      <button 
-                        className="btn btn-primary"
-                        onClick={() => {
-                          const a = document.createElement('a')
-                          a.href = previewFile.url
-                          a.download = 'document'
-                          a.click()
-                        }}
-                      >
-                        <FiDownload /> Télécharger le fichier
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1049,4 +799,4 @@ const DemandesCHEF = () => {
   )
 }
 
-export default DemandesCHEF
+export default DemandesChef

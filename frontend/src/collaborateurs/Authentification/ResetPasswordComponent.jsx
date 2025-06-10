@@ -62,12 +62,11 @@ const ResetPasswordModal = ({ isOpen, onClose, theme }) => {
 
         <div className="reset-modal-header">
           <h2>Reset Password</h2>
-          <p>Enter your email to receive a reset link</p>
         </div>
 
         <form className="reset-form" onSubmit={handleSubmit}>
           <div className="reset-input-group">
-            <label>Email</label>
+            <label>Enter your email to receive a reset link</label>
             <div className="reset-input-wrapper">
               <FiMail className="reset-input-icon" />
               <input

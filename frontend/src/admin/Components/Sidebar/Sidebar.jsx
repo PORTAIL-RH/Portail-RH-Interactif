@@ -140,25 +140,20 @@ const Sidebar = ({ theme }) => {
 
           <li className="sidebar-item">
             <Link to="/Candidaturesadmin" className={`sidebar-link ${isActive("/Candidaturesadmin") ? "active" : ""}`}>
-              <FiUser className="sidebar-icon" />
+              <FiUsers className="sidebar-icon" />
               <span className="sidebar-text">Candidats</span>
             </Link>
           </li>
 
           <li className="sidebar-item">
-            <div className="sidebar-link dropdown-trigger" onClick={toggleProfil}>
+            <Link to="/ProfileADMIN" className={`sidebar-link ${isActive("/ProfileADMIN") ? "active" : ""}`}>
               <FiUser className="sidebar-icon" />
               <span className="sidebar-text">Profil</span>
-              <span className="dropdown-arrow">{isProfilOpen ? <FiChevronDown /> : <FiChevronRight />}</span>
-            </div>
-            <ul className={`dropdown-menu ${isProfilOpen ? "open" : ""}`}>
-              <li className="dropdown-item">
-                <Link to="/ProfileADMIN" className="dropdown-link">
-                  Profil
-                </Link>
-              </li>
-            </ul>
+            </Link>
           </li>
+
+
+          
         </>
       )
     } else {
