@@ -110,7 +110,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/valider/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/traiter/{id}").permitAll()
-
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/approved").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-conge/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-conge/collaborateurs-by-service/{chefserviceid}").permitAll()
@@ -154,7 +153,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/demande-formation/create").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation").permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/demande-formation/{id}").permitAll()
-
                         .requestMatchers(HttpMethod.POST, "/api/themes/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/titres/create").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/types/create").permitAll()
@@ -169,6 +167,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/refuser/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/traiter/{id}").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/demande-formation/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/demande-formation/{id}/details").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/collaborateurs-by-service/{chefserviceid}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/approved").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/demande-formation/personnel/{matPersId}/approved").permitAll()

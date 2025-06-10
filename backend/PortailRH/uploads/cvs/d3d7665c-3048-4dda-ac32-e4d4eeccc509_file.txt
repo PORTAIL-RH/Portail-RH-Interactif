@@ -1,0 +1,20 @@
+package com.example.PortailRH.Model;
+
+import lombok.Data;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+@Data
+@Document(collection = "fichiers_joints")
+public class FichierJoint {
+
+    @Id
+    private String id;
+    private String filename;
+    private String contentType;
+    private byte[] data;
+}
+
+
+
+Fichier_joint.java

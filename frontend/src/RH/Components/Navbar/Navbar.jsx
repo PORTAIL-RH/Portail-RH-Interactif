@@ -100,7 +100,7 @@ const Navbar = ({ theme, toggleTheme, hideNotificationBadge = false }) => {
             <img
               src={bellIcon}
               alt="Notifications"
-              className={`notification-icon ${currentTheme}`}
+              className={`notification-icon-img ${currentTheme}`}
             />
           </button>
           

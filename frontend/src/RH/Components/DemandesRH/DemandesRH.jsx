@@ -1,23 +1,15 @@
-import { useState, useEffect } from "react"
-import {
-  FiSearch,
-  FiFilter,
-  FiCalendar,
-  FiX,
-  FiClock,
-  FiRefreshCw,
-  FiFileText,
-  FiDownload,
-  FiEye,
-  FiUsers,
-  FiCheckCircle,
-  FiXCircle,
-} from "react-icons/fi"
+import { useState, useEffect, useCallback, useRef } from "react"
+import { FiSearch, FiFilter, FiCalendar, FiX, FiRefreshCw, FiFileText, FiEye, FiEdit, FiTrash2 } from "react-icons/fi"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
+import DemandesModal from "./DemandesModal"
 import "./DemandesRH.css"
-import { API_URL } from "../../../config"; 
-const DemandesCHEF = () => {
+import { API_URL } from "../../../config"
+
+// Constante pour la durée du cache
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes en millisecondes
+
+const DemandesRH = () => {
   const [demandes, setDemandes] = useState([])
   const [filteredDemandes, setFilteredDemandes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -36,9 +28,10 @@ const DemandesCHEF = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage] = useState(5)
 
-  // Selected demande for details view
+  // Modal states
   const [selectedDemande, setSelectedDemande] = useState(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   // Stats
   const [stats, setStats] = useState({
@@ -47,175 +40,270 @@ const DemandesCHEF = () => {
     approved: 0,
     rejected: 0,
   })
-    // Theme management
-    useEffect(() => {
-      const savedTheme = localStorage.getItem("theme") || "light"
-      setTheme(savedTheme)
-      applyTheme(savedTheme)
-  
-      // Listen for theme changes
-      const handleStorageChange = () => {
-        const currentTheme = localStorage.getItem("theme") || "light"
-        setTheme(currentTheme)
-        applyTheme(currentTheme)
-      }
-  
-      window.addEventListener("storage", handleStorageChange)
-      window.addEventListener("themeChanged", (e) => {
-        setTheme(e.detail || "light")
-        applyTheme(e.detail || "light")
-      })
-  
-      return () => {
-        window.removeEventListener("storage", handleStorageChange)
-        window.removeEventListener("themeChanged", handleStorageChange)
-      }
-    }, [])
-  
-    const applyTheme = (theme) => {
-      document.documentElement.classList.remove("light", "dark")
-      document.documentElement.classList.add(theme)
-      document.body.className = theme
+
+  // Référence pour le debounce
+  const filterTimeoutRef = useRef(null)
+
+  // Theme management
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light"
+    setTheme(savedTheme)
+    applyTheme(savedTheme)
+
+    const handleStorageChange = () => {
+      const currentTheme = localStorage.getItem("theme") || "light"
+      setTheme(currentTheme)
+      applyTheme(currentTheme)
     }
-  
-    const toggleTheme = () => {
-      const newTheme = theme === "light" ? "dark" : "light"
-      setTheme(newTheme)
-      applyTheme(newTheme)
-      localStorage.setItem("theme", newTheme)
-      window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+
+    window.addEventListener("storage", handleStorageChange)
+    window.addEventListener("themeChanged", handleStorageChange)
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      window.removeEventListener("themeChanged", handleStorageChange)
     }
+  }, [])
+
+  const applyTheme = (theme) => {
+    document.documentElement.classList.remove("light", "dark")
+    document.documentElement.classList.add(theme)
+    document.body.className = theme
+  }
+
+  const toggleTheme = () => {
+    const newTheme = theme === "light" ? "dark" : "light"
+    setTheme(newTheme)
+    applyTheme(newTheme)
+    localStorage.setItem("theme", newTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  }
+
   useEffect(() => {
     fetchDemandes()
   }, [])
 
-  const fetchDemandes = async () => {
-    setLoading(true)
-    setError(null)
+  // Fonction pour mettre à jour les statistiques
+  const updateStats = useCallback((data) => {
+    const pendingCount = data.filter((d) => d.reponseChef === "I").length
+    const approvedCount = data.filter((d) => d.reponseChef === "O").length
+    const rejectedCount = data.filter((d) => d.reponseChef === "N").length
 
-    try {
-      const userId = localStorage.getItem("userId")
-      const authToken = localStorage.getItem("authToken")
+    setStats({
+      total: data.length,
+      pending: pendingCount,
+      approved: approvedCount,
+      rejected: rejectedCount,
+    })
+  }, [])
 
-      if (!authToken || !userId) {
-        throw new Error("Authentification requise")
-      }
+  // Fonction optimisée pour récupérer les demandes
+  const fetchDemandes = useCallback(
+    async (forceRefresh = false) => {
+      setLoading(true)
+      setError(null)
 
-      const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
-      let allDemandes = []
-      const errors = []
+      try {
+        const userId = localStorage.getItem("userId")
+        const authToken = localStorage.getItem("authToken")
 
-      for (const type of types) {
-        try {
-          const response = await fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
+        if (!authToken || !userId) {
+          throw new Error("Authentification requise")
+        }
+
+        // Vérifier le cache si on ne force pas le rafraîchissement
+        const cacheKey = `demandes_${userId}`
+        const cachedData = localStorage.getItem(cacheKey)
+
+        if (!forceRefresh && cachedData) {
+          try {
+            const { data, timestamp } = JSON.parse(cachedData)
+            // Vérifier si le cache est encore valide (moins de 5 minutes)
+            if (Date.now() - timestamp < CACHE_DURATION) {
+              console.log("Utilisation des données en cache")
+              setDemandes(data)
+              setFilteredDemandes(data)
+              updateStats(data)
+              setLoading(false)
+              return
+            }
+          } catch (e) {
+            console.warn("Erreur lors de la lecture du cache:", e)
+          }
+        }
+
+        // Utiliser Promise.all pour paralléliser les requêtes API
+        const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
+        const apiPromises = types.map((type) =>
+          fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${authToken}`,
             },
           })
+            .then(async (response) => {
+              if (!response.ok) {
+                const clonedResponse = response.clone()
+                let errorMessage
 
-          if (!response.ok) {
-            throw new Error(`Erreur ${response.status} lors de la récupération des demandes de ${type}`)
+                try {
+                  const errorData = await response.json()
+                  errorMessage = errorData.message || `Erreur ${response.status}`
+                } catch (e) {
+                  errorMessage = (await clonedResponse.text()) || `Erreur ${response.status}`
+                }
+
+                throw new Error(`Erreur lors de la récupération des demandes de ${type}: ${errorMessage}`)
+              }
+
+              const text = await response.text()
+              if (!text) return { type, data: [] }
+
+              try {
+                const data = JSON.parse(text)
+                if (!Array.isArray(data)) {
+                  throw new Error(`Format de données invalide pour ${type}`)
+                }
+                return { type, data }
+              } catch (e) {
+                console.error(`Erreur de parsing JSON pour ${type}:`, e)
+                return { type, data: [], error: e.message }
+              }
+            })
+            .catch((err) => {
+              console.error(`Erreur pour ${type}:`, err)
+              return { type, data: [], error: err.message }
+            }),
+        )
+
+        // Attendre que toutes les requêtes soient terminées
+        const results = await Promise.all(apiPromises)
+
+        // Traiter les résultats
+        let allDemandes = []
+        const errors = []
+
+        results.forEach(({ type, data, error }) => {
+          if (error) {
+            errors.push(`${type}: ${error}`)
           }
 
-          // Check if response has content
-          const text = await response.text()
-          const data = text ? JSON.parse(text) : []
+          if (data && data.length > 0) {
+            const typedData = data.map((item) => ({
+              ...item,
+              demandeType: type,
+              typeDemande: type,
+            }))
 
-          if (!Array.isArray(data)) {
-            throw new Error(`Format de données invalide pour ${type}`)
+            allDemandes = [...allDemandes, ...typedData]
           }
+        })
 
-          const typedData = data.map((item) => ({
-            ...item,
-            demandeType: type,
-          }))
-
-          allDemandes = [...allDemandes, ...typedData]
-        } catch (err) {
-          console.error(`Erreur lors de la récupération des demandes de ${type}:`, err)
-          errors.push(err.message)
+        // Afficher les erreurs s'il y en a
+        if (errors.length > 0) {
+          if (allDemandes.length === 0) {
+            setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
+          } else {
+            console.warn(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
+          }
         }
+
+        // Trier par date (plus récent d'abord)
+        allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande))
+
+        // Mettre à jour le cache
+        try {
+          localStorage.setItem(
+            cacheKey,
+            JSON.stringify({
+              data: allDemandes,
+              timestamp: Date.now(),
+            }),
+          )
+        } catch (e) {
+          console.warn("Erreur lors de la mise en cache des données:", e)
+        }
+
+        // Mettre à jour l'état
+        setDemandes(allDemandes)
+        setFilteredDemandes(allDemandes)
+        updateStats(allDemandes)
+      } catch (err) {
+        setError(err.message || "Une erreur est survenue lors de la récupération des demandes")
+      } finally {
+        setLoading(false)
+      }
+    },
+    [updateStats],
+  )
+
+  // Fonction optimisée pour appliquer les filtres
+  const applyFilters = useCallback(() => {
+    // Utiliser un debounce pour éviter les filtres trop fréquents
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current)
+    }
+
+    filterTimeoutRef.current = setTimeout(() => {
+      console.log("Applying filters...")
+
+      // Optimisation: ne filtrer que si nécessaire
+      if (!searchQuery && selectedType === "all" && selectedStatus === "all" && !startDate && !endDate) {
+        setFilteredDemandes(demandes)
+        setCurrentPage(1)
+        return
       }
 
-      if (errors.length > 0 && allDemandes.length === 0) {
-        setError(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
-      } else if (errors.length > 0) {
-        console.warn(`Certaines demandes n'ont pas pu être récupérées: ${errors.join(", ")}`)
-      }
+      // Utiliser des filtres optimisés
+      const filtered = demandes.filter((demande) => {
+        // Filtre de recherche
+        const matchesSearch =
+          !searchQuery ||
+          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(searchQuery.toLowerCase()))
 
-      // Sort by date descending
-      allDemandes.sort((a, b) => new Date(b.dateDemande) - new Date(a.dateDemande))
+        // Filtre de type
+        const matchesType = selectedType === "all" || demande.demandeType === selectedType
 
-      // Calculate stats
-      const pendingCount = allDemandes.filter((d) => d.reponseChef === "I").length
-      const approvedCount = allDemandes.filter((d) => d.reponseChef === "O").length
-      const rejectedCount = allDemandes.filter((d) => d.reponseChef === "N").length
+        // Filtre de statut
+        let matchesStatus = true
+        if (selectedStatus !== "all") {
+          if (selectedStatus === "pending") matchesStatus = demande.reponseChef === "I"
+          else if (selectedStatus === "approved") matchesStatus = demande.reponseChef === "O"
+          else if (selectedStatus === "rejected") matchesStatus = demande.reponseChef === "N"
+        }
 
-      setStats({
-        total: allDemandes.length,
-        pending: pendingCount,
-        approved: approvedCount,
-        rejected: rejectedCount,
+        // Filtre de date
+        let matchesDate = true
+        if (startDate && endDate) {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          end.setHours(23, 59, 59)
+
+          const demandeDate = new Date(demande.dateDemande)
+          matchesDate = demandeDate >= start && demandeDate <= end
+        }
+
+        return matchesSearch && matchesType && matchesStatus && matchesDate
       })
 
-      setDemandes(allDemandes)
-      setFilteredDemandes(allDemandes)
-    } catch (err) {
-      setError(err.message || "Une erreur est survenue lors de la récupération des demandes")
-    } finally {
-      setLoading(false)
-    }
-  }
+      setFilteredDemandes(filtered)
+      setCurrentPage(1)
+    }, 300) // Délai de 300ms pour le debounce
+  }, [demandes, searchQuery, selectedType, selectedStatus, startDate, endDate])
 
+  // Appliquer les filtres quand les dépendances changent
   useEffect(() => {
     applyFilters()
-  }, [searchQuery, selectedType, selectedStatus, startDate, endDate, demandes])
 
-  const applyFilters = () => {
-    let filtered = [...demandes]
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (demande) =>
-          (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
-          (demande.matPers?.nom && demande.matPers.nom.toLowerCase().includes(query)),
-      )
+    // Nettoyage du timeout lors du démontage
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current)
+      }
     }
-
-    // Filter by type
-    if (selectedType !== "all") {
-      filtered = filtered.filter((demande) => demande.demandeType === selectedType)
-    }
-
-    // Filter by status
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((demande) => {
-        if (selectedStatus === "pending") return demande.reponseChef === "I"
-        if (selectedStatus === "approved") return demande.reponseChef === "O"
-        if (selectedStatus === "rejected") return demande.reponseChef === "N"
-        return true
-      })
-    }
-
-    // Filter by date range
-    if (startDate && endDate) {
-      const start = new Date(startDate)
-      const end = new Date(endDate)
-      end.setHours(23, 59, 59) // Include the entire end day
-
-      filtered = filtered.filter((demande) => {
-        const demandeDate = new Date(demande.dateDemande)
-        return demandeDate >= start && demandeDate <= end
-      })
-    }
-
-    setFilteredDemandes(filtered)
-    setCurrentPage(1) // Reset to first page when filters change
-  }
+  }, [applyFilters])
 
   const clearFilters = () => {
     setSearchQuery("")
@@ -229,47 +317,110 @@ const DemandesCHEF = () => {
     setIsFilterExpanded(!isFilterExpanded)
   }
 
-  const handleViewDetails = (demande) => {
+  const handleViewDetails = useCallback((demande) => {
     setSelectedDemande(demande)
     setShowDetailsModal(true)
-  }
+  }, [])
 
   const closeDetailsModal = () => {
     setShowDetailsModal(false)
     setSelectedDemande(null)
   }
 
-  const handleDownloadAttachment = async (demande) => {
+  const handleDeleteDemande = (demande) => {
+    setSelectedDemande(demande)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDeleteDemande = async () => {
     try {
       const authToken = localStorage.getItem("authToken")
 
-      if (!authToken) {
-        throw new Error("Authentification requise")
-      }
-
-      const response = await fetch(`${API_URL}/api/demande-${demande.demandeType}/download/${demande.id}`, {
-        method: "GET",
+      const response = await fetch(`${API_URL}/api/demande-${selectedDemande.demandeType}/${selectedDemande.id}`, {
+        method: "DELETE",
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
       })
 
       if (!response.ok) {
-        throw new Error("Erreur lors du téléchargement du fichier")
+        const responseClone = response.clone()
+        let errorMessage
+
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorData.error || `Erreur HTTP ${response.status}`
+        } catch (jsonError) {
+          try {
+            const errorText = await responseClone.text()
+            errorMessage = errorText || `Erreur HTTP ${response.status}`
+          } catch (textError) {
+            errorMessage = `Erreur HTTP ${response.status}`
+          }
+        }
+
+        throw new Error(errorMessage)
       }
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `piece-jointe-${demande.id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      // Mettre à jour l'état localement sans refaire un appel API complet
+      const updatedDemandes = demandes.filter(
+        (d) => !(d.id === selectedDemande.id && d.demandeType === selectedDemande.demandeType),
+      )
+      setDemandes(updatedDemandes)
+      setFilteredDemandes((prev) =>
+        prev.filter((d) => !(d.id === selectedDemande.id && d.demandeType === selectedDemande.demandeType)),
+      )
+      updateStats(updatedDemandes)
+
+      // Mettre à jour le cache
+      const cacheKey = `demandes_${localStorage.getItem("userId")}`
+      try {
+        localStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            data: updatedDemandes,
+            timestamp: Date.now(),
+          }),
+        )
+      } catch (e) {
+        console.warn("Erreur lors de la mise à jour du cache:", e)
+      }
+
+      alert("Demande supprimée avec succès")
+      setShowDeleteModal(false)
+      closeDetailsModal()
     } catch (error) {
-      console.error("Erreur lors du téléchargement:", error)
-      alert("Erreur lors du téléchargement du fichier")
+      console.error("Erreur lors de la suppression:", error)
+      alert(`Erreur lors de la suppression de la demande: ${error.message}`)
+    }
+  }
+
+  // Fonction pour mettre à jour une demande après modification
+  const handleDemandeUpdated = (updatedDemande) => {
+    const updatedDemandes = demandes.map((d) =>
+      d.id === updatedDemande.id && d.demandeType === updatedDemande.demandeType ? { ...d, ...updatedDemande } : d,
+    )
+
+    setDemandes(updatedDemandes)
+    setFilteredDemandes((prev) =>
+      prev.map((d) =>
+        d.id === updatedDemande.id && d.demandeType === updatedDemande.demandeType ? { ...d, ...updatedDemande } : d,
+      ),
+    )
+    updateStats(updatedDemandes)
+
+    // Mettre à jour le cache
+    const cacheKey = `demandes_${localStorage.getItem("userId")}`
+    try {
+      localStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          data: updatedDemandes,
+          timestamp: Date.now(),
+        }),
+      )
+    } catch (e) {
+      console.warn("Erreur lors de la mise à jour du cache:", e)
     }
   }
 
@@ -281,7 +432,6 @@ const DemandesCHEF = () => {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber)
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString) return "N/A"
     const date = new Date(dateString)
@@ -292,7 +442,6 @@ const DemandesCHEF = () => {
     })
   }
 
-  // Get status text and class
   const getStatusInfo = (status) => {
     switch (status) {
       case "I":
@@ -306,7 +455,6 @@ const DemandesCHEF = () => {
     }
   }
 
-  // Get type text
   const getTypeText = (type) => {
     switch (type) {
       case "formation":
@@ -324,12 +472,16 @@ const DemandesCHEF = () => {
     }
   }
 
+  const hasFileResponse = (demande) => {
+    return demande.demandeType === "document" && demande.fileReponse
+  }
+
   if (loading) {
     return (
       <div className={`app-container ${theme}`}>
-      <Sidebar theme={theme} />
+        <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="loading-container">
             <div className="loading-spinner"></div>
             <p>Chargement des demandes...</p>
@@ -342,9 +494,9 @@ const DemandesCHEF = () => {
   if (error) {
     return (
       <div className={`app-container ${theme}`}>
-      <Sidebar theme={theme} />
+        <Sidebar theme={theme} />
         <div className="demandes-chef-container">
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+          <Navbar theme={theme} toggleTheme={toggleTheme} />
           <div className="error-container">
             <div className="error-icon">
               <FiX size={48} />
@@ -362,9 +514,9 @@ const DemandesCHEF = () => {
 
   return (
     <div className={`app-container ${theme}`}>
-    <Sidebar theme={theme} />
+      <Sidebar theme={theme} />
       <div className="demandes-chef-container">
-      <Navbar theme={theme} toggleTheme={toggleTheme} />
+        <Navbar theme={theme} toggleTheme={toggleTheme} />
         <div className="demandes-chef-content">
           <div className="page-header">
             <h1>Mes Demandes</h1>
@@ -475,6 +627,14 @@ const DemandesCHEF = () => {
             <p>
               <span className="results-count">{filteredDemandes.length}</span> demandes trouvées
             </p>
+            <button
+              className="refresh-button"
+              onClick={() => fetchDemandes(true)}
+              title="Rafraîchir les données"
+              disabled={loading}
+            >
+              <FiRefreshCw className={loading ? "spinning" : ""} />
+            </button>
           </div>
 
           {/* Demandes Table */}
@@ -487,6 +647,7 @@ const DemandesCHEF = () => {
                     <th>Type</th>
                     <th>Description</th>
                     <th>Statut</th>
+                    <th>Fichiers</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -512,6 +673,20 @@ const DemandesCHEF = () => {
                           <span className={`status-badge ${statusInfo.className}`}>{statusInfo.text}</span>
                         </td>
                         <td>
+                          <div className="file-actions">
+                            {demande.pieceJointe && (
+                              <button className="file-action" title="Voir la pièce jointe">
+                                <FiEye /> PJ
+                              </button>
+                            )}
+                            {hasFileResponse(demande) && (
+                              <button className="file-action" title="Voir la réponse">
+                                <FiEye /> Réponse
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        <td>
                           <div className="action-buttons">
                             <button
                               className="action-button view"
@@ -520,14 +695,23 @@ const DemandesCHEF = () => {
                             >
                               <FiEye />
                             </button>
-                            {demande.pieceJointe && (
-                              <button
-                                className="action-button download"
-                                onClick={() => handleDownloadAttachment(demande)}
-                                title="Télécharger la pièce jointe"
-                              >
-                                <FiDownload />
-                              </button>
+                            {demande.reponseChef === "I" && (
+                              <>
+                                <button
+                                  className="action-button edit"
+                                  onClick={() => handleViewDetails(demande)}
+                                  title="Modifier"
+                                >
+                                  <FiEdit />
+                                </button>
+                                <button
+                                  className="action-button delete"
+                                  onClick={() => handleDeleteDemande(demande)}
+                                  title="Supprimer"
+                                >
+                                  <FiTrash2 />
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -573,108 +757,35 @@ const DemandesCHEF = () => {
             </div>
           )}
 
-          {/* Details Modal */}
+          {/* Modals */}
           {showDetailsModal && selectedDemande && (
-            <div className="modal-overlay" onClick={closeDetailsModal}>
-              <div className="demande-modal" onClick={(e) => e.stopPropagation()}>
-                <div
-                  className="modal-header"
-                  data-status={getStatusInfo(selectedDemande.reponseChef).className.replace("status-", "")}
-                >
-                  <div className="header-content">
-                    <div className="header-text">
-                      <h2>Détails de la Demande</h2>
-                      <div className="status-text">{getStatusInfo(selectedDemande.reponseChef).text}</div>
-                    </div>
-                  </div>
-                  <button className="close-button" onClick={closeDetailsModal}>
+            <DemandesModal
+              demande={selectedDemande}
+              onClose={closeDetailsModal}
+              onDemandeUpdated={handleDemandeUpdated}
+              theme={theme}
+            />
+          )}
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteModal && (
+            <div className="modal-overlay">
+              <div className="confirmation-modal">
+                <div className="modal-header">
+                  <h2>Confirmer la suppression</h2>
+                  <button className="close-button" onClick={() => setShowDeleteModal(false)}>
                     <FiX />
                   </button>
                 </div>
-
-                <div className="modal-content">
-                  <div className="demande-info-section">
-                    <div className="section-header">
-                      <FiFileText />
-                      <h3>Informations Générales</h3>
-                    </div>
-                    <div className="info-grid">
-                      <div className="info-item">
-                        <div className="info-label">Type de Demande</div>
-                        <div className="info-value">
-                          <span className={`type-badge ${selectedDemande.demandeType}`}>
-                            {getTypeText(selectedDemande.demandeType)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="info-item">
-                        <div className="info-label">Date de Soumission</div>
-                        <div className="info-value">{formatDate(selectedDemande.dateDemande)}</div>
-                      </div>
-                      {selectedDemande.dateDebut && (
-                        <div className="info-item">
-                          <div className="info-label">Date de Début</div>
-                          <div className="info-value">{formatDate(selectedDemande.dateDebut)}</div>
-                        </div>
-                      )}
-                      {selectedDemande.dateFin && (
-                        <div className="info-item">
-                          <div className="info-label">Date de Fin</div>
-                          <div className="info-value">{formatDate(selectedDemande.dateFin)}</div>
-                        </div>
-                      )}
-                      {selectedDemande.nbrJours && (
-                        <div className="info-item">
-                          <div className="info-label">Nombre de Jours</div>
-                          <div className="info-value">{selectedDemande.nbrJours}</div>
-                        </div>
-                      )}
-                      {selectedDemande.montant && (
-                        <div className="info-item">
-                          <div className="info-label">Montant</div>
-                          <div className="info-value">{selectedDemande.montant} €</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="demande-info-section">
-                    <div className="section-header">
-                      <FiFileText />
-                      <h3>Description de la Demande</h3>
-                    </div>
-                    <div className="demande-text-full">
-                      {selectedDemande.texteDemande || <span className="no-content">Aucune description fournie</span>}
-                    </div>
-                  </div>
-
-                  {selectedDemande.pieceJointe && (
-                    <div className="demande-info-section">
-                      <div className="section-header">
-                        <FiFileText />
-                        <h3>Pièce Jointe</h3>
-                      </div>
-                      <button className="download-button" onClick={() => handleDownloadAttachment(selectedDemande)}>
-                        <FiDownload />
-                        <span>Télécharger la pièce jointe</span>
-                      </button>
-                    </div>
-                  )}
-
-                  {selectedDemande.texteReponse && (
-                    <div className="demande-info-section">
-                      <div className="section-header">
-                        <FiFileText />
-                        <h3>Réponse</h3>
-                      </div>
-                      <div className="response-text">{selectedDemande.texteReponse}</div>
-                    </div>
-                  )}
+                <div className="modal-body">
+                  <p>Êtes-vous sûr de vouloir supprimer cette demande ? Cette action est irréversible.</p>
                 </div>
-
                 <div className="modal-footer">
-                  <button className="btn btn-secondary" onClick={closeDetailsModal}>
-                    Fermer
+                  <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
+                    Annuler
+                  </button>
+                  <button className="btn btn-danger" onClick={confirmDeleteDemande}>
+                    <FiTrash2 /> Confirmer la suppression
                   </button>
                 </div>
               </div>
@@ -686,5 +797,4 @@ const DemandesCHEF = () => {
   )
 }
 
-export default DemandesCHEF
-
+export default DemandesRH

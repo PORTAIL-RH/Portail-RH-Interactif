@@ -1004,7 +1004,7 @@ body.dark .modal-header[data-status="rejected"] .status-text {
   align-items: center;
   justify-content: center;
   color: #6b7280;
-  padding: 0.5rem;
+  padding: 0.1rem;
   border-radius: 0.375rem;
   transition: var(--transition);
 }
@@ -1237,6 +1237,8 @@ body.dark .btn-danger {
 body.dark .btn-danger:hover {
   background-color: #ef4444;
 }
+
+
 
 /* Loading Container */
 .loading-container {
@@ -1587,4 +1589,50 @@ body.dark .unsupported-preview svg {
     max-height: 100vh;
     border-radius: 0;
   }
+}
+
+
+
+.refresh-button {
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  font-size: 20px;
+  color: #6f7df8; /* ou noir ou blanc selon le thème */
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  color: #313c97;
+  transform: scale(1.1);
+}
+
+.refresh-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Animation de rotation */
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Keyframes pour la rotation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+html.light .refresh-button {
+  color: #313c97;
+}
+
+html.dark .refresh-button {
+  color: #6f7df8;
 }
