@@ -40,6 +40,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 requestURI.startsWith("/api/Personnel/request-password-reset")||
                 requestURI.startsWith("/api/Personnel/reset-password")||
                 requestURI.startsWith("/api/Personnel/validate-reset-token")||
+                requestURI.startsWith("/api/Personnel/request-password-reset-mobile")||
+                requestURI.startsWith("/api/Personnel/reset-password-mobile")||
+                requestURI.startsWith("/api/Personnel/validate-reset-token-mobile")||
                 requestURI.startsWith("/api/Personnel/matricules")||
                 requestURI.startsWith("/api/societes") ||
                 requestURI.startsWith("/api/Personnel/matricule/{matricule}")||

@@ -240,7 +240,9 @@ public class DemandePreAvanceController {
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandePreAvance>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandePreAvance> demandes = demandePreAvanceRepository.findByMatPers_Id(matPersId);
-        return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
+        return demandes.isEmpty()
+                ? ResponseEntity.status(HttpStatus.CREATED).body(demandes)
+                : ResponseEntity.ok(demandes);
     }
 
     // Validate a DemandePreAvance by ID

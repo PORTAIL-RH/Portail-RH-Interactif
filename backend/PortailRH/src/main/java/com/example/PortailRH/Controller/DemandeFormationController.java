@@ -235,10 +235,7 @@ public class DemandeFormationController {
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeFormation>> getDemandesFormationByPersonnelId(@PathVariable String matPersId) {
         List<DemandeFormation> demandes = demandeFormationRepository.findByMatPersId(matPersId);
-        if (demandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(demandes);
+        return ResponseEntity.ok(demandes); // Always 200, even if empty
     }
 
     @GetMapping("/personnel/{matPersId}/approved")

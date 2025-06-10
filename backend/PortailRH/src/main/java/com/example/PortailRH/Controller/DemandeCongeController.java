@@ -357,10 +357,7 @@ public class DemandeCongeController {
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeConge>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandeConge> demandes = demandeCongeRepository.findByMatPersId(matPersId);
-        if (demandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.ok(demandes);
+        return ResponseEntity.ok(demandes); // Always 200, even if empty (returns [])
     }
 
     @GetMapping("/personnel/{matPersId}/approved")
@@ -396,10 +393,6 @@ public class DemandeCongeController {
         // Get all demandes for the personnel
         List<DemandeConge> allDemandes = demandeCongeRepository.findByMatPersId(matPersId);
 
-        if (allDemandes.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-
         // Filter those approved by chef of weight 1
         List<DemandeConge> approvedByChef1 = allDemandes.stream()
                 .filter(demande -> {
@@ -408,11 +401,7 @@ public class DemandeCongeController {
                 })
                 .collect(Collectors.toList());
 
-        if (approvedByChef1.isEmpty()) {
-            return ResponseEntity.noContent().build();
-        }
-
-        return ResponseEntity.ok(approvedByChef1);
+        return ResponseEntity.ok(approvedByChef1); // Always 200 with [] if empty
     }
 
     @PutMapping("/valider/{id}")
@@ -1020,11 +1009,10 @@ public class DemandeCongeController {
 
     private String defaultIfNull(String value, String defaultValue) {
         return value != null ? value : defaultValue;
-    }    @GetMapping("/days-used/{matPersId}")
+    } @GetMapping("/days-used/{matPersId}")
     public ResponseEntity<Map<String, Object>> getUsedDaysForCurrentYear(
             @PathVariable String matPersId) {
 
-        // 1. Check if user exists
         if (!personnelRepository.existsById(matPersId)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
                     "status", "error",
@@ -1033,22 +1021,23 @@ public class DemandeCongeController {
         }
 
         try {
-            // 2. Get current year
             int currentYear = Year.now().getValue();
 
-            // 3. Find all APPROVED leave requests for this user in current year
-            List<DemandeConge> approvedDemandes = demandeCongeRepository
-                    .findByMatPersIdAndReponseChefAndYear(matPersId, Reponse.O, currentYear);
+            // 1. Récupérer toutes les demandes de congé de cette personne pour l’année courante
+            List<DemandeConge> demandes = demandeCongeRepository
+                    .findByMatPersIdAndYear(matPersId, currentYear);
 
-            // 4. Calculate total used days
-            int totalDaysUsed = approvedDemandes.stream()
-                    .mapToInt(DemandeConge::getNbrJours)
-                    .sum();
+            // 2. Filtrer celles approuvées par le chef ayant poid = 1 (responseChef1 == "O")
+            int totalDaysUsed = 0;
+            for (DemandeConge demande : demandes) {
+                Response_chefs_dem_conge responses = demande.getResponseChefs();
+                if (responses != null && "O".equalsIgnoreCase(responses.getResponseChef1())) {
+                    totalDaysUsed += demande.getNbrJours();
+                }
+            }
 
-            // 5. Calculate remaining days
             int remainingDays = DemandeConge.MAX_DAYS_PER_YEAR - totalDaysUsed;
 
-            // 6. Return the result
             return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "matPersId", matPersId,
@@ -1067,27 +1056,26 @@ public class DemandeCongeController {
         }
     }
 
+
     @GetMapping("/collaborateurs-by-service/{chefserviceid}/approved")
     public ResponseEntity<?> getDemandesApprovedByChef1ForService(@PathVariable String chefserviceid) {
         try {
             // 1. Validate ID is not null or empty
             if (chefserviceid == null || chefserviceid.trim().isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of(
-                                "status", "error",
-                                "message", "ID du chef est requis",
-                                "providedId", chefserviceid
-                        ));
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Chef ID is required",
+                        "providedId", chefserviceid
+                ));
             }
 
             // 2. Validate ID format
             if (!ObjectId.isValid(chefserviceid)) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of(
-                                "status", "error",
-                                "message", "ID du chef invalide",
-                                "providedId", chefserviceid
-                        ));
+                return ResponseEntity.badRequest().body(Map.of(
+                        "status", "error",
+                        "message", "Invalid Chef ID",
+                        "providedId", chefserviceid
+                ));
             }
 
             ObjectId chefId = new ObjectId(chefserviceid);
@@ -1110,7 +1098,7 @@ public class DemandeCongeController {
             if (chefValidators.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "message", "Ce chef n'est pas validateur de poids 1 pour aucun service",
+                        "message", "This chef is not a weight 1 validator for any service",
                         "chef", buildPersonnelMap(chef),
                         "demandes", Collections.emptyList()
                 ));
@@ -1135,7 +1123,7 @@ public class DemandeCongeController {
             if (serviceIds.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "message", "Aucun service valide trouvé pour ce validateur",
+                        "message", "No valid services found for this validator",
                         "chef", buildPersonnelMap(chef),
                         "demandes", Collections.emptyList()
                 ));
@@ -1164,7 +1152,7 @@ public class DemandeCongeController {
             if (personnelIds.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "message", "Aucun personnel trouvé dans les services gérés",
+                        "message", "No personnel found in managed services",
                         "chef", buildPersonnelMap(chef),
                         "demandes", Collections.emptyList()
                 ));
@@ -1189,13 +1177,13 @@ public class DemandeCongeController {
             if (approvedDemandeIds.isEmpty()) {
                 return ResponseEntity.ok(Map.of(
                         "status", "success",
-                        "message", "Aucune demande approuvée trouvée",
+                        "message", "No approved demands found",
                         "chef", buildPersonnelMap(chef),
                         "demandes", Collections.emptyList()
                 ));
             }
 
-            // 10. Get the approved demandes
+            // 10. Get the approved demands
             List<DemandeConge> approvedDemandes = mongoTemplate.find(
                     new Query(Criteria.where("matPers.$id").in(personnelIds)
                             .and("_id").in(approvedDemandeIds))
@@ -1219,8 +1207,7 @@ public class DemandeCongeController {
             log.error("Error in getDemandesApprovedByChef1ForService: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of(
                     "status", "error",
-                    "message", "Erreur technique",
-                    "error", e.getMessage()
+                    "message", "Technical error occurred"
             ));
         }
     }

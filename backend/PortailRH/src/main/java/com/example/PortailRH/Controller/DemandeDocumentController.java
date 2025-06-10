@@ -166,7 +166,7 @@ public class DemandeDocumentController {
     @GetMapping("/personnel/{matPersId}")
     public ResponseEntity<List<DemandeDocument>> getDemandesByPersonnelId(@PathVariable String matPersId) {
         List<DemandeDocument> demandes = demandeDocumentRepository.findByMatPersId(matPersId);
-        return demandes.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(demandes);
+        return ResponseEntity.ok(demandes); // Always 200, even if empty (returns [])
     }
     // Get response files for personnel
     @GetMapping("/personnel/{matPersId}/files-reponse")

@@ -38,5 +38,6 @@ public interface DemandeCongeRepository extends MongoRepository<DemandeConge, St
             "{ 'responseChefs.responseChef3': 'O' } " +
             "] }")
     List<DemandeConge> findApprovedByPersonnelId(String matPersId);
+    List<DemandeConge> findByMatPersIdAndYear(String matPersId, int year);
 
 }
