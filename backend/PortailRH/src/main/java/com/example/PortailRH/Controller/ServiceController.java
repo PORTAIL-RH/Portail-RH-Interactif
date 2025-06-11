@@ -6,10 +6,14 @@ import com.example.PortailRH.Model.Validator;
 import com.example.PortailRH.Repository.PersonnelRepository;
 import com.example.PortailRH.Repository.ServiceRepository;
 import com.example.PortailRH.Repository.ValidatorRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -382,27 +386,46 @@ public class ServiceController {
         }
     }
 
+    private static final Logger log = LoggerFactory.getLogger(ServiceController.class);
+
     @DeleteMapping("/delete/{id}")
+    @Transactional // Ensures the operations are treated as a single unit (requires a replica set for MongoDB)
     public ResponseEntity<?> deleteService(@PathVariable String id) {
         try {
-            // Check if service exists
-            Optional<Service> serviceOptional = serviceRepository.findById(id);
-            if (serviceOptional.isEmpty()) {
-                return ResponseEntity.notFound().build();
+            // Step 1: Check business rule: Cannot delete a service if personnel are assigned to it.
+            // This uses the CORRECTED method name to query the nested document's ID.
+            if (personnelRepository.existsByService_Id(id)) {
+                log.warn("Attempt to delete service ID {} which is still assigned to personnel.", id);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(Map.of("message", "Cannot delete service. It is still assigned to active personnel."));
             }
 
-            // Check if service has associated personnel
-            List<Personnel> personnelList = personnelRepository.findByServiceId(id);
-            if (!personnelList.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("message", "Cannot delete service with associated personnel"));
-            }
+            // Step 2: Verify the service exists before attempting to delete it.
+            // Using orElseThrow for a cleaner "not found" check.
+            Service service = serviceRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Service with ID " + id + " not found."));
 
-            serviceRepository.deleteById(id);
-            return ResponseEntity.ok(Map.of("message", "Service deleted successfully"));
+            // Step 3: Delete all dependent 'Validator' records. This is critical for data integrity.
+            log.info("Deleting all validators associated with service ID: {}", id);
+            validatorRepository.deleteAllByService_Id(id);
+
+            // Step 4: Delete the service itself, now that its dependencies are removed.
+            log.info("Deleting service: {} with ID: {}", service.getServiceName(), id);
+            serviceRepository.delete(service);
+
+            // Step 5: Return a success response.
+            return ResponseEntity.ok(Map.of("message", "Service '" + service.getServiceName() + "' and its validators were deleted successfully."));
+
+        } catch (ResponseStatusException e) {
+            // Catches the "Service not found" exception from the findById().orElseThrow() call.
+            log.error("Failed to delete service: {}", e.getReason());
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of("message", e.getReason()));
         } catch (Exception e) {
+            // Catches any other unexpected errors (e.g., database connection issues).
+            // This was the block being hit before the fix.
+            log.error("An unexpected error occurred while deleting service with ID {}:", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Error deleting service: " + e.getMessage()));
+                    .body(Map.of("message", "An internal error occurred during service deletion. See logs for details."));
         }
     }
 

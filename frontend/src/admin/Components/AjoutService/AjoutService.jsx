@@ -59,6 +59,11 @@ const AjoutService = () => {
   const [searchTerms, setSearchTerms] = useState(["", "", ""])
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
   const [serviceSearchTerm, setServiceSearchTerm] = useState("")
+  const [deleteConfirmation, setDeleteConfirmation] = useState({
+    show: false,
+    serviceId: null,
+    serviceName: "",
+  })
 
   const dropdownRefs = [useRef(null), useRef(null), useRef(null)]
   const inputRefs = [useRef(null), useRef(null), useRef(null)]
@@ -80,7 +85,7 @@ const AjoutService = () => {
         setPersonnelList(personnelRes.data)
       } catch (error) {
         console.error("Error fetching data:", error)
-        toast.error("Failed to load data")
+        toast.error("Échec du chargement des données")
       } finally {
         setLoading((prev) => ({ ...prev, fetch: false }))
       }
@@ -146,7 +151,7 @@ const AjoutService = () => {
       setPersonnelList(validatedPersonnel)
     } catch (err) {
       console.error("Failed to fetch personnel:", err)
-      toast.error("Failed to load personnel data")
+      toast.error("Échec du chargement des données du personnel")
     }
   }
   // Simple form handlers
@@ -157,7 +162,7 @@ const AjoutService = () => {
 
   const validateSimpleForm = () => {
     if (!simpleFormData.serviceName.trim()) {
-      toast.error("Service name is required")
+      toast.error("Le nom du service est requis")
       return false
     }
     return true
@@ -174,7 +179,7 @@ const AjoutService = () => {
       })
 
       if ([200, 201].includes(response.status)) {
-        toast.success("Service created!")
+        toast.success("Service créé avec succès !")
         setSimpleFormData({ serviceName: "" })
         setBasicServices([...basicServices, response.data])
         setServices([...services, response.data])
@@ -182,7 +187,7 @@ const AjoutService = () => {
       }
     } catch (err) {
       console.error("Creation error:", err)
-      toast.error(err.response?.data?.message || "Failed to create service")
+      toast.error(err.response?.data?.message || "Échec de la création du service")
     } finally {
       setLoading((prev) => ({ ...prev, createSimple: false }))
     }
@@ -215,7 +220,7 @@ const AjoutService = () => {
 
     if (!personnelId) {
       console.error("Personnel object missing ID field! Available fields:", Object.keys(personnel))
-      toast.error("Selected personnel data is incomplete - missing ID")
+      toast.error("Les données du personnel sélectionné sont incomplètes - ID manquant")
       return
     }
 
@@ -247,13 +252,13 @@ const AjoutService = () => {
 
   const validateAssignChefsForm = () => {
     if (!assignChefsData.selectedServiceId) {
-      toast.error("Please select a service")
+      toast.error("Veuillez sélectionner un service")
       return false
     }
 
     const hasChef = assignChefsData.chefs.some((chef) => chef.matricule)
     if (!hasChef) {
-      toast.error("At least one chief is required")
+      toast.error("Au moins un chef est requis")
       return false
     }
 
@@ -268,7 +273,7 @@ const AjoutService = () => {
       .map((_, i) => i + 1)
 
     if (invalidChiefs.length > 0) {
-      toast.error(`Chiefs at positions ${invalidChiefs.join(", ")} are missing IDs`)
+      toast.error(`Les chefs aux positions ${invalidChiefs.join(", ")} n'ont pas d'ID`)
       return
     }
 
@@ -289,7 +294,7 @@ const AjoutService = () => {
         console.log(`Checking chief ${position}:`, chef)
 
         if (chef.personnelId && chef.matricule) {
-          console.log(`âœ… Valid chief ${position} found`, {
+          console.log(`✅ Valid chief ${position} found`, {
             personnelId: chef.personnelId,
             poid: chef.poid,
           })
@@ -300,13 +305,13 @@ const AjoutService = () => {
           }
           validChiefsCount++
         } else {
-          console.warn(`âš ï¸ Skipping chief ${position} - missing personnelId or matricule`)
+          console.warn(`⚠️ Skipping chief ${position} - missing personnelId or matricule`)
         }
       })
 
       if (validChiefsCount === 0) {
-        console.error("âŒ No valid chiefs selected - aborting")
-        throw new Error("Please select at least one valid chief")
+        console.error("❌ No valid chiefs selected - aborting")
+        throw new Error("Veuillez sélectionner au moins un chef valide")
       }
 
       console.log(
@@ -348,7 +353,7 @@ const AjoutService = () => {
 
       // 3. Handle success
       console.log("\n[Step 5] Updating UI state...")
-      toast.success("Chiefs assigned successfully!")
+      toast.success("Chefs assignés avec succès !")
 
       const updatedServices = services.map((s) =>
         s.id === assignChefsData.selectedServiceId ? response.data.service : s,
@@ -370,7 +375,11 @@ const AjoutService = () => {
         stack: err.stack,
       })
 
-      toast.error(err.response?.data?.message || err.message || "Chief assignment failed. Check console for details.")
+      toast.error(
+        err.response?.data?.message ||
+          err.message ||
+          "Échec de l'assignation des chefs. Vérifiez la console pour plus de détails.",
+      )
     } finally {
       setLoading((prev) => ({ ...prev, assignChefs: false }))
       console.groupEnd()
@@ -400,7 +409,7 @@ const AjoutService = () => {
     return chefs.map((chef, index) => (
       <div className="chef-input-group" key={index}>
         <label>
-          Chief {index + 1} (Weight {index + 1}):
+          Chef {index + 1} (Poids {index + 1}) :
         </label>
         <div className="matricule-dropdown-container">
           <input
@@ -417,7 +426,7 @@ const AjoutService = () => {
               newStates[index] = true
               setDropdownStates(newStates)
             }}
-            placeholder="Select chief"
+            placeholder="Sélectionner un chef"
           />
           <div className="dropdown-icon" onClick={() => toggleDropdown(index)}>
             <FiChevronDown />
@@ -429,7 +438,7 @@ const AjoutService = () => {
                 <FiSearch className="search-icon" />
                 <input
                   type="text"
-                  placeholder="Search chief..."
+                  placeholder="Rechercher un chef..."
                   value={searchTerms[index]}
                   onChange={(e) => handleChefSearchChange(index, e.target.value)}
                 />
@@ -453,7 +462,7 @@ const AjoutService = () => {
                 ) : (
                   <div className="no-results">
                     <FiX className="no-results-icon" />
-                    <span>No chiefs found</span>
+                    <span>Aucun chef trouvé</span>
                   </div>
                 )}
               </div>
@@ -474,7 +483,7 @@ const AjoutService = () => {
   // Edit functionality
   const handleEdit = (service) => {
     if (!service?.id) {
-      toast.error("Invalid service data")
+      toast.error("Données de service invalides")
       return
     }
 
@@ -540,12 +549,12 @@ const AjoutService = () => {
     e.preventDefault()
 
     if (!editingService?.id) {
-      toast.error("Invalid service ID")
+      toast.error("ID de service invalide")
       return
     }
 
     if (!editingService.serviceName?.trim()) {
-      toast.error("Service name is required")
+      toast.error("Le nom du service est requis")
       return
     }
 
@@ -597,41 +606,66 @@ const AjoutService = () => {
           setBasicServices(basicServices.filter((s) => s.id !== editingService.id))
         }
 
-        toast.success("Service updated!")
+        toast.success("Service mis à jour !")
         setShowEditModal(false)
       }
     } catch (error) {
       console.error("Update error:", error)
-      toast.error(error.response?.data?.message || "Update failed")
+      toast.error(error.response?.data?.message || "Échec de la mise à jour")
     } finally {
       setLoading((prev) => ({ ...prev, update: false }))
     }
   }
 
-  const handleDelete = async (serviceId) => {
+  const handleDelete = async (serviceId, serviceName) => {
     if (!serviceId) {
-      toast.error("Invalid service ID")
+      toast.error("ID de service invalide")
       return
     }
 
-    if (window.confirm("Delete this service?")) {
-      setLoading((prev) => ({ ...prev, delete: true }))
-      try {
-        await axios.delete(`${API_URL}/api/services/delete/${serviceId}`)
+    setDeleteConfirmation({
+      show: true,
+      serviceId: serviceId,
+      serviceName: serviceName || "ce service",
+    })
+  }
 
-        const updatedServices = services.filter((s) => s.id !== serviceId)
-        setServices(updatedServices)
+  const confirmDelete = async () => {
+    const { serviceId } = deleteConfirmation
+    setLoading((prev) => ({ ...prev, delete: true }))
 
-        const updatedBasicServices = basicServices.filter((s) => s.id !== serviceId)
-        setBasicServices(updatedBasicServices)
+    try {
+      const response = await axios.delete(`${API_URL}/api/services/delete/${serviceId}`)
 
-        toast.success("Service deleted!")
-      } catch (error) {
-        console.error("Delete error:", error)
-        toast.error(error.response?.data?.message || "Delete failed")
-      } finally {
-        setLoading((prev) => ({ ...prev, delete: false }))
+      if (response.status === 200) {
+        setServices((prev) => prev.filter((s) => s.id !== serviceId))
+        setBasicServices((prev) => prev.filter((s) => s.id !== serviceId))
+        toast.success("Service supprimé avec succès")
       }
+    } catch (error) {
+      console.error("Delete error details:", {
+        error: error.message,
+        response: error.response?.data,
+        config: error.config,
+      })
+
+      let errorMessage = "Échec de la suppression du service"
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data?.message || "Le service ne peut pas être supprimé (personnel associé)"
+        } else if (error.response.status === 404) {
+          errorMessage = "Service non trouvé"
+        } else if (error.response.status === 500) {
+          errorMessage = "Erreur serveur. Veuillez vérifier si le service a des dépendances."
+        } else {
+          errorMessage = error.response.data?.message || `Erreur serveur : ${error.response.status}`
+        }
+      }
+
+      toast.error(errorMessage)
+    } finally {
+      setLoading((prev) => ({ ...prev, delete: false }))
+      setDeleteConfirmation({ show: false, serviceId: null, serviceName: "" })
     }
   }
 
@@ -648,13 +682,13 @@ const AjoutService = () => {
                 className={`service-tab ${activeTab === "add" ? "active" : ""}`}
                 onClick={() => setActiveTab("add")}
               >
-                <FiPlus /> Add Service
+                <FiPlus /> Ajouter Service
               </button>
               <button
                 className={`service-tab ${activeTab === "list" ? "active" : ""}`}
                 onClick={() => setActiveTab("list")}
               >
-                <FiList /> All Services
+                <FiList /> Tous les Services
               </button>
             </div>
 
@@ -665,42 +699,42 @@ const AjoutService = () => {
                     className={`create-mode-tab ${activeCreateMode === "simple" ? "active" : ""}`}
                     onClick={() => setActiveCreateMode("simple")}
                   >
-                    Create Service
+                    Créer Service
                   </button>
                   <button
                     className={`create-mode-tab ${activeCreateMode === "advanced" ? "active" : ""}`}
                     onClick={() => setActiveCreateMode("advanced")}
                   >
-                    Assign Chiefs
+                    Assigner Chefs
                   </button>
                 </div>
 
                 {activeCreateMode === "simple" ? (
                   <div className="simple-create-form">
-                    <h2>Create New Service</h2>
+                    <h2>Créer un Nouveau Service</h2>
                     <form onSubmit={handleSimpleSubmit}>
                       <div className="form-group">
-                        <label>Service Name:</label>
+                        <label>Nom du Service :</label>
                         <input
                           type="text"
                           name="serviceName"
                           value={simpleFormData.serviceName}
                           onChange={handleSimpleInputChange}
                           required
-                          placeholder="Enter service name"
+                          placeholder="Entrez le nom du service"
                         />
                       </div>
                       <button type="submit" className="submit-button" disabled={loading.createSimple}>
-                        {loading.createSimple ? "Creating..." : "Create Service"}
+                        {loading.createSimple ? "Création..." : "Créer Service"}
                       </button>
                     </form>
                   </div>
                 ) : (
                   <div className="advanced-create-form">
-                    <h2>Assign Chiefs to Service</h2>
+                    <h2>Assigner des Chefs au Service</h2>
                     <form onSubmit={handleAssignChefsSubmit}>
                       <div className="form-group">
-                        <label>Select Service:</label>
+                        <label>Sélectionner Service :</label>
                         <div className="service-dropdown-container" ref={serviceDropdownRef}>
                           <input
                             type="text"
@@ -715,7 +749,7 @@ const AjoutService = () => {
                               setServiceSearchTerm(e.target.value)
                               setShowServiceDropdown(true)
                             }}
-                            placeholder="Search services without chiefs..."
+                            placeholder="Rechercher services sans chefs..."
                           />
                           <div className="dropdown-icon" onClick={() => setShowServiceDropdown(!showServiceDropdown)}>
                             <FiChevronDown />
@@ -727,7 +761,7 @@ const AjoutService = () => {
                                 <FiSearch className="search-icon" />
                                 <input
                                   type="text"
-                                  placeholder="Search services..."
+                                  placeholder="Rechercher services..."
                                   value={serviceSearchTerm}
                                   onChange={(e) => setServiceSearchTerm(e.target.value)}
                                   autoFocus
@@ -752,7 +786,7 @@ const AjoutService = () => {
                                 ) : (
                                   <div className="no-results">
                                     <FiX className="no-results-icon" />
-                                    <span>No services found</span>
+                                    <span>Aucun service trouvé</span>
                                   </div>
                                 )}
                               </div>
@@ -762,10 +796,10 @@ const AjoutService = () => {
                       </div>
 
                       <div className="chefs-container">
-                        <h3>Service Chiefs</h3>
+                        <h3>Chefs de Service</h3>
                         <p className="helper-text">
-                          Select up to 3 chiefs for this service with weights. Chief 1 has weight 1 (highest priority),
-                          Chief 2 has weight 2, and Chief 3 has weight 3.
+                          Sélectionnez jusqu'à 3 chefs pour ce service avec des poids. Le Chef 1 a le poids 1 (priorité
+                          la plus élevée), le Chef 2 a le poids 2, et le Chef 3 a le poids 3.
                         </p>
                         {renderChefInputs(assignChefsData.chefs)}
                       </div>
@@ -775,7 +809,7 @@ const AjoutService = () => {
                         className="submit-button"
                         disabled={loading.assignChefs || !assignChefsData.selectedServiceId}
                       >
-                        {loading.assignChefs ? "Assigning..." : "Assign Chiefs"}
+                        {loading.assignChefs ? "Attribution..." : "Assigner Chefs"}
                       </button>
                     </form>
                   </div>
@@ -802,12 +836,12 @@ const AjoutService = () => {
                             setServices(servicesRes.data)
                             setBasicServices(basicServicesRes.data)
                           })
-                          .catch((err) => toast.error("Failed to refresh data"))
+                          .catch((err) => toast.error("Échec de l'actualisation des données"))
                           .finally(() => setLoading((prev) => ({ ...prev, fetch: false })))
                       }}
                       disabled={loading.fetch}
                     >
-                      <FiRefreshCw /> Refresh
+                      <FiRefreshCw /> Actualiser
                     </button>
                   </div>
                 </div>
@@ -815,17 +849,17 @@ const AjoutService = () => {
                 {loading.fetch ? (
                   <div className="loading-container">
                     <div className="loading-spinner-large"></div>
-                    <p>Loading services...</p>
+                    <p>Chargement des services...</p>
                   </div>
                 ) : services.length > 0 ? (
                   <div className="services-table-container">
                     <table className="services-table">
                       <thead>
                         <tr>
-                          <th>Service Name</th>
-                          <th>Chief 1 (Weight 1)</th>
-                          <th>Chief 2 (Weight 2)</th>
-                          <th>Chief 3 (Weight 3)</th>
+                          <th>Nom du Service</th>
+                          <th>Chef 1 (Poids 1)</th>
+                          <th>Chef 2 (Poids 2)</th>
+                          <th>Chef 3 (Poids 3)</th>
                           <th>Actions</th>
                         </tr>
                       </thead>
@@ -839,7 +873,7 @@ const AjoutService = () => {
                                     const chef = getChefDetails(service.chef1.id)
                                     return chef
                                       ? `${chef.matricule} - ${chef.nom} ${chef.prenom}`
-                                      : `ID: ${service.chef1.id} (Details not found)`
+                                      : `ID: ${service.chef1.id} (Détails non trouvés)`
                                   })()
                                 : "-"}
                             </td>
@@ -849,7 +883,7 @@ const AjoutService = () => {
                                     const chef = getChefDetails(service.chef2.id)
                                     return chef
                                       ? `${chef.matricule} - ${chef.nom} ${chef.prenom}`
-                                      : `ID: ${service.chef2.id} (Details not found)`
+                                      : `ID: ${service.chef2.id} (Détails non trouvés)`
                                   })()
                                 : "-"}
                             </td>
@@ -859,7 +893,7 @@ const AjoutService = () => {
                                     const chef = getChefDetails(service.chef3.id)
                                     return chef
                                       ? `${chef.matricule} - ${chef.nom}`
-                                      : `ID: ${service.chef3.id} (Details not found)`
+                                      : `ID: ${service.chef3.id} (Détails non trouvés)`
                                   })()
                                 : "-"}
                             </td>
@@ -869,14 +903,14 @@ const AjoutService = () => {
                                 onClick={() => handleEdit(service)}
                                 disabled={loading.update || loading.delete}
                               >
-                                <FiEdit /> Edit
+                                <FiEdit /> Modifier
                               </button>
                               <button
                                 className="delete-button"
-                                onClick={() => handleDelete(service.id)}
+                                onClick={() => handleDelete(service.id, service.serviceName)}
                                 disabled={loading.update || loading.delete}
                               >
-                                <FiTrash2 /> Delete
+                                <FiTrash2 /> Supprimer
                               </button>
                             </td>
                           </tr>
@@ -887,8 +921,8 @@ const AjoutService = () => {
                 ) : (
                   <div className="empty-state">
                     <FiInfo />
-                    <h3>No Services</h3>
-                    <p>Add a service to get started</p>
+                    <h3>Aucun Service</h3>
+                    <p>Ajoutez un service pour commencer</p>
                   </div>
                 )}
               </div>
@@ -898,7 +932,7 @@ const AjoutService = () => {
               <div className="modal-overlay">
                 <div className="modal-container">
                   <div className="modal-header">
-                    <h3>Edit Service</h3>
+                    <h3>Modifier Service</h3>
                     <button className="modal-close" onClick={() => setShowEditModal(false)} disabled={loading.update}>
                       <FiX />
                     </button>
@@ -906,7 +940,7 @@ const AjoutService = () => {
                   <div className="modal-body">
                     <form onSubmit={handleEditSubmit}>
                       <div className="form-group">
-                        <label>Service Name:</label>
+                        <label>Nom du Service :</label>
                         <input
                           type="text"
                           name="serviceName"
@@ -922,17 +956,51 @@ const AjoutService = () => {
                       </div>
 
                       <div className="chefs-container">
-                        <h3>Service Chiefs</h3>
+                        <h3>Chefs de Service</h3>
                         {renderChefInputs(editingService.chefs)}
                       </div>
                     </form>
                   </div>
                   <div className="modal-footer">
                     <button className="modal-cancel" onClick={() => setShowEditModal(false)} disabled={loading.update}>
-                      Cancel
+                      Annuler
                     </button>
                     <button className="modal-save" onClick={handleEditSubmit} disabled={loading.update}>
-                      {loading.update ? "Saving..." : "Save"}
+                      {loading.update ? "Sauvegarde..." : "Sauvegarder"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {deleteConfirmation.show && (
+              <div className="modal-overlay">
+                <div className="delete-confirmation-modal">
+                  <div className="delete-modal-header">
+                    <div className="delete-warning-icon">
+                      <FiTrash2 />
+                    </div>
+                    <h3>Confirmer la Suppression</h3>
+                  </div>
+                  <div className="delete-modal-body">
+                    <p>
+                      Êtes-vous sûr de vouloir supprimer <strong>"{deleteConfirmation.serviceName}"</strong> ?
+                    </p>
+                    <p className="delete-warning">
+                      Cette action ne peut pas être annulée. Toutes les données associées seront définitivement
+                      supprimées.
+                    </p>
+                  </div>
+                  <div className="delete-modal-footer">
+                    <button
+                      className="delete-cancel-button"
+                      onClick={() => setDeleteConfirmation({ show: false, serviceId: null, serviceName: "" })}
+                      disabled={loading.delete}
+                    >
+                      Annuler
+                    </button>
+                    <button className="delete-confirm-button" onClick={confirmDelete} disabled={loading.delete}>
+                      {loading.delete ? "Suppression..." : "Supprimer Service"}
                     </button>
                   </div>
                 </div>

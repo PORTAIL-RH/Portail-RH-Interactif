@@ -1,0 +1,224 @@
+/* Days Used Summary Styles - Light and Dark Theme */
+.days-used-summary {
+  background: var(--card-bg, #ffffff);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  color: var(--text-color, #333333);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.days-used-summary.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--secondary-bg, #f8fafc);
+  color: var(--text-muted, #64748b);
+  min-height: 100px;
+}
+
+.days-used-summary.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: var(--error-bg, #fef2f2);
+  color: var(--error-color, #dc2626);
+  border: 1px solid var(--error-border, #fecaca);
+}
+
+.summary-header {
+  margin-bottom: 16px;
+}
+
+.summary-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-color, #333333);
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.summary-card {
+  background: var(--secondary-bg, #f9fafb);
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  transition: background-color 0.2s ease;
+}
+
+.summary-card:hover {
+  background: var(--hover-bg, #f3f4f6);
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: var(--text-muted, #4b5563);
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
+.summary-card.used .card-icon {
+  color: var(--primary-color, #4f46e5);
+}
+
+.summary-card.total .card-icon {
+  color: var(--info-color, #3b82f6);
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 4px;
+  color: var(--text-color, #111827);
+}
+
+.card-label {
+  font-size: 0.875rem;
+  color: var(--text-muted, #6b7280);
+  font-weight: 500;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  color: var(--text-muted, #6b7280);
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Dark Theme Variables */
+:root.dark {
+  --card-bg: #1f2937;
+  --secondary-bg: #374151;
+  --border-color: #4b5563;
+  --text-color: #f9fafb;
+  --text-muted: #9ca3af;
+  --hover-bg: #4b5563;
+  --primary-color: #6366f1;
+  --info-color: #60a5fa;
+  --error-bg: #7f1d1d;
+  --error-color: #fca5a5;
+  --error-border: #991b1b;
+}
+
+/* Dark theme specific adjustments */
+:root.dark .days-used-summary {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+:root.dark .summary-card {
+  background: var(--secondary-bg);
+}
+
+:root.dark .summary-card:hover {
+  background: var(--hover-bg);
+}
+
+:root.dark .card-icon {
+  background: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+:root.dark .summary-card.used .card-icon {
+  color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+:root.dark .summary-card.total .card-icon {
+  color: var(--info-color);
+  background: rgba(96, 165, 250, 0.1);
+  border-color: rgba(96, 165, 250, 0.2);
+}
+
+:root.dark .days-used-summary.loading {
+  background: var(--secondary-bg);
+  color: var(--text-muted);
+}
+
+:root.dark .days-used-summary.error {
+  background: var(--error-bg);
+  color: var(--error-color);
+  border-color: var(--error-border);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .days-used-summary {
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .summary-card {
+    padding: 14px;
+  }
+
+  .card-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary-header h3 {
+    font-size: 1.125rem;
+  }
+
+  .card-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 1.125rem;
+  }
+
+  .card-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* Light theme (default) - explicit variables for clarity */
+:root {
+  --card-bg: #ffffff;
+  --secondary-bg: #f9fafb;
+  --border-color: #e5e7eb;
+  --text-color: #333333;
+  --text-muted: #6b7280;
+  --hover-bg: #f3f4f6;
+  --primary-color: #4f46e5;
+  --info-color: #3b82f6;
+  --error-bg: #fef2f2;
+  --error-color: #dc2626;
+  --error-border: #fecaca;
+}
