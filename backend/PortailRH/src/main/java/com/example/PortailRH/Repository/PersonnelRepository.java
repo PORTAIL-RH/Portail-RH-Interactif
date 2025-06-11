@@ -13,6 +13,7 @@ public interface PersonnelRepository extends MongoRepository<Personnel, String> 
     Optional<Personnel> findByMatricule(String matricule);
     Optional<Personnel> findByEmail(String email);
     Optional<Personnel> findById(String id_user);
+    boolean existsByService_Id(String serviceId);
 
     // For querying by service ID
 
@@ -30,6 +31,7 @@ public interface PersonnelRepository extends MongoRepository<Personnel, String> 
     // For getting the last matricule
     Optional<Personnel> findTopByOrderByMatriculeDesc();
     List<Personnel> findByRoleAndService(String role, Service service);
+    boolean existsByServiceId(String serviceId);
 
 
     List<Personnel> findByRoleAndServiceId(String role, String serviceId);
