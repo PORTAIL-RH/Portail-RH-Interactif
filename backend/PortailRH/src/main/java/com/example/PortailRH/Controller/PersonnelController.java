@@ -848,7 +848,7 @@ public class PersonnelController {
                 resetLink = "http://localhost:8081/reset-password?token=" + resetToken;
             } else {
                 // Default to web
-                resetLink = "https://portail-rh-interactif-backend-3meb.onrender.com/reset-password?token=" + resetToken;
+                resetLink = "https://portail-rh.onrender.com/reset-password?token=" + resetToken;
             }
 
             String subject = "Réinitialisation de votre mot de passe";
