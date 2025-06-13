@@ -19,7 +19,7 @@ import "./Documents.css"
 import Navbar from "../Components/Navbar/Navbar"
 import Sidebar from "../Components/Sidebar/Sidebar"
 import { saveAs } from "file-saver"
-import { API_URL } from "../../../config"
+import { API_URL } from "../../config"
 
 const Documents = () => {
   const navigate = useNavigate()
