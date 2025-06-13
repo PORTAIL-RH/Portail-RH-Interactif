@@ -5,6 +5,7 @@ import PersonnelDetailsModal from "./PersonnelsDetailsModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./Personnels.css";
+import { API_URL } from "../../../config"
 
 const Personnel = () => {
   const [personnelData, setPersonnelData] = useState({
@@ -102,7 +103,7 @@ const Personnel = () => {
     try {
       console.log(isPolling ? "Polling for personnel data updates..." : "Fetching personnel data from API...");
       const response = await fetch(
-        `http://localhost:8080/api/Personnel/collaborateurs-by-service/${userId}`
+       `${API_URL}/api/Personnel/collaborateurs-by-service/${userId}`
       );
       
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

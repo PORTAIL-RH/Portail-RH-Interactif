@@ -5,6 +5,7 @@ import Sidebar from '../../Components/Sidebar/Sidebar';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import './Formation.css';
+import { API_URL } from "../../../config"
 
 const FormationForm = () => {
   const [formData, setFormData] = useState({
@@ -69,7 +70,7 @@ const FormationForm = () => {
         throw new Error("Token d'authentification manquant");
       }
 
-      const response = await fetch("http://localhost:8080/api/titres/", {
+      const response = await fetch(`${API_URL}/api/titres/`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
@@ -202,7 +203,7 @@ const FormationForm = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/api/demande-formation/create", {
+      const response = await fetch(`${API_URL}/api/demande-formation/create`, {
         method: "POST",
         headers: {
           'Authorization': `Bearer ${authToken}`

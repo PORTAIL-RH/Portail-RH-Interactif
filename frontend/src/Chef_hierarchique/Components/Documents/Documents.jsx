@@ -4,8 +4,7 @@ import { toast } from 'react-toastify';
 import './Documents.css';
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+import { API_URL } from "../../../config"
 
 export default function EmployeeDocumentsPage() {
   const [activeCategory, setActiveCategory] = useState("all");

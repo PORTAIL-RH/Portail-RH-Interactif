@@ -19,6 +19,7 @@ import "./Documents.css"
 import Navbar from "../Components/Navbar/Navbar"
 import Sidebar from "../Components/Sidebar/Sidebar"
 import { saveAs } from "file-saver"
+import { API_URL } from "../../../config"
 
 const Documents = () => {
   const navigate = useNavigate()
@@ -57,7 +58,7 @@ const Documents = () => {
     setError(null)
 
     try {
-      const response = await axios.get(`http://localhost:8080/api/demande-document/personnel/${userId}/files-reponse`, {
+      const response = await axios.get(`${API_URL}/api/demande-document/personnel/${userId}/files-reponse`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -117,7 +118,7 @@ const Documents = () => {
 
       const fileName = document.filePath.split(/[\\/]/).pop()
       const response = await axios.get(
-        `http://localhost:8080/api/demande-document/download/${encodeURIComponent(fileName)}`,
+        `${API_URL}/api/demande-document/download/${encodeURIComponent(fileName)}`,
         {
           responseType: "blob",
           headers: {
@@ -136,7 +137,7 @@ const Documents = () => {
   const handleDelete = async (documentId) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
       try {
-        await axios.delete(`http://localhost:8080/api/demande-document/files/${documentId}`, {
+        await axios.delete(`${API_URL}/api/demande-document/files/${documentId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
