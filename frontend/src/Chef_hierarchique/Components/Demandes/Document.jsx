@@ -4,6 +4,7 @@ import Navbar from "../Navbar/Navbar";
 import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText, FiUpload, FiEye, FiDownload } from "react-icons/fi";
 import "./Demandes.css";
 import DemandeDetailsModal from "./DemandeDetailsModal";
+import { API_URL } from "../../../config";
 
 const DemandesDocument = () => {
   const [demandes, setDemandes] = useState([]);
@@ -91,7 +92,7 @@ const DemandesDocument = () => {
         }
   
         const response = await fetch(
-          `http://localhost:8080/api/demande-document/collaborateurs-by-service/${userId}`,
+          `${API_URL}/api/demande-document/collaborateurs-by-service/${userId}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -130,7 +131,7 @@ const DemandesDocument = () => {
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
-    const eventSource = new EventSource(`http://localhost:8080/api/sse/updates`);
+    const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
     
     eventSource.onmessage = (event) => {
       try {
@@ -207,7 +208,7 @@ const DemandesDocument = () => {
       formData.append("file", responseFile);
   
       const uploadResponse = await fetch(
-        `http://localhost:8080/api/demande-document/${demandeId}/add-response-file`,
+        `${API_URL}/api/demande-document/${demandeId}/add-response-file`,
         {
           method: "POST",
           body: formData,
@@ -224,7 +225,7 @@ const DemandesDocument = () => {
 
       // Then approve the request
       const approveResponse = await fetch(
-        `http://localhost:8080/api/demande-document/valider/${demandeId}`,
+        `${API_URL}/api/demande-document/valider/${demandeId}`,
         {
           method: "PUT",
           headers: {
@@ -260,7 +261,7 @@ const DemandesDocument = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8080/api/demande-document/refuser/${demandeId}`,
+        `${API_URL}/api/demande-document/refuser/${demandeId}`,
         {
           method: "PUT",
           headers: {
@@ -293,7 +294,7 @@ const DemandesDocument = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8080/api/demande-document/download/${encodeURIComponent(fileName)}`,
+        `${API_URL}/api/demande-document/download/${encodeURIComponent(fileName)}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

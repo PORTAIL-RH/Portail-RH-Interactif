@@ -1,4 +1,4 @@
-"use client"
+
 
 import { useState, useEffect } from "react"
 import {
@@ -15,6 +15,7 @@ import {
 import "./CalendrierConge.css"
 import "./days-used-summary.css"
 import "../common-ui.css"
+import { API_URL } from "../../../config"
 
 import Navbar from "../Components/Navbar/Navbar"
 import Sidebar from "../Components/Sidebar/Sidebar"
@@ -52,7 +53,7 @@ const CalendrierConge = () => {
           return
         }
 
-        const response = await fetch(`http://localhost:8080/api/demande-conge/days-used/${userId}`, {
+        const response = await fetch(`${API_URL}/api/demande-conge/days-used/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -108,7 +109,7 @@ const CalendrierConge = () => {
         }
 
         // Fetch only accepted leaves
-        const acceptedResponse = await fetch(`http://localhost:8080/api/demande-conge/personnel/${userId}/accepted`, {
+        const acceptedResponse = await fetch(`${API_URL}/api/demande-conge/personnel/${userId}/accepted`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },

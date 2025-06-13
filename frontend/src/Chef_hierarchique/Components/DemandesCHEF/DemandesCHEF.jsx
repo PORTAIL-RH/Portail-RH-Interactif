@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { FiSearch, FiFilter, FiCalendar, FiX, FiRefreshCw, FiFileText, FiEye, FiEdit, FiTrash2 } from "react-icons/fi"

@@ -6,6 +6,7 @@ import Sidebar from '../../Components/Sidebar/Sidebar';
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import "../common-form.css"
+import { API_URL } from "../../../config"
 
 const CongeForm = () => {
   const [formData, setFormData] = useState({
@@ -137,7 +138,7 @@ const CongeForm = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/api/demande-conge/create", {
+      const response = await fetch(`${API_URL}/api/demande-conge/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${authToken}`,

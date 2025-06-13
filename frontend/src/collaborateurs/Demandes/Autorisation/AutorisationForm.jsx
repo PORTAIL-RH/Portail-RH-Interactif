@@ -5,6 +5,7 @@ import Sidebar from '../../Components/Sidebar/Sidebar';
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import "../common-form.css"
+import { API_URL } from "../../../config"
 
 const AutorisationForm = () => {
   const [formData, setFormData] = useState({
@@ -130,7 +131,7 @@ const AutorisationForm = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/api/demande-autorisation/create", {
+      const response = await fetch(`${API_URL}/api/demande-autorisation/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${authToken}`,

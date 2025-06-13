@@ -1,6 +1,7 @@
 import { FiX, FiCheck, FiClock, FiFileText, FiEye } from "react-icons/fi"
 import "./DemandeDetailsModal.css"
 import { useState } from "react"
+import { API_URL } from "../../../config";
 
 const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionable }) => {
   const [previewFileUrl, setPreviewFileUrl] = useState(null)
@@ -47,7 +48,7 @@ const DemandeDetailsModal = ({ demande, onClose, onApprove, onReject, isActionab
 
   const fetchFileBlobUrl = async (fileId) => {
     const token = localStorage.getItem("authToken")
-    const response = await fetch(`http://localhost:8080/api/files/download/${fileId}`, {
+    const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 

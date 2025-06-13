@@ -1,4 +1,3 @@
-"use client"
 import { useState, useEffect, useRef, useCallback } from "react"
 import Sidebar from "./Components/Sidebar/Sidebar"
 import Navbar from "./Components/Navbar/Navbar"

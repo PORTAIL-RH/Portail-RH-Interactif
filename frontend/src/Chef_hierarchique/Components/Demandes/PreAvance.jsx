@@ -4,6 +4,7 @@ import Navbar from "../Navbar/Navbar";
 import { FiSearch, FiFilter, FiCalendar, FiCheck, FiX, FiClock, FiRefreshCw, FiFileText } from "react-icons/fi";
 import "./Demandes.css";
 import DemandeDetailsModal from "./DemandeDetailsModal";
+import { API_URL } from "../../../config"
 
 const DemandesPreAvance = () => {
   const [demandes, setDemandes] = useState([]);
@@ -92,7 +93,7 @@ const DemandesPreAvance = () => {
       }
 
       const response = await fetch(
-        `http://localhost:8080/api/demande-pre-avance/collaborateurs-by-service/${userId}`,
+        `${API_URL}/api/demande-pre-avance/collaborateurs-by-service/${userId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -128,7 +129,7 @@ const DemandesPreAvance = () => {
   }, [fetchDemandes]);
 
   useEffect(() => {
-    const eventSource = new EventSource("http://localhost:8080/api/sse/updates");
+    const eventSource = new EventSource(`${API_URL}/api/sse/updates`);
   
     eventSource.onmessage = (event) => {
       const update = JSON.parse(event.data);
@@ -193,8 +194,8 @@ const DemandesPreAvance = () => {
     try {
       const token = localStorage.getItem("authToken");
       const url = actionType === "approve" 
-        ? `http://localhost:8080/api/demande-pre-avance/valider/${currentDemandeId}`
-        : `http://localhost:8080/api/demande-pre-avance/refuser/${currentDemandeId}`;
+        ? `${API_URL}/api/demande-pre-avance/valider/${currentDemandeId}`
+        : `${API_URL}/api/demande-pre-avance/refuser/${currentDemandeId}`;
 
       const response = await fetch(url, {
         method: "PUT",
