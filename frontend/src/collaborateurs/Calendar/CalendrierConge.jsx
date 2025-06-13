@@ -15,7 +15,7 @@ import {
 import "./CalendrierConge.css"
 import "./days-used-summary.css"
 import "../common-ui.css"
-import { API_URL } from "../../../config"
+import { API_URL } from "../../config"
 
 import Navbar from "../Components/Navbar/Navbar"
 import Sidebar from "../Components/Sidebar/Sidebar"

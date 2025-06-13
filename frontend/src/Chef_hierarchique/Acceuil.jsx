@@ -8,7 +8,7 @@ import { FaFemale, FaMale } from "react-icons/fa"
 import { toast } from "react-toastify"
 import "react-calendar/dist/Calendar.css"
 import "./Acceuil.css"
-import { API_URL } from "../../../config"
+import { API_URL } from "../config"
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
