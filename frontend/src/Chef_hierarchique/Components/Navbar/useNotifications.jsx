@@ -136,55 +136,48 @@ const useNotifications = () => {
   }, [getChefHierarchiqueInfo])
 
   useEffect(() => {
-    const initWebSocket = () => {
-      const token = localStorage.getItem("authToken")
-      const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
+const initWebSocket = () => {
+  const token = localStorage.getItem("authToken")
+  const { serviceIds, codeSoc } = getChefHierarchiqueInfo()
 
-      const client = new Client({
-        webSocketFactory: () => new SockJS(`${API_URL}/ws`),
-        reconnectDelay: 5000,
-        connectHeaders: { Authorization: `Bearer ${token}` },
-        onConnect: () => {
-          fetchUnviewedCount()
-          
-          // Abonnement unique pour toutes les notifications du Chef Hiérarchique
-          client.subscribe(
-            // In your frontend WebSocket initialization
-              serviceIds.forEach(serviceId => {
-                client.subscribe(
-                  `/topic/notifications/Chef Hiérarchique/${serviceId}/${codeSoc}`,
-                    (message) => {
-                      const newNotification = JSON.parse(message.body)
-                      const userId = localStorage.getItem("userId")
+  const client = new Client({
+    webSocketFactory: () => new SockJS(`${API_URL}/ws`),
+    reconnectDelay: 5000,
+    connectHeaders: { Authorization: `Bearer ${token}` },
+    onConnect: () => {
+      fetchUnviewedCount()
+      
+      // Subscribe to each service's notification channel
+      serviceIds.forEach(serviceId => {
+        const destination = `/topic/notifications/Chef Hiérarchique/${serviceId}/${codeSoc}`
+        client.subscribe(destination, (message) => {
+          const newNotification = JSON.parse(message.body)
+          const userId = localStorage.getItem("userId")
 
-                      if (isMountedRef.current) {
-                        setNotifications(prev => {
-                          if (!prev.some(n => n.id === newNotification.id)) {
-                            return [newNotification, ...prev]
-                          }
-                          return prev
-                        })
+          if (isMountedRef.current) {
+            setNotifications(prev => {
+              if (!prev.some(n => n.id === newNotification.id)) {
+                return [newNotification, ...prev]
+              }
+              return prev
+            })
 
-                        if (!newNotification.readBy?.includes(userId)) {
-                          setUnviewedCount(prev => prev + 1)
-                        }
-                      }
-                    }
-                  
-                )
-              })
-            
-          )
-        },
-        onStompError: (frame) => {
-          console.error("WebSocket error:", frame.headers.message)
-          setError("Connection error")
-        },
+            if (!newNotification.readBy?.includes(userId)) {
+              setUnviewedCount(prev => prev + 1)
+            }
+          }
+        })
       })
+    },
+    onStompError: (frame) => {
+      console.error("WebSocket error:", frame.headers.message)
+      setError("Connection error")
+    },
+  })
 
-      client.activate()
-      return client
-    }
+  client.activate()
+  return client
+}
 
     const fetchInitialData = async () => {
       try {

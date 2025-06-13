@@ -22,7 +22,7 @@ public class WebConfig implements WebMvcConfigurer {
                 "http://localhost:3001",
                 "http://localhost:8081",
 
-                "http://192.168.1.52:8081", //islem C20D20
+                "http://192.168.1.51:8081", //islem C20D20
                 "http://172.20.10.2:8081", //islem-fifi
                 "http://192.168.43.70:8081",//orang
                 "http://192.168.0.156:8081",//home or5B
