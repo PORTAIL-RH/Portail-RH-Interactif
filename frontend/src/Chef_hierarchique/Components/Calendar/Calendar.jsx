@@ -58,99 +58,129 @@ const CalendrierConge = () => {
   };
 
   // Fetch annual leave data with caching and polling
-  const fetchLeaveData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+const fetchLeaveData = useCallback(async () => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    // First try to load from localStorage under 'approvedLeaves' key
+    const cached = localStorage.getItem('approvedLeaves');
+    console.log("Checking localStorage for approvedLeaves...");
     
-    try {
-      // First try to load from localStorage
-      const cached = localStorage.getItem('demandes');
-      console.log("Checking localStorage for cached data...");
+    if (cached) {
+      const parsedData = JSON.parse(cached);
+      console.log("Found approvedLeaves in localStorage:", parsedData);
       
-      if (cached) {
-        const parsedData = JSON.parse(cached);
-        console.log("Found cached data in localStorage:", parsedData);
-        
-        if (parsedData.conge && parsedData.conge.length > 0) {
-          const transformedData = transformLeaveData(parsedData.conge);
-          setLeaveData(transformedData);
-          console.log("Using cached leave data from localStorage");
-          setLoading(false);
-          return;
-        }
+      if (Array.isArray(parsedData)) {
+        const transformedData = transformLeaveData(parsedData);
+        setLeaveData(transformedData);
+        console.log("Using approvedLeaves from localStorage");
+        setLoading(false);
+        return;
       }
-
-      console.log("No valid cached data found, fetching from API...");
-      const token = localStorage.getItem("authToken");
-      
-      const response = await fetch(`${API_URL}/api/demande-conge/approved`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) throw new Error(await response.text());
-      
-      const data = await response.json();
-      console.log("API response data:", data);
-      
-      // Transform and set the new data
-      const transformedData = transformLeaveData(data);
-      setLeaveData(transformedData);
-      
-      // Update the complete demandes structure in localStorage
-      const updatedAllDemandes = {
-        conge: data,
-        formation: [],
-        document: [],
-        preAvance: [],
-        autorisation: []
-      };
-      localStorage.setItem("demandes", JSON.stringify(updatedAllDemandes));
-      console.log("Updated localStorage with new data");
-      
-    } catch (error) {
-      console.error("Error fetching leave data:", error);
-      setError(error.message);
-      
-      // If we have cached data, don't show error to user
-      const cached = localStorage.getItem('demandes');
-      if (!cached) {
-        toast.error("Erreur de chargement des congés");
-      }
-    } finally {
-      setLoading(false);
     }
-  }, []);
+
+    console.log("No valid approvedLeaves found in localStorage, fetching from API...");
+    const token = localStorage.getItem("authToken");
+    
+    const response = await fetch(`${API_URL}/api/demande-conge/approved`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) throw new Error(await response.text());
+    
+    const data = await response.json();
+    console.log("API response data:", data);
+    
+    // Transform and set the new data
+    const transformedData = transformLeaveData(data);
+    setLeaveData(transformedData);
+    
+    // Save to localStorage under 'approvedLeaves' key
+    localStorage.setItem("approvedLeaves", JSON.stringify(data));
+    console.log("Saved approved leaves to localStorage");
+    
+  } catch (error) {
+    console.error("Error fetching leave data:", error);
+    setError(error.message);
+    
+    // If we have no cached data, show error to user
+    const cached = localStorage.getItem('approvedLeaves');
+    if (!cached) {
+      toast.error("Erreur de chargement des congés");
+    }
+  } finally {
+    setLoading(false);
+  }
+}, []);
+
+// In your initial data loading useEffect
+useEffect(() => {
+  console.log("Initializing component...");
+  
+  // First try to load from localStorage under 'approvedLeaves' key
+  const cached = localStorage.getItem('approvedLeaves');
+  if (cached) {
+    console.log("Found approvedLeaves in localStorage, loading initially");
+    const parsedData = JSON.parse(cached);
+    if (Array.isArray(parsedData)) {
+      const transformedData = transformLeaveData(parsedData);
+      setLeaveData(transformedData);
+    }
+  }
+
+  // Then fetch from API
+  fetchLeaveData();
+  
+  // Set up polling every 30 seconds
+  const intervalId = setInterval(fetchLeaveData, 30000);
+  console.log("Set up polling interval (30s)");
+
+  return () => {
+    clearInterval(intervalId);
+    console.log("Cleaned up polling interval");
+  };
+}, [fetchLeaveData]);
 
   // Helper function to transform leave data with validation
-  const transformLeaveData = (data) => {
-    return data.map(leave => {
-      try {
-        const startDate = new Date(leave.dateDebut);
-        const endDate = new Date(leave.dateFin);
-        
-        if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
-        if (isNaN(endDate.getTime())) throw new Error("Invalid end date");
-        
-        return {
-          id: leave.id || leave._id,
-          employeeName: `${leave.employee?.nom || ''} ${leave.employee?.prenom || ''}`.trim(),
-          startDate: leave.dateDebut,
-          endDate: leave.dateFin,
-          type: "ANNUAL",
-          status: "ACCEPTED",
-          duration: calculateDuration(leave.dateDebut, leave.dateFin),
-          department: leave.employee?.serviceName || "Unknown",
-          approvedBy: leave.approvedBy || "System",
-          description: leave.description || "Congé annuel"
-        };
-      } catch (e) {
-        console.error("Invalid leave data:", leave, e);
-        return null;
-      }
-    }).filter(Boolean); // Remove any null entries from invalid data
-  };
+const transformLeaveData = (data) => {
+  return data.map(leave => {
+    try {
+      // Handle both API response and localStorage formats
+      const startDate = leave.startDate || leave.start;
+      const endDate = leave.endDate || leave.end;
+      
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      if (isNaN(start.getTime())) throw new Error("Invalid start date");
+      if (isNaN(end.getTime())) throw new Error("Invalid end date");
+      
+      return {
+        id: leave.id || leave._id,
+        employeeName: leave.employeeName || 
+                     `${leave.employee?.nom || ''} ${leave.employee?.prenom || ''}`.trim() ||
+                     `${leave.matPers?.nom || ''} ${leave.matPers?.prenom || ''}`.trim(),
+        startDate: startDate,
+        endDate: endDate,
+        type: leave.type || "ANNUAL",
+        status: leave.status || "ACCEPTED",
+        duration: calculateDuration(startDate, endDate),
+        department: leave.department || 
+                   leave.employee?.serviceName || 
+                   leave.matPers?.serviceName || 
+                   "Unknown",
+        approvedBy: leave.approvedBy || "System",
+        description: leave.description || "Congé annuel"
+      };
+    } catch (e) {
+      console.error("Invalid leave data:", leave, e);
+      return null;
+    }
+  }).filter(Boolean);
+};
 
   // Initial data fetch and setup polling
   useEffect(() => {

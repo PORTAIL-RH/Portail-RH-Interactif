@@ -1,375 +1,497 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import {
-  FiFile,
-  FiFileText,
-  FiDownload,
-  FiTrash2,
-  FiSearch,
-  FiChevronDown,
-  FiEye,
-  FiCalendar,
-  FiFolder,
-  FiX,
-  FiFilter,
-} from "react-icons/fi"
-import axios from "axios"
-import "../common-ui.css" 
-import "./Documents.css"
-import Navbar from "../Components/Navbar/Navbar"
-import Sidebar from "../Components/Sidebar/Sidebar"
-import { saveAs } from "file-saver"
-import { API_URL } from "../../config"
+import { useState, useEffect } from "react";
+import { Search, Download, FileText, FileClock, FileCheck, Filter, Calendar, Star, Clock, Mail } from 'lucide-react';
+import { toast } from 'react-toastify';
+import './Documents.css';
+import Navbar from "../Components/Navbar/Navbar";
+import Sidebar from "../Components/Sidebar/Sidebar";
+import { API_URL } from "../../config";
 
-const Documents = () => {
-  const navigate = useNavigate()
-  const [documents, setDocuments] = useState([])
-  const [filteredDocuments, setFilteredDocuments] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("all")
-  const [documentDetails, setDocumentDetails] = useState(null)
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false)
+export default function EmployeeDocumentsPage() {
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem("theme") || "light";
+  });
+  const [sortBy, setSortBy] = useState("date");
+  const [viewMode, setViewMode] = useState("grid");
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [previewState, setPreviewState] = useState({
+    fileId: null,
+    url: null,
+    isLoading: false,
+    error: null
+  });
 
-  const userId = localStorage.getItem("userId")
-
-  const categories = [
-    { id: "all", name: "Tous les documents" },
-    { id: "administrative", name: "Documents administratifs" },
-    { id: "contract", name: "Contrats" },
-    { id: "payslip", name: "Fiches de paie" },
-    { id: "leave", name: "Congés" },
-    { id: "training", name: "Formations" },
-    { id: "other", name: "Autres" },
-  ]
-
+  // Apply theme on initial render and when theme changes
   useEffect(() => {
-    fetchDocuments()
-  }, [])
+    const applyTheme = (theme) => {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.body.className = theme;
+      localStorage.setItem("theme", theme);
+    };
 
+    applyTheme(theme);
+  }, [theme]);
+
+  // Handle theme toggle
+  const toggleTheme = () => {
+    setTheme(prevTheme => prevTheme === "light" ? "dark" : "light");
+  };
+
+  // Fetch documents from API
   useEffect(() => {
-    filterDocuments()
-  }, [documents, searchTerm, selectedCategory])
-
-  const fetchDocuments = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      const response = await axios.get(`${API_URL}/api/demande-document/personnel/${userId}/files-reponse`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      })
-
-      const formattedDocuments = response.data.map((file, index) => ({
-        id: file.id || `file-${index}`,
-        name: file.filename || `Document ${index + 1}`,
-        category: mapFileTypeToCategory(file.fileType),
-        uploadDate: file.uploadDate || new Date().toISOString(),
-        type: file.fileType ? file.fileType.split("/").pop() : "pdf",
-        uploadedBy: file.uploadedBy || "Chef Hiérarchique ",
-        description: file.description || "Document téléchargé",
-        status: "approved",
-        filePath: file.filePath, // Keep the file path for downloading
-      }))
-
-      setDocuments(formattedDocuments)
-    } catch (err) {
-      setError("Erreur lors du chargement des documents. Veuillez réessayer.")
-      console.error("Error fetching documents:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const mapFileTypeToCategory = (fileType) => {
-    if (!fileType) return "other"
-    if (fileType.includes("pdf")) return "administrative"
-    if (fileType.includes("word")) return "contract"
-    if (fileType.includes("spreadsheet")) return "payslip"
-    return "other"
-  }
-
-  const filterDocuments = () => {
-    let filtered = [...documents]
-
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter((doc) => doc.category === selectedCategory)
-    }
-
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      filtered = filtered.filter(
-        (doc) => doc.name.toLowerCase().includes(term) || doc.description.toLowerCase().includes(term),
-      )
-    }
-
-    setFilteredDocuments(filtered)
-  }
-
-  const handleDownload = async (document) => {
-    try {
-      if (!document?.filePath) {
-        throw new Error("No file path available")
-      }
-
-      const fileName = document.filePath.split(/[\\/]/).pop()
-      const response = await axios.get(
-        `${API_URL}/api/demande-document/download/${encodeURIComponent(fileName)}`,
-        {
-          responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        },
-      )
-
-      saveAs(response.data, document.name || fileName)
-    } catch (err) {
-      console.error("Download failed:", err)
-      alert(`Download failed: ${err.message}`)
-    }
-  }
-
-  const handleDelete = async (documentId) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) {
+    const fetchDocuments = async () => {
       try {
-        await axios.delete(`${API_URL}/api/demande-document/files/${documentId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        })
-        setDocuments((prev) => prev.filter((doc) => doc.id !== documentId))
-      } catch (err) {
-        console.error("Delete failed:", err)
-        alert("Échec de la suppression")
-      }
-    }
-  }
+        const userId = localStorage.getItem("userId");
+        if (!userId) {
+          throw new Error("User ID not found in local storage");
+        }
 
-  const handleViewDetails = (document) => {
-    setDocumentDetails(document)
-    setShowDetailsModal(true)
-  }
+        const response = await fetch(`${API_URL}/api/demande-document/personnel/${userId}/files-reponse`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        const transformedDocuments = data.map(doc => ({
+          id: doc.fileId || doc.documentId || Math.random().toString(36).substr(2, 9),
+          title: doc.title || doc.filename || "Untitled Document",
+          category: doc.category || "uncategorized",
+          date: doc.date || doc.uploadDate || new Date().toISOString().split('T')[0],
+          status: doc.status || "available",
+          fileType: doc.fileType || (doc.filename ? doc.filename.split('.').pop().toUpperCase() : "UNK"),
+          size: doc.size || "N/A",
+          isStarred: doc.isStarred || false,
+          downloadUrl: doc.downloadUrl || doc.fileUrl || "#"
+        }));
+
+        setDocuments(transformedDocuments);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching documents:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    fetchDocuments();
+  }, []);
+
+  // File download function
+  const handleDownload = async (fileId, filename = "document") => {
+    if (!fileId) {
+      toast.warning("No file selected");
+      return;
+    }
+
+    const toastId = toast.loading("Preparing download...");
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error: ${response.status}`);
+      }
+
+      const contentDisposition = response.headers.get('content-disposition');
+      let actualFilename = filename;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          actualFilename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = actualFilename;
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.update(toastId, {
+        render: "Download started!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.update(toastId, {
+        render: `Download failed: ${err.message}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
+    }
+  };
+
+  // File preview function
+  const handlePreview = async (fileId) => {
+    if (!fileId) {
+      toast.warning("No file selected");
+      return;
+    }
+
+    if (previewState.fileId === fileId) {
+      cleanupPreview();
+      return;
+    }
+
+    setPreviewState({
+      fileId,
+      url: null,
+      isLoading: true,
+      error: null
+    });
+
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+
+      setPreviewState({
+        fileId,
+        url,
+        isLoading: false,
+        error: null
+      });
+    } catch (err) {
+      console.error("Preview error:", err);
+      setPreviewState({
+        fileId: null,
+        url: null,
+        isLoading: false,
+        error: err.message
+      });
+      toast.error(`Preview failed: ${err.message}`);
+    }
+  };
+
+  const cleanupPreview = () => {
+    if (previewState.url) {
+      URL.revokeObjectURL(previewState.url);
+    }
+    setPreviewState({
+      fileId: null,
+      url: null,
+      isLoading: false,
+      error: null
+    });
+  };
+
+  useEffect(() => {
+    return () => cleanupPreview();
+  }, []);
+
+  // Document filtering and sorting
+  const filteredDocuments = documents.filter((doc) => {
+    const matchesCategory = activeCategory === "all" || doc.category === activeCategory;
+    const matchesSearch = doc.title && doc.title.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const sortedDocuments = [...filteredDocuments].sort((a, b) => {
+    if (sortBy === "date") return new Date(b.date) - new Date(a.date);
+    if (sortBy === "name") return a.title.localeCompare(b.title);
+    if (sortBy === "type") return a.fileType.localeCompare(b.fileType);
+    if (sortBy === "status") return a.status.localeCompare(b.status);
+    return 0;
+  });
+
+  const categories = ["all", ...new Set(documents.map((doc) => doc.category).filter(Boolean))];
+
+  // Document icon helper
+  const getDocumentIcon = (status, size = 24) => {
+    switch (status) {
+      case "pending": return <FileClock size={size} />;
+      case "signed":
+      case "completed":
+      case "active": return <FileCheck size={size} />;
+      default: return <FileText size={size} />;
+    }
+  };
 
   const formatDate = (dateString) => {
-    const options = { year: "numeric", month: "long", day: "numeric" }
-    return new Date(dateString).toLocaleDateString("fr-FR", options)
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  // Preview component
+  const FilePreview = () => {
+    if (previewState.isLoading) return (
+      <div className="preview-loading">
+        <div className="spinner"></div>
+        <p>Loading preview...</p>
+      </div>
+    );
+
+    if (previewState.error) return (
+      <div className="preview-error">
+        <p>Error: {previewState.error}</p>
+      </div>
+    );
+
+    if (!previewState.url) return null;
+
+    return (
+      <div className="file-preview-modal">
+        <div className="file-preview-content">
+          <div className="file-preview-header">
+            <h3>File Preview</h3>
+            <button 
+              className="close-preview"
+              onClick={cleanupPreview}
+            >
+              ×
+            </button>
+          </div>
+          <div className="file-preview-container">
+            <iframe 
+              src={previewState.url} 
+              title="File Preview"
+              className="file-iframe"
+            />
+          </div>
+          <div className="file-preview-footer">
+            <button 
+              className="btn-download"
+              onClick={() => handleDownload(previewState.fileId)}
+            >
+              <Download size={16} /> Download
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar toggleTheme={toggleTheme} currentTheme={theme} />
+        <div className="main-content-container">
+          <Navbar toggleTheme={toggleTheme} currentTheme={theme} />
+          <div className="loading-container">
+            <p>Loading documents...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const getDocumentIcon = (type) => {
-    switch (type) {
-      case "pdf":
-        return <FiFileText className="document-icon pdf" />
-      case "docx":
-      case "doc":
-        return <FiFileText className="document-icon word" />
-      case "xlsx":
-      case "xls":
-        return <FiFileText className="document-icon excel" />
-      case "jpg":
-      case "jpeg":
-      case "png":
-        return <FiFileText className="document-icon image" />
-      default:
-        return <FiFile className="document-icon" />
-    }
-  }
-
-  const getCategoryLabel = (categoryId) => {
-    const category = categories.find((cat) => cat.id === categoryId)
-    return category ? category.name : "Autre"
-  }
-
-  const clearFilters = () => {
-    setSearchTerm("")
-    setSelectedCategory("all")
+  if (error) {
+    return (
+      <div className={`app-container ${theme}`}>
+        <Sidebar toggleTheme={toggleTheme} currentTheme={theme} />
+        <div className="main-content-container">
+          <Navbar toggleTheme={toggleTheme} currentTheme={theme} />
+          <div className="error-container">
+            <p>Error loading documents: {error}</p>
+            <button onClick={() => window.location.reload()}>Retry</button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="app-container">
-      <Sidebar />
-      <div className="content-container">
-        <Navbar />
-        <div className="page-content">
-          <div className="page-header">
-            <h1>Mes Documents</h1>
-            <p className="page-subtitle">Consultez et gérez vos documents</p>
-          </div>
-
-          {/* Standardized Filter Components */}
-          <div className="filters-container">
-            <div className="search-container">
-              <FiSearch className="search-icon" />
-              <input
-                type="text"
-                placeholder="Rechercher un document..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              {searchTerm && (
-                <button className="clear-search" onClick={() => setSearchTerm("")}>
-                  <FiX />
+    <div className={`app-container ${theme}`}>
+      <Sidebar toggleTheme={toggleTheme} currentTheme={theme} />
+      <div className="main-content-container">
+        <Navbar toggleTheme={toggleTheme} currentTheme={theme} />
+        
+        <div className="documents-page">
+          <header className="header">
+            <div className="header-content">
+              <div className="view-options">
+                <button 
+                  className={`view-option-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+                  </svg>
                 </button>
-              )}
+                <button 
+                  className={`view-option-btn ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M8 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M8 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M3 6H3.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M3 12H3.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    <path d="M3 18H3.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="main-content">
+            <div className="page-title">
+              <h1>My Documents</h1>
+              <p>View and download your personal documents</p>
             </div>
 
-            <button
-              className={`filter-toggle ${isFilterExpanded ? "active" : ""}`}
-              onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-            >
-              <FiFilter />
-              <span>Filtres</span>
-              <FiChevronDown className={`filter-chevron ${isFilterExpanded ? "active" : ""}`} />
-              {selectedCategory !== "all" && <span className="filter-badge"></span>}
-            </button>
-          </div>
-
-          <div className={`filter-panel ${isFilterExpanded ? "expanded" : ""}`}>
-            <div className="filter-options">
-              <div className="filter-group">
-                <label>Catégorie</label>
-                <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+            <div className="search-filter-container">
+              <div className="search-box">
+                <Search className="search-icon" size={20} />
+                <input
+                  type="text"
+                  placeholder="Search documents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <div className="filter-sort-container">
+                <div className="filter-box">
+                  <Filter className="filter-icon" size={18} />
+                  <select
+                    value={activeCategory}
+                    onChange={(e) => setActiveCategory(e.target.value)}
+                  >
+                    {categories.map((category) => (
+                      <option key={category} value={category}>
+                        {category.charAt(0).toUpperCase() + category.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sort-box">
+                  <Clock className="sort-icon" size={18} />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  >
+                    <option value="date">Sort by Date</option>
+                    <option value="name">Sort by Name</option>
+                    <option value="type">Sort by Type</option>
+                    <option value="status">Sort by Status</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div className="filter-actions">
-              <button className="clear-filters-button" onClick={clearFilters}>
-                Effacer les filtres
-              </button>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Chargement des documents...</p>
-            </div>
-          ) : error ? (
-            <div className="error-container">
-              <p className="error-message">{error}</p>
-              <button onClick={fetchDocuments} className="retry-button">
-                Réessayer
-              </button>
-            </div>
-          ) : filteredDocuments.length === 0 ? (
-            <div className="empty-state">
-              <FiFolder className="empty-icon" />
-              <h3>Aucun document trouvé</h3>
-              <p>
-                {searchTerm || selectedCategory !== "all"
-                  ? "Aucun document ne correspond à vos critères de recherche."
-                  : "Vous n'avez pas encore de documents."}
-              </p>
-              {(searchTerm || selectedCategory !== "all") && (
-                <button className="clear-filters-button" onClick={clearFilters}>
-                  Réinitialiser les filtres
+            <div className="categories">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  className={`category-btn ${activeCategory === category ? "active" : ""}`}
+                  onClick={() => setActiveCategory(category)}
+                >
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
                 </button>
-              )}
-            </div>
-          ) : (
-            <div className="documents-grid">
-              {filteredDocuments.map((document) => (
-                <div key={document.id} className="document-card">
-                  <div className="document-card-header">{getDocumentIcon(document.type)}</div>
-                  <div className="document-card-body">
-                    <h3 className="document-name">{document.name}</h3>
-                    <p className="document-category">
-                      <FiFolder className="category-icon" />
-                      {getCategoryLabel(document.category)}
-                    </p>
-                    <p className="document-date">
-                      <FiCalendar className="date-icon" />
-                      {formatDate(document.uploadDate)}
-                    </p>
-                  </div>
-                  <div className="document-card-actions">
-                    <button className="action-button view" onClick={() => handleViewDetails(document)}>
-                      <FiEye />
-                    </button>
-                    <button className="action-button download" onClick={() => handleDownload(document)}>
-                      <FiDownload />
-                    </button>
-                    <button className="action-button delete" onClick={() => handleDelete(document.id)}>
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                </div>
               ))}
             </div>
-          )}
 
-          {showDetailsModal && documentDetails && (
-            <div className="modal-overlay">
-              <div className="modal-container details-modal">
-                <div className="modal-header">
-                  <h2>Détails du document</h2>
-                  <button
-                    className="close-modal"
+            <FilePreview />
+
+            <div className={`documents-container ${viewMode}`}>
+              {sortedDocuments.length > 0 ? (
+                sortedDocuments.map((doc) => (
+                  <div className="document-card" key={doc.id}>
+                    <div className="document-icon">
+                      {getDocumentIcon(doc.status)}
+                    </div>
+                    <div className="document-info">
+                      <div className="document-title-row">
+                        <h3>{doc.title}</h3>
+                        {doc.isStarred && <Star className="star-icon" size={16} fill="currentColor" />}
+                      </div>
+                      <div className="document-meta">
+                        <span className="document-date">
+                          <Calendar size={14} />
+                          {formatDate(doc.date)}
+                        </span>
+                        <span className="document-type">{doc.fileType}</span>
+                        <span className="document-size">{doc.size}</span>
+                        <span className={`document-status status-${doc.status}`}>
+                          {doc.status.charAt(0).toUpperCase() + doc.status.slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="document-actions">
+                      <button 
+                        className="action-btn preview-btn"
+                        onClick={() => handlePreview(doc.id)}
+                      >
+                        <FileText size={18} />
+                        <span>Preview</span>
+                      </button>
+                      <button 
+                        className="action-btn download-btn"
+                        onClick={() => handleDownload(doc.id, doc.title)}
+                      >
+                        <Download size={18} />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-documents">
+                  <FileText size={48} />
+                  <p>No documents found matching your criteria.</p>
+                  <button 
+                    className="reset-filters-btn"
                     onClick={() => {
-                      setShowDetailsModal(false)
-                      setDocumentDetails(null)
+                      setActiveCategory("all");
+                      setSearchQuery("");
                     }}
                   >
-                    <FiX />
+                    Reset Filters
                   </button>
                 </div>
-                <div className="modal-body">
-                  <div className="document-preview">
-                    {getDocumentIcon(documentDetails.type)}
-                    <h3>{documentDetails.name}</h3>
-                  </div>
-
-                  <div className="document-details-grid">
-                    <div className="detail-item">
-                      <span className="detail-label">Catégorie</span>
-                      <span className="detail-value">{getCategoryLabel(documentDetails.category)}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Date d'ajout</span>
-                      <span className="detail-value">{formatDate(documentDetails.uploadDate)}</span>
-                    </div>
-
-                    <div className="detail-item">
-                      <span className="detail-label">Type</span>
-                      <span className="detail-value">{documentDetails.type.toUpperCase()}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span className="detail-label">Ajouté par</span>
-                      <span className="detail-value">{documentDetails.uploadedBy}</span>
-                    </div>
-                  </div>
-
-                  <div className="document-description">
-                    <h4>Description</h4>
-                    <p>{documentDetails.description || "Aucune description disponible."}</p>
-                  </div>
-
-                  <div className="modal-actions">
-                    <button className="action-button download" onClick={() => handleDownload(documentDetails)}>
-                      <FiDownload />
-                      <span>Télécharger</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-          )}
+          </main>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default Documents
-
