@@ -472,6 +472,22 @@ public class DemandeCongeController {
                     response.setResponseChef1("O");
                     response.setObservationChef1(observation);
                     response.setDateChef1(dateValidation);
+
+                    // Création de la notification spécifique pour le chef de poids 1
+                    if (demande.getMatPers() != null) {
+                        String messageNotifChef1 = String.format(
+                                "Le Chef (Poids 1) a validé la demande de conge"
+                        );
+
+                        notificationService.createNotification(
+                                messageNotifChef1,
+                                null,
+                                demande.getMatPers().getId(),
+                                null,
+                                null
+                        );
+                    }
+
                     break;
 
                 case 2:
