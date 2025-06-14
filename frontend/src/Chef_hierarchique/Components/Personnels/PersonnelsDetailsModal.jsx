@@ -1,4 +1,3 @@
-"use client"
 import "./PersonnelsDetailModal.css"
 import React, { useState } from "react"
 

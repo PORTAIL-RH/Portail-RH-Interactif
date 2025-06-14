@@ -1,4 +1,3 @@
-"use client"
 
 import { useState, useEffect } from "react"
 import { X, Upload, User, Mail, Phone, Calendar, FileText, Info, Check, AlertCircle } from "lucide-react"

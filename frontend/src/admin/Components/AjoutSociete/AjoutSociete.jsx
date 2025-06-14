@@ -222,20 +222,20 @@ const AjoutSociete = () => {
                 className={`societe-tab ${activeTab === "add" ? "active" : ""}`}
                 onClick={() => setActiveTab("add")}
               >
-                <FiPlus /> Ajouter Une Société
+                <FiPlus /> Ajouter Une Succursale Société
               </button>
               <button
                 className={`societe-tab ${activeTab === "list" ? "active" : ""}`}
                 onClick={() => setActiveTab("list")}
               >
-                <FiList /> Tout Les Sociétés
+                <FiList /> Tout Les Succursales Sociétés
               </button>
             </div>
 
             {/* Add societe Form */}
             {activeTab === "add" && (
               <div className="ajout-societe-container">
-                <h2>Ajouter Une Société</h2>
+                <h2>Ajouter Une Succursale Société</h2>
                 <form onSubmit={handleSubmit}>
                   <div className="form-group">
                     <label>Nom:</label>
@@ -291,7 +291,7 @@ const AjoutSociete = () => {
               <div className="societes-list-container">
                 <div className="societes-list-header">
                   <h2>
-                    <FiServer /> La Liste Des Sociétés
+                    <FiServer /> La Liste Des Succursales Sociétés
                   </h2>
                   <button
                     className="submit-button"
@@ -314,7 +314,7 @@ const AjoutSociete = () => {
                 {fetchingSocietes ? (
                   <div className="loading-container">
                     <div className="loading-spinner-large"></div>
-                    <p className="loading-text">Loading companies...</p>
+                    <p className="loading-text">Charger les Succursales...</p>
                   </div>
                 ) : societes.length > 0 ? (
                   <div className="societes-table-container">
@@ -349,87 +349,87 @@ const AjoutSociete = () => {
                 ) : (
                   <div className="empty-state">
                     <FiInfo className="empty-state-icon" />
-                    <h3>No Companies Found</h3>
+                    <h3>Aucun Succursale </h3>
                     <p>
-                      There are no companies in the system yet. Create your first company by clicking the "Add Company"
-                      tab.
+                      Il n'y a encore aucune entreprise dans le système. Créez votre première entreprise en cliquant sur l'onglet « Ajouter une entreprise ».
                     </p>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Edit Company Modal */}
-            {showEditModal && editingSociete && (
-              <div className="modal-overlay">
-                <div className="modal-container">
-                  <div className="modal-header">
-                    <h3 className="modal-title">Edit Company</h3>
-                    <button className="modal-close" onClick={() => setShowEditModal(false)}>
-                      <FiX />
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <form onSubmit={handleEditSubmit}>
-                      <div className="form-group">
-                        <label>Company Name:</label>
-                        <input
-                          type="text"
-                          name="societeName"
-                          value={editingSociete.societeName}
-                          onChange={handleEditChange}
-                          required
-                          maxLength={100}
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Company Code:</label>
-                        <input
-                          type="text"
-                          name="societeCodeSoc"
-                          value={editingSociete.societeCodeSoc}
-                          onChange={handleEditChange}
-                          required
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Location:</label>
-                        <input
-                          type="text"
-                          name="emplacement"
-                          value={editingSociete.emplacement}
-                          onChange={handleEditChange}
-                          placeholder="Enter company location"
-                        />
-                      </div>
-                    </form>
-                  </div>
-                  <div className="modal-footer">
-                    <button className="modal-cancel" onClick={() => setShowEditModal(false)}>
-                      Cancel
-                    </button>
-                    <button className="modal-save" onClick={handleEditSubmit}>
-                      Save Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop={false}
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme={theme}
+{/* Modal de modification d'entreprise */}
+{showEditModal && editingSociete && (
+  <div className="modal-overlay">
+    <div className="modal-container">
+      <div className="modal-header">
+        <h3 className="modal-title">Modifier l'entreprise</h3>
+        <button className="modal-close" onClick={() => setShowEditModal(false)}>
+          <FiX />
+        </button>
+      </div>
+      <div className="modal-body">
+        <form onSubmit={handleEditSubmit}>
+          <div className="form-group">
+            <label>Nom de l'entreprise :</label>
+            <input
+              type="text"
+              name="societeName"
+              value={editingSociete.societeName}
+              onChange={handleEditChange}
+              required
+              maxLength={100}
             />
           </div>
-        </div>
+          <div className="form-group">
+            <label>Code de l'entreprise :</label>
+            <input
+              type="text"
+              name="societeCodeSoc"
+              value={editingSociete.societeCodeSoc}
+              onChange={handleEditChange}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Emplacement :</label>
+            <input
+              type="text"
+              name="emplacement"
+              value={editingSociete.emplacement}
+              onChange={handleEditChange}
+              placeholder="Entrez l'emplacement de l'entreprise"
+            />
+          </div>
+        </form>
+      </div>
+      <div className="modal-footer">
+        <button className="modal-cancel" onClick={() => setShowEditModal(false)}>
+          Annuler
+        </button>
+        <button className="modal-save" onClick={handleEditSubmit}>
+          Enregistrer les modifications
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+<ToastContainer
+  position="top-right"
+  autoClose={5000}
+  hideProgressBar={false}
+  newestOnTop={false}
+  closeOnClick
+  rtl={false}
+  pauseOnFocusLoss
+  draggable
+  pauseOnHover
+  theme={theme}
+/>
+      </div>
+      </div>
+
       </div>
     </div>
   )

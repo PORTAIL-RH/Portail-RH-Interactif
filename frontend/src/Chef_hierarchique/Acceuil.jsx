@@ -1,4 +1,3 @@
-"use client"
 
 import React from "react"
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -9,8 +8,7 @@ import { FaFemale, FaMale } from "react-icons/fa"
 import { toast } from "react-toastify"
 import "react-calendar/dist/Calendar.css"
 import "./Acceuil.css"
-
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080"
+import { API_URL } from "../config"
 
 class ErrorBoundary extends React.Component {
   constructor(props) {

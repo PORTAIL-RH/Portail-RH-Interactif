@@ -1,8 +1,10 @@
 package com.example.PortailRH.Repository;
 
+import org.springframework.data.repository.query.Param;
 import com.example.PortailRH.Model.Validator;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -10,10 +12,12 @@ import java.util.Optional;
 
 @Repository
 public interface ValidatorRepository extends MongoRepository<Validator, String> {
+    void deleteAllByService_Id(String serviceId);
 
     // Find validators by chef ID (using DBRef)
-    // Method 1: Using direct field query (if storing IDs as strings)
-
+// In ValidatorRepository
+    @Query(value = "{ 'service.$id': ?0 }", delete = true)
+    void deleteByServiceId(String serviceId);
     // Find validators by service ID (using DBRef)
     @Query("{ 'service.$id': ?0 }")
     List<Validator> findByServiceId(String serviceId);

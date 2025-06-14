@@ -6,6 +6,7 @@ import "react-toastify/dist/ReactToastify.css"
 import "./ajout-dem.css"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
+import { API_URL } from "../../../config";
 
 const AvanceForm = () => {
   const [formData, setFormData] = useState({
@@ -53,7 +54,7 @@ const AvanceForm = () => {
         return
       }
 
-      const response = await fetch("http://localhost:8080/api/demande-pre-avance/types", {
+      const response = await fetch(`${API_URL}/api/demande-pre-avance/types`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${authToken}`,

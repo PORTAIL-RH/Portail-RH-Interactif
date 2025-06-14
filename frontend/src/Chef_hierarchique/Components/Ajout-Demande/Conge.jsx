@@ -6,6 +6,7 @@ import "react-toastify/dist/ReactToastify.css"
 import "./ajout-dem.css"
 import Sidebar from "../Sidebar/Sidebar";
 import Navbar from "../Navbar/Navbar";
+import { API_URL } from "../../../config";
 
 const CongeForm = () => {
   const [formData, setFormData] = useState({
@@ -155,7 +156,7 @@ const CongeForm = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/api/demande-conge/create", {
+      const response = await fetch(`${API_URL}/api/demande-conge/create`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${authToken}`,

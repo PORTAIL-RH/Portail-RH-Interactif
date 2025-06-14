@@ -1,3 +1,5 @@
+
+
 import { useState, useEffect } from "react"
 import {
   FiCalendar,
@@ -6,13 +8,14 @@ import {
   FiUser,
   FiClock,
   FiCheck,
-  FiX,
   FiLoader,
   FiFilter,
-  FiDownload,
+  FiCheckCircle,
 } from "react-icons/fi"
 import "./CalendrierConge.css"
-import "../common-ui.css" // Import common UI styles first
+import "./days-used-summary.css"
+import "../common-ui.css"
+import { API_URL } from "../../config"
 
 import Navbar from "../Components/Navbar/Navbar"
 import Sidebar from "../Components/Sidebar/Sidebar"
@@ -20,13 +23,75 @@ import Sidebar from "../Components/Sidebar/Sidebar"
 const CalendrierConge = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [leaveData, setLeaveData] = useState([])
+  const [daysUsedData, setDaysUsedData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadingDaysUsed, setLoadingDaysUsed] = useState(true)
   const [error, setError] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState({
-    dateRange: "current", // "current", "past", "future", "all"
+    dateRange: "current",
   })
-  const [viewMode, setViewMode] = useState("month") // "month", "list"
+  const [viewMode, setViewMode] = useState("month")
+
+  // Fetch days used data
+  useEffect(() => {
+    const fetchDaysUsedData = async () => {
+      setLoadingDaysUsed(true)
+      try {
+        const token = localStorage.getItem("authToken")
+        const userId = localStorage.getItem("userId")
+
+        if (!userId) {
+          // If no user ID, show empty calendar with default values
+          setDaysUsedData({
+            status: "success",
+            totalDaysUsed: 0,
+            maxDaysPerYear: 25,
+            year: new Date().getFullYear(),
+          })
+          setLoadingDaysUsed(false)
+          return
+        }
+
+        const response = await fetch(`${API_URL}/api/demande-conge/days-used/${userId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        })
+
+        if (!response.ok) {
+          // If API fails, show empty calendar with default values
+          console.warn("Days used API failed, showing empty calendar")
+          setDaysUsedData({
+            status: "success",
+            totalDaysUsed: 0,
+            maxDaysPerYear: 25,
+            year: new Date().getFullYear(),
+          })
+          setLoadingDaysUsed(false)
+          return
+        }
+
+        const data = await response.json()
+        console.log("Days used data received:", data)
+        setDaysUsedData(data)
+        setLoadingDaysUsed(false)
+      } catch (error) {
+        console.warn("Error fetching days used, showing empty calendar:", error)
+        // Show empty calendar with default values instead of error
+        setDaysUsedData({
+          status: "success",
+          totalDaysUsed: 0,
+          maxDaysPerYear: 25,
+          year: new Date().getFullYear(),
+        })
+        setLoadingDaysUsed(false)
+      }
+    }
+
+    fetchDaysUsedData()
+  }, [])
 
   // Fetch annual leave data for the logged-in user
   useEffect(() => {
@@ -37,18 +102,25 @@ const CalendrierConge = () => {
         const userId = localStorage.getItem("userId")
 
         if (!userId) {
-          throw new Error("User ID not found")
+          // If no user ID, show empty calendar
+          setLeaveData([])
+          setLoading(false)
+          return
         }
 
         // Fetch only accepted leaves
-        const acceptedResponse = await fetch(`http://localhost:8080/api/demande-conge/personnel/${userId}/accepted`, {
+        const acceptedResponse = await fetch(`${API_URL}/api/demande-conge/personnel/${userId}/accepted`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
 
         if (!acceptedResponse.ok) {
-          throw new Error(`Failed to fetch accepted leave data: ${acceptedResponse.status}`)
+          // If API fails, show empty calendar
+          console.warn("Leave data API failed, showing empty calendar")
+          setLeaveData([])
+          setLoading(false)
+          return
         }
 
         const acceptedData = await acceptedResponse.json()
@@ -72,8 +144,10 @@ const CalendrierConge = () => {
         setLeaveData(acceptedLeaves)
         setLoading(false)
       } catch (error) {
-        console.error("Error:", error)
-        setError(error.message)
+        console.warn("Error fetching leave data, showing empty calendar:", error)
+        // Show empty calendar instead of error
+        setLeaveData([])
+        setError(null) // Clear any previous errors
         setLoading(false)
       }
     }
@@ -149,6 +223,50 @@ const CalendrierConge = () => {
     })
   }
 
+  const renderDaysUsedSummary = () => {
+    if (loadingDaysUsed) {
+      return (
+        <div className="days-used-summary loading">
+          <FiLoader className="loading-spinner" size={24} />
+          <span>Chargement des données de congés...</span>
+        </div>
+      )
+    }
+
+    // Always show the summary, even if no data or API failed
+    const { totalDaysUsed = 0, maxDaysPerYear = 25, year = new Date().getFullYear() } = daysUsedData || {}
+
+    return (
+      <div className="days-used-summary">
+        <div className="summary-header">
+          <h3>Récapitulatif des Congés {year}</h3>
+        </div>
+
+        <div className="summary-cards">
+          <div className="summary-card used">
+            <div className="card-icon">
+              <FiCheckCircle />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{totalDaysUsed}</div>
+              <div className="card-label">Jours Utilisés</div>
+            </div>
+          </div>
+
+          <div className="summary-card total">
+            <div className="card-icon">
+              <FiCalendar />
+            </div>
+            <div className="card-content">
+              <div className="card-value">{maxDaysPerYear}</div>
+              <div className="card-label">Total Annuel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const renderCalendar = () => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -182,7 +300,7 @@ const CalendrierConge = () => {
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day)
 
-      // Find accepted leaves for this day
+      // Find accepted leaves for this day (will be empty array if no data)
       const acceptedLeaves = leaveData.filter((leave) => {
         const start = new Date(leave.startDate)
         const end = new Date(leave.endDate)
@@ -363,22 +481,19 @@ const CalendrierConge = () => {
                 <FiFilter />
                 <span>Filtres</span>
               </button>
- 
             </div>
           </div>
 
+          {/* Days Used Summary Section - Always show */}
+          {renderDaysUsedSummary()}
+
           {renderFilters()}
 
+          {/* Always show calendar, even if loading or no data */}
           {loading ? (
             <div className="loading-container">
               <FiLoader className="loading-spinner" />
               <p>Chargement des données...</p>
-            </div>
-          ) : error ? (
-            <div className="error-container">
-              <FiX className="error-icon" />
-              <p>Erreur: {error}</p>
-              <button onClick={() => window.location.reload()}>Réessayer</button>
             </div>
           ) : (
             <div className="calendrier-content">
@@ -408,4 +523,3 @@ const CalendrierConge = () => {
 }
 
 export default CalendrierConge
-

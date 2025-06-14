@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './form.css';
+import { API_URL } from "../../../config"
 
 const Form = () => {
   const [progress, setProgress] = useState(0);
@@ -72,7 +73,7 @@ const Form = () => {
         }
 
         const response = await axios.post(
-          'http://localhost:8080/api/Personnel/update', 
+          `${API_URL}/api/Personnel/update`, 
           { ...formData, userId }
         );
 
