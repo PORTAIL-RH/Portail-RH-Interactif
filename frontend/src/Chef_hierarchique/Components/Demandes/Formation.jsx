@@ -54,6 +54,86 @@ const DemandesFormation = () => {
     });
   };
 
+    const fetchFileBlobUrl = async (fileId) => {
+      if (!fileId) {
+        throw new Error("ID de fichier manquant");
+      }
+  
+      const token = localStorage.getItem("authToken");
+      try {
+        const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+  
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || `Erreur HTTP: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
+      } catch (error) {
+        console.error("Erreur de récupération du fichier:", error);
+        throw error;
+      }
+    };
+  const handlePreview = async (fileId) => {
+    if (!fileId) {
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
+    if (previewFileId === fileId) {
+      setPreviewFileId(null);
+      setPreviewFileUrl(null);
+      return;
+    }
+    
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      setPreviewFileId(fileId);
+      setPreviewFileUrl(url);
+    } catch (err) {
+      toast.error("Impossible d'afficher la pièce jointe: " + err.message);
+    }
+  };
+
+  const handleDownload = async (fileId, filename = "piece_jointe.pdf") => {
+    if (!fileId) {
+      toast.warning("Aucun fichier sélectionné");
+      return;
+    }
+
+    const toastId = toast.loading("Préparation du téléchargement...");
+    
+    try {
+      const url = await fetchFileBlobUrl(fileId);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || "document.pdf";
+      document.body.appendChild(link);
+      link.click();
+      
+      toast.update(toastId, {
+        render: "Téléchargement en cours...",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+    } catch (err) {
+      toast.update(toastId, {
+        render: "Échec du téléchargement: " + err.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
+    }
+  };
   const getUserInfo = useCallback(() => {
     try {
       const userData = localStorage.getItem("userData");

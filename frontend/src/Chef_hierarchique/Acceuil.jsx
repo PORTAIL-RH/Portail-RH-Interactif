@@ -10,6 +10,7 @@ import "react-calendar/dist/Calendar.css"
 import "./Acceuil.css"
 import { API_URL } from "../config"
 
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
@@ -286,47 +287,52 @@ const Accueil = () => {
     }
   }, [])
 
-  const fetchApprovedLeaves = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true)
-      try {
-        const token = localStorage.getItem("authToken")
-        const userId = localStorage.getItem("userId")
+const fetchApprovedLeaves = useCallback(
+  async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetchWithRetry(`${API_URL}/api/demande-conge/approved`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        const data = await fetchWithRetry(`${API_URL}/api/demande-conge/collaborateurs-by-service/${userId}/approved`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
+      // Handle both array response and object with demandes property
+      const demandesArray = Array.isArray(response) ? response : (response?.demandes || []);
 
-        // Vérifier que data et data.demandes existent
-        const demandesArray = data?.demandes || []
-
-        const formattedLeaves = demandesArray.map((leave) => ({
+      // Transform the data - keep all that the API returned as "approved"
+      const formattedLeaves = demandesArray.map(leave => {
+        const personnel = leave.matPers || leave.personnel || {};
+        return {
           id: leave.id || leave._id,
-          employeeName: `${leave.matPers?.nom || ""} ${leave.matPers?.prenom || ""}`.trim(),
+          employeeName: `${personnel.nom || ""} ${personnel.prenom || ""}`.trim(),
           start: new Date(leave.dateDebut),
           end: new Date(leave.dateFin),
-          title: leave.matPers ? `${leave.matPers.nom} ${leave.matPers.prenom}` : "Employé",
+          title: personnel.nom ? `${personnel.nom} ${personnel.prenom}` : "Employé",
           type: "ANNUAL",
-          status: "ACCEPTED",
+          status: "ACCEPTED", // Mark all as accepted since API already filtered
           duration: calculateDuration(leave.dateDebut, leave.dateFin),
-          department: leave.matPers?.serviceName || "Unknown",
+          department: personnel.serviceName || "Unknown",
           approvedBy: "Manager",
           description: leave.texteDemande || "Congé annuel",
-        }))
+          rawData: leave // Keep original data
+        };
+      });
 
-        setApprovedLeaves(formattedLeaves)
-        saveToLocalStorage("approvedLeaves", formattedLeaves)
-      } catch (error) {
-        console.error("Error fetching approved leaves:", error)
-        toast.error("Échec du chargement des demandes de congé approuvées")
-      } finally {
-        if (!silent) setLoading(false)
-      }
-    },
-    [saveToLocalStorage],
-  )
+      setApprovedLeaves(formattedLeaves);
+      saveToLocalStorage("approvedLeaves", formattedLeaves);
+
+    } catch (error) {
+      console.error("Error fetching approved leaves:", error);
+      toast.error("Échec du chargement des demandes de congé approuvées");
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  },
+  [saveToLocalStorage],
+);
+
   const calculateDuration = (startDate, endDate) => {
     const start = new Date(startDate)
     const end = new Date(endDate)
@@ -725,13 +731,7 @@ const Accueil = () => {
             <div className="dashboard-header">
               <div className="header-top">
                 <h1>Aperçu du Tableau de Bord</h1>
-                <button
-                  className={`refresh-btn ${loading ? "disabled" : ""}`}
-                  onClick={handleRefresh}
-                  disabled={loading}
-                >
-                  <FiRefreshCw /> {loading ? "Chargement..." : "Rafraîchir"}
-                </button>
+     
               </div>
               <p className="welcome-message">
                 Bienvenue,{" "}
@@ -740,9 +740,7 @@ const Accueil = () => {
                 </span>
                 . Chef du département <span className="service-name">{serviceInfo.name}</span>.
               </p>
-              {lastUpdated && (
-                <p className="last-updated">Dernière mise à jour: {new Date(lastUpdated).toLocaleString("fr-FR")}</p>
-              )}
+
             </div>
 
             <div className="dashboard-grid">

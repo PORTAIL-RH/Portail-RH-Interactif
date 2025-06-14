@@ -74,22 +74,18 @@ const Personnel = () => {
   useEffect(() => {
     const fetchRoles = async () => {
       setIsLoading(true)
-      toast.info("Loading roles...", { autoClose: false, toastId: 'roles-loading' })
       try {
         const response = await fetch(`${API_URL}/api/roles`)
         if (response.ok) {
           const data = await response.json()
           setRoles(data || [])
-          toast.dismiss('roles-loading')
-          toast.success("Roles loaded successfully")
+
         } else {
-          toast.dismiss('roles-loading')
-          toast.error(`Failed to fetch roles. Status: ${response.status}`)
+
           console.error(`Failed to fetch roles. Status: ${response.status}`)
         }
       } catch (error) {
-        toast.dismiss('roles-loading')
-        toast.error("Error loading roles")
+
         console.error("Error fetching roles:", error)
       } finally {
         setIsLoading(false)
@@ -132,11 +128,9 @@ const Personnel = () => {
     // First try to load from localStorage
     const cachedPersonnel = localStorage.getItem('personnelData')
     if (!cachedPersonnel) {
-      toast.info("Loading personnel data...", { autoClose: false, toastId: 'personnel-loading' })
     }
     
     fetchPersonnel().then(() => {
-      toast.dismiss('personnel-loading')
     })
 
     // Set up polling every 10 seconds
@@ -172,7 +166,6 @@ const Personnel = () => {
     const updatedPersonnel = { ...editingPersonnel, role: selectedRole }
     
     setIsLoading(true)
-    toast.info("Updating personnel...", { autoClose: false, toastId: 'update-loading' })
     
     try {
       const response = await fetch(`${API_URL}/api/personnel/updateAllFields/${updatedPersonnel.id}`, {
@@ -194,17 +187,14 @@ const Personnel = () => {
         )
         localStorage.setItem('personnelData', JSON.stringify(updatedCache))
         
-        toast.dismiss('update-loading')
-        toast.success("Personnel updated successfully")
+
         setIsEditDialogOpen(false)
         setEditingPersonnel(null)
       } else {
-        toast.dismiss('update-loading')
-        toast.error("Failed to update personnel")
+
       }
     } catch (error) {
-      toast.dismiss('update-loading')
-      toast.error("Error updating personnel")
+
       console.error("Error updating personnel:", error)
     } finally {
       setIsLoading(false)
