@@ -6,6 +6,7 @@ import com.example.PortailRH.Repository.CandidatRepository;
 import com.example.PortailRH.Repository.CandidatureRepository;
 import com.example.PortailRH.Service.AIService;
 import com.example.PortailRH.Service.EmailService;
+import com.example.PortailRH.Service.NotificationService;
 import com.example.PortailRH.Service.ScoreCalculationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +44,8 @@ public class CandidatController {
     private final EmailService emailService; // Assuming you have an EmailService
     private final ScoreCalculationService scoreCalculationService;
     private final Path uploadPath; // Path where CV files are stored
-
+    @Autowired
+    private NotificationService notificationService;
     @Autowired
     public CandidatController(CandidatRepository candidatRepository,
                               CandidatureRepository candidatureRepository,
@@ -114,6 +116,15 @@ public class CandidatController {
 
                 // ✅ Send confirmation email with both candidate and candidature
                 emailService.sendCandidateConfirmation(finalCandidate, jobPosting);
+
+                // Send WebSocket notification to admins
+                notificationService.createNotification(
+                        "Nouveau candidat a postulé: " + nom + " " + prenom,
+                        "Admin",
+                        null,
+                        null,
+                        null
+                );
 
                 return ResponseEntity.status(HttpStatus.CREATED).body(toResponseDTO(finalCandidate));
 
