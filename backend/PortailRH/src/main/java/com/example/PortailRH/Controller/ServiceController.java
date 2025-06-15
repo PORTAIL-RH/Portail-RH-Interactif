@@ -307,7 +307,6 @@ public class ServiceController {
                 return ResponseEntity.notFound().build();
             }
 
-            // Validate service name
             if (!request.containsKey("serviceName") || request.get("serviceName").toString().trim().isEmpty()) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "Service name is required"));
@@ -316,7 +315,9 @@ public class ServiceController {
             Service service = serviceOptional.get();
             service.setServiceName(request.get("serviceName").toString());
 
-            // Process each chef
+            // Supprimer les anciens validators liés à ce service
+            validatorRepository.deleteByServiceId(service.getId());
+
             for (int i = 1; i <= 3; i++) {
                 String chefKey = "chef" + i + "Matricule";
                 String poidKey = "poid" + i;
@@ -325,20 +326,10 @@ public class ServiceController {
                     String matricule = request.get(chefKey).toString();
 
                     if (matricule.isEmpty()) {
-                        // Clear this chef position
                         switch (i) {
-                            case 1:
-                                service.setChef1(null);
-                                service.setPoid1(0);
-                                break;
-                            case 2:
-                                service.setChef2(null);
-                                service.setPoid2(0);
-                                break;
-                            case 3:
-                                service.setChef3(null);
-                                service.setPoid3(0);
-                                break;
+                            case 1 -> { service.setChef1(null); service.setPoid1(0); }
+                            case 2 -> { service.setChef2(null); service.setPoid2(0); }
+                            case 3 -> { service.setChef3(null); service.setPoid3(0); }
                         }
                     } else {
                         Optional<Personnel> chefOptional = personnelRepository.findByMatricule(matricule);
@@ -350,7 +341,6 @@ public class ServiceController {
                         Personnel chef = chefOptional.get();
                         String chefId = chef.getId();
 
-                        // Check if this personnel is already a chef in another service
                         List<Service> existingServices = serviceRepository.findByChef1IdOrChef2IdOrChef3Id(chefId, chefId, chefId);
                         if (!existingServices.isEmpty() &&
                                 (existingServices.size() > 1 || !existingServices.get(0).getId().equals(id))) {
@@ -358,22 +348,16 @@ public class ServiceController {
                                     .body(Map.of("message", "This personnel is already chef in another service"));
                         }
 
-                        // Set the chef and poid
                         int poid = request.containsKey(poidKey) ? Integer.parseInt(request.get(poidKey).toString()) : 0;
                         switch (i) {
-                            case 1:
-                                service.setChef1(chef);
-                                service.setPoid1(poid);
-                                break;
-                            case 2:
-                                service.setChef2(chef);
-                                service.setPoid2(poid);
-                                break;
-                            case 3:
-                                service.setChef3(chef);
-                                service.setPoid3(poid);
-                                break;
+                            case 1 -> { service.setChef1(chef); service.setPoid1(poid); }
+                            case 2 -> { service.setChef2(chef); service.setPoid2(poid); }
+                            case 3 -> { service.setChef3(chef); service.setPoid3(poid); }
                         }
+
+                        // Ajouter le validator correspondant
+                        Validator validator = new Validator(service, chef, poid);
+                        validatorRepository.save(validator);
                     }
                 }
             }
@@ -385,6 +369,7 @@ public class ServiceController {
                     .body(Map.of("message", "Error updating service: " + e.getMessage()));
         }
     }
+
 
     private static final Logger log = LoggerFactory.getLogger(ServiceController.class);
 

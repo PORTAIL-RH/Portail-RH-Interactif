@@ -141,7 +141,7 @@ const Sidebar = ({ theme }) => {
           <li className="sidebar-item">
             <Link to="/Candidaturesadmin" className={`sidebar-link ${isActive("/Candidaturesadmin") ? "active" : ""}`}>
               <FiUsers className="sidebar-icon" />
-              <span className="sidebar-text">Candidats</span>
+              <span className="sidebar-text">Offres</span>
             </Link>
           </li>
 
