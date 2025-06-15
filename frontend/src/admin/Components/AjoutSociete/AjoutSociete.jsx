@@ -67,12 +67,10 @@ const AjoutSociete = () => {
   // Fetch societes with loading state and toast notification
   const fetchSocietes = async () => {
     setFetchingSocietes(true)
-    toast.info("Fetching companies...", { autoClose: 2000 })
 
     try {
       const response = await axios.get(`${API_URL}/api/societes`)
       setSocietes(response.data)
-      toast.success("Companies loaded successfully", { autoClose: 3000 })
     } catch (error) {
       console.error("Error fetching companies:", error)
       toast.error("Failed to load companies")

@@ -224,18 +224,55 @@ const AjoutService = () => {
       return
     }
 
-    const newChefs = [...assignChefsData.chefs]
-    newChefs[index] = {
-      ...newChefs[index],
-      personnelId: personnelId, // Now guaranteed to have value
-      matricule: personnel.matricule,
-      nom: personnel.nom,
-      prenom: personnel.prenom,
-      role: personnel.role,
-    }
+    // Check if we're in edit mode
+    if (showEditModal && editingService) {
+      // Handle chef selection for edit modal
+      const newChefs = [...editingService.chefs]
+      newChefs[index] = {
+        ...newChefs[index],
+        personnelId: personnelId,
+        matricule: personnel.matricule,
+        nom: personnel.nom,
+        prenom: personnel.prenom,
+        role: personnel.role,
+      }
 
-    console.log("Updated chief data:", newChefs[index])
-    setAssignChefsData((prev) => ({ ...prev, chefs: newChefs }))
+      setEditingService((prev) => ({
+        ...prev,
+        chefs: newChefs,
+      }))
+
+      // Close the dropdown
+      const newDropdownStates = [...dropdownStates]
+      newDropdownStates[index] = false
+      setDropdownStates(newDropdownStates)
+
+      // Clear search term
+      const newSearchTerms = [...searchTerms]
+      newSearchTerms[index] = ""
+      setSearchTerms(newSearchTerms)
+
+      console.log("Updated chief data for edit:", newChefs[index])
+    } else {
+      // Handle chef selection for assign chefs form (existing logic)
+      const newChefs = [...assignChefsData.chefs]
+      newChefs[index] = {
+        ...newChefs[index],
+        personnelId: personnelId,
+        matricule: personnel.matricule,
+        nom: personnel.nom,
+        prenom: personnel.prenom,
+        role: personnel.role,
+      }
+
+      console.log("Updated chief data:", newChefs[index])
+      setAssignChefsData((prev) => ({ ...prev, chefs: newChefs }))
+
+      // Close the dropdown
+      const newDropdownStates = [...dropdownStates]
+      newDropdownStates[index] = false
+      setDropdownStates(newDropdownStates)
+    }
 
     console.groupEnd()
   }
@@ -418,7 +455,7 @@ const AjoutService = () => {
             value={
               chef.matricule
                 ? `${chef.matricule} - ${chef.nom} ${chef.prenom}${chef.role ? ` (${chef.role})` : ""}`
-                : ""
+                : searchTerms[index] || ""
             }
             onChange={(e) => handleChefSearchChange(index, e.target.value)}
             onFocus={() => {
@@ -542,6 +579,11 @@ const AjoutService = () => {
       serviceName: service.serviceName,
       chefs: chefs,
     })
+
+    // Reset dropdown states and search terms for edit modal
+    setDropdownStates([false, false, false])
+    setSearchTerms(["", "", ""])
+
     setShowEditModal(true)
   }
 
@@ -564,31 +606,23 @@ const AjoutService = () => {
         serviceName: editingService.serviceName,
       }
 
-      // Prepare chef assignments in the format the backend expects
-      if (editingService.chefs[0].matricule) {
-        requestData.chef1 = {
-          personnelId: editingService.chefs[0].personnelId,
-          poid: editingService.chefs[0].poid,
+      // Add chef matricules and poids in the format expected by backend
+      editingService.chefs.forEach((chef, index) => {
+        const chefNumber = index + 1
+        if (chef.matricule && chef.matricule.trim()) {
+          requestData[`chef${chefNumber}Matricule`] = chef.matricule
+          requestData[`poid${chefNumber}`] = chef.poid || chefNumber
+        } else {
+          // Send empty string to clear the chef position
+          requestData[`chef${chefNumber}Matricule`] = ""
+          requestData[`poid${chefNumber}`] = 0
         }
-      }
-      if (editingService.chefs[1].matricule) {
-        requestData.chef2 = {
-          personnelId: editingService.chefs[1].personnelId,
-          poid: editingService.chefs[1].poid,
-        }
-      }
-      if (editingService.chefs[2].matricule) {
-        requestData.chef3 = {
-          personnelId: editingService.chefs[2].personnelId,
-          poid: editingService.chefs[2].poid,
-        }
-      }
+      })
 
       const response = await axios.put(`${API_URL}/api/services/update/${editingService.id}`, requestData)
 
       if (response.status === 200) {
-        const updatedServices = services.map((s) => (s.id === editingService.id ? response.data.service : s))
-        setServices(updatedServices)
+        const updatedServices = services.map((s) => (s.id === editingService.id ? response.data : s))
 
         // Update basic services list if needed
         if (!response.data.chef1 && !response.data.chef2 && !response.data.chef3) {
@@ -667,6 +701,13 @@ const AjoutService = () => {
       setLoading((prev) => ({ ...prev, delete: false }))
       setDeleteConfirmation({ show: false, serviceId: null, serviceName: "" })
     }
+  }
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false)
+    setEditingService(null)
+    setDropdownStates([false, false, false])
+    setSearchTerms(["", "", ""])
   }
 
   return (
@@ -933,7 +974,7 @@ const AjoutService = () => {
                 <div className="modal-container">
                   <div className="modal-header">
                     <h3>Modifier Service</h3>
-                    <button className="modal-close" onClick={() => setShowEditModal(false)} disabled={loading.update}>
+                    <button className="modal-close" onClick={handleCloseEditModal} disabled={loading.update}>
                       <FiX />
                     </button>
                   </div>
@@ -962,7 +1003,7 @@ const AjoutService = () => {
                     </form>
                   </div>
                   <div className="modal-footer">
-                    <button className="modal-cancel" onClick={() => setShowEditModal(false)} disabled={loading.update}>
+                    <button className="modal-cancel" onClick={handleCloseEditModal} disabled={loading.update}>
                       Annuler
                     </button>
                     <button className="modal-save" onClick={handleEditSubmit} disabled={loading.update}>
