@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react";
 import {
   FiSearch,
   FiAlertCircle,
@@ -11,125 +11,143 @@ import {
   FiBook,
   FiX,
   FiEdit,
-} from "react-icons/fi"
-import Navbar from "../Components/Navbar/Navbar"
-import Sidebar from "../Components/Sidebar/Sidebar"
-import { API_URL } from "../../config"
-import "../common-ui.css"
-import "./Demandes.css"
-import { useNavigate } from "react-router-dom"
-import DemandeModal from "./DemandesModal" // Import the modal component
+} from "react-icons/fi";
+import Navbar from "../Components/Navbar/Navbar";
+import Sidebar from "../Components/Sidebar/Sidebar";
+import { API_URL } from "../../config";
+import "../common-ui.css";
+import "./Demandes.css";
+import { useNavigate } from "react-router-dom";
+import DemandeModal from "./DemandesModal";
 
-// Cache for storing API responses
-const requestCache = new Map()
+const requestCache = new Map();
 
 const HistoriqueDemandes = () => {
-  const [demandes, setDemandes] = useState([])
-  const [filteredDemandes, setFilteredDemandes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [typeFilter, setTypeFilter] = useState("all")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const itemsPerPage = 10
-  const navigate = useNavigate()
+  const [demandes, setDemandes] = useState([]);
+  const [filteredDemandes, setFilteredDemandes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const itemsPerPage = 10;
+  const navigate = useNavigate();
 
-  const userId = localStorage.getItem("userId")
-  const token = localStorage.getItem("authToken")
+  const userId = localStorage.getItem("userId");
+  const token = localStorage.getItem("authToken");
 
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredDemandes.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(filteredDemandes.length / itemsPerPage)
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredDemandes.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredDemandes.length / itemsPerPage);
 
-  // Memoized function to get status
-  const getStatus = useCallback((demande) => {
-    if (demande.reponseChef === "O") return "Approuvée"
-    if (demande.reponseChef === "N") return "Rejetée"
-    if (demande.reponseChef === "I") return "En attente"
-    if (demande.statut === "O") return "Approuvée"
-    if (demande.statut === "N") return "Rejetée"
-    return "En attente"
-  }, [])
 
-  // Fetch all demandes in parallel
+const getStatus = useCallback((demande) => {
+  // For Pre-avance and Document types, use responseRH
+  if (demande.type === "PreAvance" || demande.type === "Document") {
+    if (demande.reponseRH === "O") return "Approuvée RH";
+    if (demande.reponseRH === "N") return "Rejetée RH";
+    return "En attente RH";
+  }
+
+  // For other types, only check responseChef1
+  if (demande.responseChefs) {
+    const { responseChef1 } = demande.responseChefs;
+    
+    if (responseChef1 === "O") return "Approuvée";
+    if (responseChef1 === "N") return "Rejetée";
+  }
+  
+  return "En attente";
+}, []);
+
+const getDetailedStatus = useCallback((demande) => {
+  // For Pre-avance and Document types, show RH status details
+  if (demande.type === "PreAvance" || demande.type === "Document") {
+    return `Statut RH: ${demande.reponseRH === "O" ? "Approuvé" : demande.reponseRH === "N" ? "Rejeté" : "En attente"}`;
+  }
+
+  // For other types, show only chef1 response
+  if (!demande.responseChefs) {
+    return getStatus(demande);
+  }
+  
+  const { responseChef1 } = demande.responseChefs;
+  return `Chef 1: ${responseChef1 === "O" ? "Approuvé" : responseChef1 === "N" ? "Rejeté" : "En attente"}`;
+}, [getStatus]);
+
   const fetchDemandes = useCallback(async () => {
     if (!userId || !token) {
-      setError("Session invalide. Veuillez vous reconnecter.")
-      setLoading(false)
-      return
+      setError("Session invalide. Veuillez vous reconnecter.");
+      setLoading(false);
+      return;
     }
 
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const types = ["formation", "conge", "document", "pre-avance", "autorisation"]
-      const cacheKey = `${userId}-demandes`
+      const types = ["formation", "conge", "document", "pre-avance", "autorisation"];
+      const cacheKey = `${userId}-demandes`;
 
-      // Check cache first
       if (requestCache.has(cacheKey)) {
-        const cachedData = requestCache.get(cacheKey)
-        setDemandes(cachedData)
-        setFilteredDemandes(cachedData)
-        setLoading(false)
-        return
+        const cachedData = requestCache.get(cacheKey);
+        setDemandes(cachedData);
+        setFilteredDemandes(cachedData);
+        setLoading(false);
+        return;
       }
 
-      // Fetch all types in parallel
       const requests = types.map((type) =>
         fetch(`${API_URL}/api/demande-${type}/personnel/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         }).then((response) => {
-          if (!response.ok) throw new Error(`Failed to fetch ${type}`)
-          return response.json()
-        }),
-      )
+          if (!response.ok) throw new Error(`Failed to fetch ${type}`);
+          return response.json();
+        })
+      );
 
-      const responses = await Promise.allSettled(requests)
+      const responses = await Promise.allSettled(requests);
 
-      let allDemandes = []
+      let allDemandes = [];
       responses.forEach((response, index) => {
         if (response.status === "fulfilled") {
-          const type = types[index]
+          const type = types[index];
           const typedData = response.value.map((item) => ({
             ...item,
-            type: type.charAt(0).toUpperCase() + type.slice(1),
+            type: type === "pre-avance" ? "PreAvance" : type.charAt(0).toUpperCase() + type.slice(1),
             status: getStatus(item),
+            detailedStatus: getDetailedStatus(item),
             date: item.dateDemande || new Date().toISOString(),
-          }))
-          allDemandes = [...allDemandes, ...typedData]
+          }));
+          allDemandes = [...allDemandes, ...typedData];
         }
-      })
+      });
 
-      // Sort by date (newest first)
-      allDemandes.sort((a, b) => new Date(b.date) - new Date(a.date))
+      allDemandes.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // Update state and cache
-      setDemandes(allDemandes)
-      setFilteredDemandes(allDemandes)
-      requestCache.set(cacheKey, allDemandes)
+      setDemandes(allDemandes);
+      setFilteredDemandes(allDemandes);
+      requestCache.set(cacheKey, allDemandes);
     } catch (err) {
-      setError(err.message || "Une erreur est survenue lors du chargement des demandes")
+      setError(err.message || "Une erreur est survenue lors du chargement des demandes");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [userId, token, getStatus])
+  }, [userId, token, getStatus, getDetailedStatus]);
 
   useEffect(() => {
-    fetchDemandes()
-  }, [fetchDemandes])
+    fetchDemandes();
+  }, [fetchDemandes]);
 
-  // Open modal with request details
   const handleViewRequest = (demande) => {
-    setSelectedRequest(demande)
-    setIsModalOpen(true)
-  }
+    setSelectedRequest(demande);
+    setIsModalOpen(true);
+  };
 
-  // Delete a demande
   const handleDeleteRequest = async (id, type) => {
     try {
       const response = await fetch(`${API_URL}/api/demande-${type.toLowerCase()}/${id}`, {
@@ -137,43 +155,38 @@ const HistoriqueDemandes = () => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
+      });
 
       if (!response.ok) {
-        throw new Error("Échec de la suppression")
+        throw new Error("Échec de la suppression");
       }
 
-      // Remove from cache and state
-      requestCache.delete(`${userId}-demandes`)
-      setDemandes((prev) => prev.filter((d) => d.id !== id))
-      setFilteredDemandes((prev) => prev.filter((d) => d.id !== id))
-      setIsModalOpen(false)
+      requestCache.delete(`${userId}-demandes`);
+      setDemandes((prev) => prev.filter((d) => d.id !== id));
+      setFilteredDemandes((prev) => prev.filter((d) => d.id !== id));
+      setIsModalOpen(false);
 
-      alert("Demande supprimée avec succès")
+      alert("Demande supprimée avec succès");
     } catch (err) {
-      alert(`Erreur lors de la suppression: ${err.message}`)
+      alert(`Erreur lors de la suppression: ${err.message}`);
     }
-  }
+  };
 
-  // Update a demande
   const handleUpdateRequest = async (payload) => {
     try {
       if (!payload || !payload.id) {
-        throw new Error("Données de demande invalides")
+        throw new Error("Données de demande invalides");
       }
 
-      // Extract the necessary data from payload
-      const { id, type, ...requestData } = payload
+      const { id, type, ...requestData } = payload;
 
-      // Determine the correct API endpoint type
-      let apiType = type
+      let apiType = type;
       if (!apiType) {
-        // Fallback to determine type from the original request
-        const originalRequest = demandes.find((d) => d.id === id)
+        const originalRequest = demandes.find((d) => d.id === id);
         if (originalRequest) {
           const normalizeType = (requestType) => {
-            if (!requestType) return "unknown"
-            const normalized = requestType.toLowerCase().replace(/[-\s]/g, "")
+            if (!requestType) return "unknown";
+            const normalized = requestType.toLowerCase().replace(/[-\s]/g, "");
 
             const typeMap = {
               preavance: "pre-avance",
@@ -181,16 +194,14 @@ const HistoriqueDemandes = () => {
               document: "document",
               autorisation: "autorisation",
               conge: "conge",
-            }
+            };
 
-            return typeMap[normalized] || requestType.toLowerCase()
-          }
+            return typeMap[normalized] || requestType.toLowerCase();
+          };
 
-          apiType = normalizeType(originalRequest.type)
+          apiType = normalizeType(originalRequest.type);
         }
       }
-
-      console.log(`Updating request: ${apiType}/${id}`, requestData)
 
       const response = await fetch(`${API_URL}/api/demande-${apiType}/${id}`, {
         method: "PUT",
@@ -199,100 +210,97 @@ const HistoriqueDemandes = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(requestData),
-      })
+      });
 
       if (!response.ok) {
-        // Clone the response so we can read it multiple times if needed
-        const responseClone = response.clone()
-        let errorMessage
+        const responseClone = response.clone();
+        let errorMessage;
 
         try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorData.error || `Erreur HTTP ${response.status}`
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorData.error || `Erreur HTTP ${response.status}`;
         } catch (jsonError) {
-          // If JSON parsing fails, get the response as text from the clone
           try {
-            const errorText = await responseClone.text()
-            errorMessage = errorText || `Erreur HTTP ${response.status}`
+            const errorText = await responseClone.text();
+            errorMessage = errorText || `Erreur HTTP ${response.status}`;
           } catch (textError) {
-            errorMessage = `Erreur HTTP ${response.status}`
+            errorMessage = `Erreur HTTP ${response.status}`;
           }
         }
-        throw new Error(errorMessage)
+        throw new Error(errorMessage);
       }
 
-      // Refresh data
-      requestCache.delete(`${userId}-demandes`)
-      await fetchDemandes()
-      setIsModalOpen(false)
+      requestCache.delete(`${userId}-demandes`);
+      await fetchDemandes();
+      setIsModalOpen(false);
 
-      alert("Demande mise à jour avec succès")
+      alert("Demande mise à jour avec succès");
     } catch (err) {
-      console.error("Update error:", err)
-      alert(`Erreur lors de la mise à jour: ${err.message}`)
+      console.error("Update error:", err);
+      alert(`Erreur lors de la mise à jour: ${err.message}`);
     }
-  }
+  };
 
-  // Optimized filtering
   useEffect(() => {
-    let filtered = demandes
+    let filtered = demandes;
 
     if (searchQuery || statusFilter !== "all" || typeFilter !== "all") {
-      const query = searchQuery.toLowerCase()
+      const query = searchQuery.toLowerCase();
       filtered = demandes.filter((demande) => {
-        // Search filter
         const matchesSearch =
           !searchQuery ||
           (demande.texteDemande && demande.texteDemande.toLowerCase().includes(query)) ||
           (demande.type && demande.type.toLowerCase().includes(query)) ||
-          (demande.status && demande.status.toLowerCase().includes(query))
+          (demande.status && demande.status.toLowerCase().includes(query));
 
-        // Status filter
         const matchesStatus =
-          statusFilter === "all" || demande.status.toLowerCase().includes(statusFilter.toLowerCase())
+          statusFilter === "all" || 
+          (statusFilter === "En attente" && demande.status.includes("En attente")) ||
+          (statusFilter === "Approuvée" && (demande.status.includes("Approuvée") || demande.status.includes("Approuvée RH"))) ||
+          (statusFilter === "Rejetée" && (demande.status.includes("Rejetée") || demande.status.includes("Rejetée RH"))) ||
+          (statusFilter === "Validation partielle" && demande.status.includes("Validation partielle"));
 
-        // Type filter
-        const matchesType = typeFilter === "all" || demande.type.toLowerCase() === typeFilter.toLowerCase()
+        const matchesType = typeFilter === "all" || demande.type.toLowerCase() === typeFilter.toLowerCase();
 
-        return matchesSearch && matchesStatus && matchesType
-      })
+        return matchesSearch && matchesStatus && matchesType;
+      });
     }
 
-    setFilteredDemandes(filtered)
-    setCurrentPage(1)
-  }, [searchQuery, statusFilter, typeFilter, demandes])
+    setFilteredDemandes(filtered);
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, typeFilter, demandes]);
 
-  // Memoized utility functions
   const formatDate = useCallback((dateString) => {
     try {
-      return new Date(dateString).toLocaleDateString("fr-FR")
+      return new Date(dateString).toLocaleDateString("fr-FR");
     } catch {
-      return dateString
+      return dateString;
     }
-  }, [])
+  }, []);
 
   const getStatusClass = useCallback((status) => {
-    if (status.includes("Approuvée")) return "status-approved"
-    if (status.includes("Rejetée")) return "status-rejected"
-    return "status-pending"
-  }, [])
+    if (status.includes("Approuvée")) return "status-approved";
+    if (status.includes("Rejetée")) return "status-rejected";
+    if (status.includes("Validation partielle")) return "status-partial";
+    return "status-pending";
+  }, []);
 
   const getTypeIcon = useCallback((type) => {
     switch (type) {
       case "Formation":
-        return <FiBook className="type-icon formation" />
+        return <FiBook className="type-icon formation" />;
       case "Conge":
-        return <FiCalendar className="type-icon conge" />
+        return <FiCalendar className="type-icon conge" />;
       case "Document":
-        return <FiFileText className="type-icon document" />
+        return <FiFileText className="type-icon document" />;
       case "PreAvance":
-        return <FiDollarSign className="type-icon preavance" />
+        return <FiDollarSign className="type-icon preavance" />;
       case "Autorisation":
-        return <FiClock className="type-icon autorisation" />
+        return <FiClock className="type-icon autorisation" />;
       default:
-        return <FiFileText className="type-icon" />
+        return <FiFileText className="type-icon" />;
     }
-  }, [])
+  }, []);
 
   if (loading) {
     return (
@@ -300,7 +308,7 @@ const HistoriqueDemandes = () => {
         <div className="loading-spinner"></div>
         <p>Chargement des demandes en cours...</p>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -312,7 +320,7 @@ const HistoriqueDemandes = () => {
           Réessayer
         </button>
       </div>
-    )
+    );
   }
 
   return (
@@ -400,7 +408,12 @@ const HistoriqueDemandes = () => {
                             <td>{formatDate(demande.date)}</td>
                             <td className="description-cell">{demande.texteDemande || "Aucune description"}</td>
                             <td>
-                              <span className={`status-badge ${getStatusClass(demande.status)}`}>{demande.status}</span>
+                              <span 
+                                className={`status-badge ${getStatusClass(demande.status)}`}
+                                title={demande.detailedStatus}
+                              >
+                                {demande.status}
+                              </span>
                             </td>
                             <td className="actions-cell">
                               <button
@@ -451,7 +464,6 @@ const HistoriqueDemandes = () => {
         </div>
       </div>
 
-      {/* Modal for viewing/editing requests */}
       {isModalOpen && selectedRequest && (
         <DemandeModal
           isOpen={isModalOpen}
@@ -464,7 +476,7 @@ const HistoriqueDemandes = () => {
         />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default HistoriqueDemandes
+export default HistoriqueDemandes;

@@ -462,18 +462,32 @@ public class DemandeFormationController {
     @GetMapping("/approved")
     public ResponseEntity<?> getDemandesFormationApprovedByChef1() {
         try {
-            // 1. Get all responses where chef1 approved ("O")
+            // 1. Récupérer les réponses approuvées par chef1 (valeur "O")
             List<Response_chefs_dem_formation> reponsesChef1 = responseChefsFormationRepository.findByResponseChef1("O");
 
-            // 2. Extract the IDs of approved requests
+            if (reponsesChef1.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // 2. Extraire les IDs des demandes
             List<String> demandeIds = reponsesChef1.stream()
                     .map(Response_chefs_dem_formation::getDemandeId)
+                    .filter(Objects::nonNull)
+                    .distinct()
                     .collect(Collectors.toList());
 
-            // 3. Get the corresponding formation requests
+            if (demandeIds.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // 3. Récupérer les demandes correspondantes
             List<DemandeFormation> demandes = demandeFormationRepository.findByIdIn(demandeIds);
 
-            // 4. Format the response with formation details
+            if (demandes.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
+            }
+
+            // 4. Construire la réponse
             List<Map<String, Object>> response = demandes.stream()
                     .map(demande -> {
                         Map<String, Object> demandeMap = new HashMap<>();
@@ -486,8 +500,7 @@ public class DemandeFormationController {
                         demandeMap.put("reponseChef", demande.getReponseChef());
                         demandeMap.put("reponseRH", demande.getReponseRH());
 
-
-                        // Add personnel information
+                        // Personnel
                         if (demande.getMatPers() != null) {
                             Map<String, Object> personnelMap = new HashMap<>();
                             personnelMap.put("id", demande.getMatPers().getId());
@@ -497,7 +510,7 @@ public class DemandeFormationController {
                             demandeMap.put("matPers", personnelMap);
                         }
 
-                        // Add formation details
+                        // Formation
                         if (demande.getTitre() != null) {
                             demandeMap.put("titre", demande.getTitre().getTitre());
                         }
@@ -508,7 +521,7 @@ public class DemandeFormationController {
                             demandeMap.put("type", demande.getType().getType());
                         }
 
-                        // Add response details
+                        // Réponse des chefs
                         if (demande.getResponseChefs() != null) {
                             Map<String, Object> responseMap = new HashMap<>();
                             responseMap.put("responseChef1", demande.getResponseChefs().getResponseChef1());
@@ -524,7 +537,7 @@ public class DemandeFormationController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            logger.error("Error fetching approved formation requests", e);
+            logger.error("Erreur lors de la récupération des demandes approuvées par chef1", e);
             return ResponseEntity.internalServerError().body(
                     Map.of(
                             "status", "error",
@@ -534,6 +547,7 @@ public class DemandeFormationController {
             );
         }
     }
+
 
 
     @PutMapping("/refuser/{id}")

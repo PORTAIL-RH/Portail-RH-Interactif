@@ -430,14 +430,7 @@ public class DemandeCongeController {
             DemandeConge demande = demandeCongeRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Demande de congé non trouvée"));
 
-            // 3. Check if request is already approved or rejected
-            if (demande.getReponseChef() == Reponse.N) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "status", "error",
-                        "message", "Cette demande a déjà été refusée et ne peut plus être modifiée"
-                ));
-            }
-
+            // 3. Check if request is already approved (but allow if rejected)
             if (demande.getReponseChef() == Reponse.O) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "status", "error",
@@ -463,6 +456,7 @@ public class DemandeCongeController {
 
             switch (poidChef) {
                 case 1:
+                    // Only check if chef 1 has already responded
                     if (!"I".equals(response.getResponseChef1())) {
                         return ResponseEntity.badRequest().body(Map.of(
                                 "status", "error",
@@ -487,7 +481,6 @@ public class DemandeCongeController {
                                 null
                         );
                     }
-
                     break;
 
                 case 2:
@@ -535,21 +528,18 @@ public class DemandeCongeController {
             demandeCongeRepository.save(demande);
 
             // 9. Notify employee
-            if (demande.getMatPers() != null ) {
+            if (demande.getMatPers() != null) {
                 String message = String.format("Demande de congé de personnel %s a été approuvée - Validation reçue (Chef %d)",
                         demande.getMatPers().getNom(), poidChef);
 
                 notificationService.createNotification(
-                         message,
+                        message,
                         null,
                         demande.getMatPers().getId(),
                         null,
                         null
                 );
             }
-
-
-
 
             return ResponseEntity.ok(Map.of(
                     "status", "success",
