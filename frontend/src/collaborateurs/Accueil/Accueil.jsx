@@ -77,9 +77,8 @@ const Accueil = () => {
       // In a real app, you would fetch this from your API
       setStats({
         pendingRequests: 3,
-        approvedRequests: 12,
-        rejectedRequests: 2,
-        leaveBalance: 18,
+        approvedRequests: 2,
+        rejectedRequests: 2
       })
     } catch (error) {
       console.error("Error fetching stats:", error)
@@ -265,15 +264,7 @@ const Accueil = () => {
                       <span className="stat-value">{stats.rejectedRequests}</span>
                     </div>
                   </div>
-                  <div className="stat-box">
-                    <div className="stat-icon leave-icon">
-                      <FiCalendar />
-                    </div>
-                    <div className="stat-info">
-                      <span className="stat-label">Jours de congé</span>
-                      <span className="stat-value">{stats.leaveBalance}</span>
-                    </div>
-                  </div>
+                 
                 </div>
               </div>
             </div>
