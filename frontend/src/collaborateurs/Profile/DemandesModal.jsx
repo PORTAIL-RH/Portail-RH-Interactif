@@ -392,38 +392,70 @@ const DemandeModal = ({ isOpen, onClose, request, onSave, onDelete, token, API_U
     }))
   }
 
-  const handleFileUpload = async (e) => {
-    const files = e.target.files
-    if (!files?.length) return
 
-    setFileUploading(true)
-    setUploadError(null)
-
-    try {
-      const formData = new FormData()
-      formData.append("file", files[0])
-
-      const response = await fetch(`${API_URL}/api/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-
-      if (!response.ok) throw new Error("Échec du téléversement")
-
-      const uploadedFile = await response.json()
-      setEditedRequest((prev) => ({
-        ...prev,
-        files: [uploadedFile],
-        reponseChef: "I",
-        reponseRH: "I",
-      }))
-    } catch (err) {
-      setUploadError(err.message)
-    } finally {
-      setFileUploading(false)
+    const handleFileUpload = async (fileId, filename = "document") => {
+    if (!fileId) {
+      toast.warning("No file selected");
+      return;
     }
-  }
+
+    const toastId = toast.loading("Preparing download...");
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+
+      const response = await fetch(`${API_URL}/api/files/download/${fileId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error: ${response.status}`);
+      }
+
+      const contentDisposition = response.headers.get('content-disposition');
+      let actualFilename = filename;
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/);
+        if (filenameMatch && filenameMatch[1]) {
+          actualFilename = filenameMatch[1];
+        }
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = actualFilename;
+      document.body.appendChild(link);
+      link.click();
+      
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+
+      toast.update(toastId, {
+        render: "Download started!",
+        type: "success",
+        isLoading: false,
+        autoClose: 2000
+      });
+    } catch (err) {
+      console.error("Download error:", err);
+      toast.update(toastId, {
+        render: `Download failed: ${err.message}`,
+        type: "error",
+        isLoading: false,
+        autoClose: 3000
+      });
+    }
+  };
 
   const validateForm = () => {
     const errors = {}
@@ -1225,22 +1257,7 @@ const DemandeModal = ({ isOpen, onClose, request, onSave, onDelete, token, API_U
               </div>
 
               {/* Files */}
-              {request.files?.length > 0 && (
-                <div className="detail-group">
-                  <FiDownload className="detail-icon" />
-                  <div>
-                    <h4>Fichiers joints</h4>
-                    <div className="file-list">
-                      {request.files.map((file, index) => (
-                        <a key={index} href={`${API_URL}/files/${file.id || file}`} download className="file-download">
-                          <FiDownload />
-                          {file.name || `Fichier ${index + 1}`}
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+
             </div>
           )}
         </div>

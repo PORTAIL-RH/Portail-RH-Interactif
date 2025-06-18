@@ -165,9 +165,7 @@ const Personnel = () => {
       // Try localStorage first unless forced refresh or polling
       if (!forceRefresh && !isPolling && fetchFromLocalStorage()) {
         // Only show success toast when data is loaded from localStorage (not polling)
-        if (!isPolling) {
-          toast.success("Personnel data loaded successfully", { autoClose: 3000 })
-        }
+        
         return
       }
 

@@ -109,7 +109,7 @@ const CalendrierConge = () => {
         }
 
         // Fetch only accepted leaves
-        const acceptedResponse = await fetch(`${API_URL}/api/demande-conge/personnel/${userId}/accepted`, {
+        const acceptedResponse = await fetch(`${API_URL}/api/demande-conge/personnel/${userId}/approved-by-chef1`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
