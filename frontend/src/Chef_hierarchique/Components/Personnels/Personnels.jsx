@@ -236,7 +236,7 @@ const Personnel = () => {
         <div className="personnel-content">
           <header className="page-header">
             <div className="header-row">
-              <h1>Personnel Management</h1>
+              <h1>Gestion du personnels</h1>
             </div>
           </header>
 
@@ -261,14 +261,14 @@ const Personnel = () => {
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  <h2>Collaborateurs</h2>
+                  <h2>Personnels</h2>
                 </div>
               </div>
 
               <div className="filter-section">
                 <div className="filter-group">
                   <div className="filter-input-group">
-                    <label htmlFor="nameFilter">Name</label>
+                    <label htmlFor="nameFilter">Nom</label>
                     <div className="input-with-icon">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -360,7 +360,7 @@ const Personnel = () => {
                     <table className="personnel-table">
                       <thead>
                         <tr>
-                          <th>Name</th>
+                          <th>Nom</th>
                           <th>Email</th>
                           <th>Matricule</th>
                           <th>Status</th>

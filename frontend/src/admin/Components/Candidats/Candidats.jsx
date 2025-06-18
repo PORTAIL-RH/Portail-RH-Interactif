@@ -50,141 +50,136 @@ const CandidatsPostulation = () => {
       setLoading(true);
       setError(null);
       
-      if (!id) throw new Error("Candidature ID is undefined");
+      if (!id) throw new Error("ID de candidature non défini");
 
-      // Fetch candidate count with credentials
+      // Récupération du nombre de candidats avec credentials
       const countResponse = await fetch(`${API_URL}/api/candidats/${id}/candidate-count`, {
         credentials: 'include'
       });
       
-      if (!countResponse.ok) throw new Error(`Failed to load candidate count: ${countResponse.statusText}`);
+      if (!countResponse.ok) throw new Error(`Échec du chargement du nombre de candidats : ${countResponse.statusText}`);
       const count = await countResponse.json();
       setTotalCandidates(count);
 
-      // Fetch candidates with credentials
+      // Récupération des candidats avec credentials
       const candidatesResponse = await fetch(`${API_URL}/api/candidats/by-position/${id}`, {
         credentials: 'include'
       });
       
-      if (!candidatesResponse.ok) throw new Error(`Failed to load candidates: ${candidatesResponse.statusText}`);
+      if (!candidatesResponse.ok) throw new Error(`Échec du chargement des candidats : ${candidatesResponse.statusText}`);
 
       const responseData = await candidatesResponse.json();
       
-      // Check if the response is an array or contains an array in a property
+      // Vérification si la réponse est un tableau ou contient un tableau dans une propriété
       let candidatesArray = Array.isArray(responseData) ? responseData : 
                           (responseData.candidates || responseData.content || []);
       
       if (!Array.isArray(candidatesArray)) {
-        throw new Error("Invalid data format received from API");
+        throw new Error("Format de données invalide reçu de l'API");
       }
 
       const formattedCandidates = candidatesArray.map(candidat => ({
         ...candidat,
         id: candidat.id || candidat._id,
-matchedSkills: Array.isArray(candidat.matchedSkills)
-  ? Object.fromEntries(candidat.matchedSkills.map(skill => [skill, 100]))
-  : (candidat.matchedSkills || {}),
-
-missingSkills: Array.isArray(candidat.missingSkills)
-  ? Object.fromEntries(candidat.missingSkills.map(skill => [skill, 0]))
-  : (candidat.missingSkills || {}),
-
+        matchedSkills: Array.isArray(candidat.matchedSkills)
+          ? Object.fromEntries(candidat.matchedSkills.map(skill => [skill, 100]))
+          : (candidat.matchedSkills || {}),
+        missingSkills: Array.isArray(candidat.missingSkills)
+          ? Object.fromEntries(candidat.missingSkills.map(skill => [skill, 0]))
+          : (candidat.missingSkills || {}),
         date_candidature: candidat.dateCandidature || candidat.date_candidature || null,
         score: Math.round(candidat.matchPercentage || candidat.score || 0),
-        status: candidat.accepted ? "Accepted" : "Pending",
+        status: candidat.accepted ? "Accepté" : "En attente",
         experience: "N/A"
       }));
 
       setCandidats(formattedCandidates);
       initializeExpandedSkills(formattedCandidates);
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error("Erreur de récupération :", error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-const initializeExpandedSkills = (candidates) => {
-  const initialExpandedState = {};
-  candidates.forEach(candidat => {
-    initialExpandedState[`tech-${candidat.id}`] = false;
-    initialExpandedState[`lang-${candidat.id}`] = false;
-  });
-  setExpandedSkills(initialExpandedState);
-};
-
+  const initializeExpandedSkills = (candidates) => {
+    const initialExpandedState = {};
+    candidates.forEach(candidat => {
+      initialExpandedState[`tech-${candidat.id}`] = false;
+      initialExpandedState[`lang-${candidat.id}`] = false;
+    });
+    setExpandedSkills(initialExpandedState);
+  };
 
   useEffect(() => {
     fetchCandidats();
   }, [id]);
 
+  const handleDownloadCV = async (candidatId) => {
+    try {
+      if (!candidatId) {
+        throw new Error("ID du candidat manquant.");
+      }
 
-const handleDownloadCV = async (candidatId) => {
-  try {
-    if (!candidatId) {
-      throw new Error("ID du candidat manquant.");
+      const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Échec du téléchargement du CV : ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+
+      // Extraction du nom de fichier depuis l'en-tête Content-Disposition
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = "cv.pdf";
+      if (contentDisposition && contentDisposition.includes("filename=")) {
+        filename = contentDisposition.split("filename=")[1].replace(/"/g, "");
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erreur lors du téléchargement du CV :", error);
+      alert("Erreur lors du téléchargement du CV : " + error.message);
     }
+  };
 
-    const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
-      method: "GET",
-      credentials: "include",
-    });
+  const handleViewCV = async (candidatId) => {
+    try {
+      if (!candidatId) {
+        throw new Error("ID du candidat manquant.");
+      }
 
-    if (!response.ok) {
-      throw new Error(`Échec du téléchargement du CV : ${response.statusText}`);
+      const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Échec de l'ouverture du CV : ${response.statusText}`);
+      }
+
+      const blob = await response.blob();
+      const fileURL = URL.createObjectURL(blob);
+      window.open(fileURL, "_blank", "noopener,noreferrer");
+
+      // Nettoyage après un délai
+      setTimeout(() => URL.revokeObjectURL(fileURL), 10000);
+    } catch (error) {
+      console.error("Erreur lors de l'ouverture du CV :", error);
+      alert("Erreur lors de l'ouverture du CV : " + error.message);
     }
-
-    const blob = await response.blob();
-
-    // Try to extract filename from Content-Disposition header
-    const contentDisposition = response.headers.get("Content-Disposition");
-    let filename = "cv.pdf";
-    if (contentDisposition && contentDisposition.includes("filename=")) {
-      filename = contentDisposition.split("filename=")[1].replace(/"/g, "");
-    }
-
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("Erreur lors du téléchargement du CV :", error);
-    alert("Erreur lors du téléchargement du CV : " + error.message);
-  }
-};
-
-const handleViewCV = async (candidatId) => {
-  try {
-    if (!candidatId) {
-      throw new Error("ID du candidat manquant.");
-    }
-
-    const response = await fetch(`${API_URL}/api/candidats/${candidatId}/cv`, {
-      method: "GET",
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      throw new Error(`Échec de l'ouverture du CV : ${response.statusText}`);
-    }
-
-    const blob = await response.blob();
-    const fileURL = URL.createObjectURL(blob);
-    window.open(fileURL, "_blank", "noopener,noreferrer");
-
-    // Optional: Clean up after some time
-    setTimeout(() => URL.revokeObjectURL(fileURL), 10000);
-  } catch (error) {
-    console.error("Erreur lors de l'ouverture du CV :", error);
-    alert("Erreur lors de l'ouverture du CV : " + error.message);
-  }
-};
-
+  };
 
   const toggleSkills = (skillType, candidatId) => {
     setExpandedSkills(prev => ({
@@ -193,48 +188,47 @@ const handleViewCV = async (candidatId) => {
     }));
   };
 
-const renderSkills = (skills, skillType, candidatId) => {
-  if (!skills || Object.keys(skills).length === 0) {
-    return <p className="no-skills">No skills specified</p>;
-  }
+  const renderSkills = (skills, skillType, candidatId) => {
+    if (!skills || Object.keys(skills).length === 0) {
+      return <p className="no-skills">Aucune Compétence</p>;
+    }
 
-  const isExpanded = expandedSkills[`${skillType}-${candidatId}`];
-  const visibleSkills = isExpanded
-    ? Object.entries(skills)
-    : Object.entries(skills).slice(0, 3);
+    const isExpanded = expandedSkills[`${skillType}-${candidatId}`];
+    const visibleSkills = isExpanded
+      ? Object.entries(skills)
+      : Object.entries(skills).slice(0, 3);
 
-  return (
-    <>
-      <div className="skills-container">
-        {visibleSkills.map(([skill, percentage]) => (
-          <div key={skill} className="skill-item">
-            <div className="skill-info">
-              <span className="skill-name">{skill}</span>
-              <span className="skill-percentage">
-                {Math.round(percentage)}%
-              </span>
+    return (
+      <>
+        <div className="skills-container">
+          {visibleSkills.map(([skill, percentage]) => (
+            <div key={skill} className="skill-item">
+              <div className="skill-info">
+                <span className="skill-name">{skill}</span>
+                <span className="skill-percentage">
+                  {Math.round(percentage)}%
+                </span>
+              </div>
+              <div className="skill-bar-container">
+                <div
+                  className="skill-bar"
+                  style={{ width: `${Math.round(percentage)}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="skill-bar-container">
-              <div
-                className="skill-bar"
-                style={{ width: `${Math.round(percentage)}%` }}
-              ></div>
-            </div>
-          </div>
-        ))}
-      </div>
-      {Object.keys(skills).length > 3 && (
-        <button
-          className="skills-toggle"
-          onClick={() => toggleSkills(skillType, candidatId)}
-        >
-          {isExpanded ? "Show Less" : "Show More"}
-        </button>
-      )}
-    </>
-  );
-};
-
+          ))}
+        </div>
+        {Object.keys(skills).length > 3 && (
+          <button
+            className="skills-toggle"
+            onClick={() => toggleSkills(skillType, candidatId)}
+          >
+            {isExpanded ? "Voir moins" : "Voir plus"}
+          </button>
+        )}
+      </>
+    );
+  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -252,9 +246,9 @@ const renderSkills = (skills, skillType, candidatId) => {
     }
   };
 
-  if (loading) return <div className="loading-container">Loading candidates...</div>;
-  if (error) return <div className="error-container">Error: {error}</div>;
-  if (candidats.length === 0) return <div className="empty-state">No candidates found</div>;
+  if (loading) return <div className="loading-container">Chargement des candidats...</div>;
+  if (error) return <div className="error-container">Erreur : {error}</div>;
+  if (candidats.length === 0) return <div className="empty-state">Aucun candidat trouvé</div>;
 
   return (
     <div className={`app-container ${theme}`}>
@@ -264,10 +258,10 @@ const renderSkills = (skills, skillType, candidatId) => {
         <div className="candidats-content">
           <div className="header-section">
             <button onClick={() => navigate(-1)} className="back-button">
-              <FiArrowLeft /> Back
+              <FiArrowLeft /> Retour
             </button>
-            <h2>Candidates for Position</h2>
-            <div className="candidate-count">{totalCandidates} candidates</div>
+            <h2>Candidats par poste</h2>
+            <div className="candidate-count">{totalCandidates} candidats</div>
           </div>
 
           <div className="candidats-grid">
@@ -275,9 +269,9 @@ const renderSkills = (skills, skillType, candidatId) => {
               <div key={candidat.id} className="candidat-card">
                 <div className="candidat-header">
                   <div className="candidat-info">
-                    <h3>{candidat.nom} {candidat.prenom}, {candidat.age} years</h3>
+                    <h3>{candidat.nom} {candidat.prenom}, {candidat.age} ans</h3>
                     <div className="candidat-meta">
-                      <span><FaStar /> {candidat.score}% match</span>
+                      <span><FaStar /> {candidat.score}% correspondance</span>
                     </div>
                   </div>
                   <div className={`status-badge ${candidat.status.toLowerCase()}`}>
@@ -290,36 +284,30 @@ const renderSkills = (skills, skillType, candidatId) => {
                     <div><FiMail /> {candidat.email}</div>
                     <div><FiPhone /> {candidat.numTel}</div>
                   </div>
-<div className="skills-section">
-  <h4>Matched Skills</h4>
-  {renderSkills(candidat.matchedSkills, "tech", candidat.id)}
-</div>
-
-<div className="skills-section">
-  <h4>Missing Skills</h4>
-  {renderSkills(candidat.missingSkills, "lang", candidat.id)}
-</div>
-
-
-
+                  <div className="skills-section">
+                    <h4>Compétences correspondantes</h4>
+                    {renderSkills(candidat.matchedSkills, "tech", candidat.id)}
+                  </div>
+                  <div className="skills-section">
+                    <h4>Compétences manquantes</h4>
+                    {renderSkills(candidat.missingSkills, "lang", candidat.id)}
+                  </div>
                   <div className="detail-item">
-                    <span>Application Date:</span>
+                    <span>Date de candidature :</span>
                     <span>{formatDate(candidat.date_candidature)}</span>
                   </div>
                 </div>
 
                 <div className="candidat-footer">
-<button
-  onClick={() => handleDownloadCV(candidat.id)}
-  className="cv-download-button"
->
-  <FiDownload /> CV
-</button>
-  <button onClick={() => handleViewCV(candidat.id)} className="cv-view-button">
-    <FiEye /> View
-  </button>
-
-
+                  <button
+                    onClick={() => handleDownloadCV(candidat.id)}
+                    className="cv-download-button"
+                  >
+                    <FiDownload /> CV
+                  </button>
+                  <button onClick={() => handleViewCV(candidat.id)} className="cv-view-button">
+                    <FiEye /> Voir
+                  </button>
                 </div>
               </div>
             ))}

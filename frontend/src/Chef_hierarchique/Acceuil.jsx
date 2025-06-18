@@ -68,9 +68,9 @@ const deepEqual = (x, y) => {
 
 const fetchWithRetry = async (url, options = {}, retries = 3) => {
   try {
-    const token = localStorage.getItem("authToken")
+    const token = localStorage.getItem("authToken");
     if (!token) {
-      throw new Error("Aucun token d'authentification trouvé")
+      throw new Error("Aucun token d'authentification trouvé");
     }
 
     const response = await fetch(url, {
@@ -80,20 +80,28 @@ const fetchWithRetry = async (url, options = {}, retries = 3) => {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-    })
+    });
 
     if (!response.ok) {
-      const errorText = await response.text()
-      throw new Error(errorText || `HTTP ${response.status}`)
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
 
-    return await response.json()
+    // First try to parse as JSON, but fall back to text if it fails
+    try {
+      return await response.json();
+    } catch (e) {
+      // If response is empty, return empty object
+      if (response.status === 204) return {};
+      // Otherwise return the text content
+      return await response.text();
+    }
   } catch (error) {
-    if (retries <= 0) throw error
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    return fetchWithRetry(url, options, retries - 1)
+    if (retries <= 0) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return fetchWithRetry(url, options, retries - 1);
   }
-}
+};
 
 const validateServiceResponse = (response) => {
   if (!response) return { isValid: false, error: "Réponse vide" }
@@ -608,32 +616,46 @@ const fetchApprovedLeaves = useCallback(
     [userId, processDemandes, saveToLocalStorage, detectDemandesChanges],
   )
 
-  const fetchFormations = useCallback(
-    async (silent = false) => {
-      if (!silent) setLoading(true)
-      try {
-        const data = await fetchWithRetry(`${API_URL}/api/demande-formation/personnel/${userId}/approved-by-chef1`)
-
-        const now = new Date()
-        const upcoming = (Array.isArray(data) ? data : [])
-          .filter((f) => f?.dateDebut && new Date(f.dateDebut) >= now)
-          .sort((a, b) => new Date(a.dateDebut) - new Date(b.dateDebut))
-          .slice(0, 3)
-
-        setUpcomingFormations(upcoming)
-        saveToLocalStorage("upcomingFormations", upcoming)
-
-        return upcoming
-      } catch (error) {
-        console.error("Erreur des formations:", error)
-        toast.error("Échec du chargement des données de formation")
-        return upcomingFormationsRef.current
-      } finally {
-        if (!silent) setLoading(false)
+const fetchFormations = useCallback(
+  async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await fetchWithRetry(`${API_URL}/api/demande-formation/personnel/${userId}/approved-by-chef1`);
+      
+      // Handle cases where response might be empty or not JSON
+      let data = [];
+      if (response) {
+        try {
+          // If response is already parsed (from fetchWithRetry), use it directly
+          data = Array.isArray(response) ? response : [];
+        } catch (e) {
+          console.warn("Response was not valid JSON, using empty array");
+          data = [];
+        }
       }
-    },
-    [userId, saveToLocalStorage],
-  )
+
+      const now = new Date();
+      const upcoming = data
+        .filter((f) => f?.dateDebut && new Date(f.dateDebut) >= now)
+        .sort((a, b) => new Date(a.dateDebut) - new Date(b.dateDebut))
+        .slice(0, 3);
+
+      setUpcomingFormations(upcoming);
+      saveToLocalStorage("upcomingFormations", upcoming);
+
+      return upcoming;
+    } catch (error) {
+      console.error("Erreur des formations:", error);
+      if (error.message !== "Failed to execute 'json' on 'Response'") {
+        toast.error("Échec du chargement des données de formation");
+      }
+      return upcomingFormationsRef.current;
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  },
+  [userId, saveToLocalStorage],
+);
 
   const formatDate = useCallback((dateString) => {
     try {
@@ -849,56 +871,58 @@ const fetchApprovedLeaves = useCallback(
                     </div>
                   </div>
 
-                  <div className="dashboard-card upcoming-formations">
-                    <div className="card-header">
-                      <h2>Formations à Venir</h2>
-                    </div>
-                    <div className="card-content">
-                      {upcomingFormations.length > 0 ? (
-                        <div className="formations-list">
-                          {upcomingFormations.map((formation, index) => {
-                            const startDate = new Date(formation.dateDebut)
-                            const endDate = formation.dateFin ? new Date(formation.dateFin) : null
-
-                            return (
-                              <div key={index} className="formation-event">
-                                <div className="calendar-badge">
-                                  <div className="calendar-month">
-                                    {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
-                                  </div>
-                                  <div className="calendar-day">{startDate.getDate()}</div>
-                                  <div className="calendar-weekday">
-                                    {startDate.toLocaleString("fr-FR", { weekday: "short" })}
-                                  </div>
-                                </div>
-                                <div className="formation-info">
-                                  <h3 className="formation-title">
-                                    {formation.theme?.theme} - {formation.titre?.titre}
-                                  </h3>
-                                  <div className="formation-meta">
-                                    <span className="meta-item">
-                                      <FiClock />
-                                      {formation.nbrJours} jours
-                                    </span>
-                                    {formation.lieu && (
-                                      <span className="meta-item">
-                                        <FiMapPin /> {formation.lieu}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
+            <div className="dashboard-card upcoming-formations">
+              <div className="card-header">
+                <h2>Formations à Venir</h2>
+              </div>
+              <div className="card-content">
+                {upcomingFormations.length > 0 ? (
+                  <div className="formations-list">
+                    {upcomingFormations.map((formation, index) => {
+                      const startDate = new Date(formation.dateDebut)
+                      const endDate = formation.dateFin ? new Date(formation.dateFin) : null
+                      
+                      return (
+                        <div key={index} className="formation-event">
+                          <div className="calendar-badge">
+                            <div className="calendar-month">
+                              {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
+                            </div>
+                            <div className="calendar-day">{startDate.getDate()}</div>
+                            <div className="calendar-weekday">
+                              {startDate.toLocaleString("fr-FR", { weekday: "short" })}
+                            </div>
+                          </div>
+                          <div className="formation-info">
+                            <h3 className="formation-title">
+                              {formation.theme?.name || formation.titre?.name || "Formation"}
+                            </h3>
+                            <div className="formation-meta">
+                              <span className="meta-item">
+                                <FiClock /> 
+                                {endDate 
+                                  ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} jours`
+                                  : "1 jour"}
+                              </span>
+                              {formation.lieu && (
+                                <span className="meta-item">
+                                  <FiMapPin /> {formation.lieu}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      ) : (
-                        <div className="no-formations">
-                          <FiClock className="no-data-icon" />
-                          <p>Aucune formation à venir</p>
-                        </div>
-                      )}
-                    </div>
+                      )
+                    })}
                   </div>
+                ) : (
+                  <div className="no-formations">
+                    <FiClock className="no-data-icon" />
+                    <p>Aucune formation prévue</p>
+                  </div>
+                )}
+              </div>
+            </div>
                 </>
               )}
             </div>

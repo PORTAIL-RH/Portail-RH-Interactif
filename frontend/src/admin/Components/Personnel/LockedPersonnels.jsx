@@ -1,97 +1,97 @@
 import { useState, useEffect } from "react"
 import Sidebar from "../Sidebar/Sidebar"
 import Navbar from "../Navbar/Navbar"
-import "./Personnels.css" // Reusing the same CSS
+import "./Personnels.css" // Réutilisation du même CSS
 import { API_URL } from "../../../config"
 
-const LockedAccounts = () => {
-  const [lockedAccounts, setLockedAccounts] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
+const ComptesBloques = () => {
+  const [comptesBloques, setComptesBloques] = useState([])
+  const [chargement, setChargement] = useState(true)
   const [toast, setToast] = useState({ show: false, message: "", type: "" })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [itemsPerPage] = useState(10)
-  const [filterMatricule, setFilterMatricule] = useState("")
-  const [filterName, setFilterName] = useState("")
+  const [pageCourante, setPageCourante] = useState(1)
+  const [elementsParPage] = useState(10)
+  const [filtreMatricule, setFiltreMatricule] = useState("")
+  const [filtreNom, setFiltreNom] = useState("")
   const [theme, setTheme] = useState("light")
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [unlockingId, setUnlockingId] = useState(null)
+  const [sidebarReplie, setSidebarReplie] = useState(false)
+  const [deverouillageId, setDeverouillageId] = useState(null)
 
   useEffect(() => {
-    const handleSidebarToggle = (e) => {
-      setSidebarCollapsed(e.detail)
+    const gererToggleSidebar = (e) => {
+      setSidebarReplie(e.detail)
     }
 
-    window.addEventListener('sidebarToggled', handleSidebarToggle)
+    window.addEventListener('sidebarToggled', gererToggleSidebar)
     
     return () => {
-      window.removeEventListener('sidebarToggled', handleSidebarToggle)
+      window.removeEventListener('sidebarToggled', gererToggleSidebar)
     }
   }, [])
 
-  // Theme management
+  // Gestion du thème
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") || "light"
-    setTheme(savedTheme)
-    applyTheme(savedTheme)
+    const themeSauvegarde = localStorage.getItem("theme") || "light"
+    setTheme(themeSauvegarde)
+    appliquerTheme(themeSauvegarde)
   }, [])
 
-  const applyTheme = (theme) => {
+  const appliquerTheme = (theme) => {
     document.documentElement.classList.remove("light", "dark")
     document.documentElement.classList.add(theme)
     localStorage.setItem("theme", theme)
   }
 
-  const toggleTheme = () => {
-    const newTheme = theme === "light" ? "dark" : "light"
-    setTheme(newTheme)
-    applyTheme(newTheme)
-    window.dispatchEvent(new CustomEvent("themeChanged", { detail: newTheme }))
+  const basculerTheme = () => {
+    const nouveauTheme = theme === "light" ? "dark" : "light"
+    setTheme(nouveauTheme)
+    appliquerTheme(nouveauTheme)
+    window.dispatchEvent(new CustomEvent("themeChanged", { detail: nouveauTheme }))
   }
 
-  // Show toast notification
-  const showToast = (message, type = "success") => {
+  // Afficher une notification toast
+  const afficherToast = (message, type = "success") => {
     setToast({ show: true, message, type })
     setTimeout(() => {
       setToast({ show: false, message: "", type: "" })
     }, 3000)
   }
 
-  // Fetch locked accounts
-  const fetchLockedAccounts = async () => {
-    setIsLoading(true)
+  // Récupérer les comptes bloqués
+  const recupererComptesBloques = async () => {
+    setChargement(true)
     try {
-      const response = await fetch(`${API_URL}/api/Personnel/locked-accounts`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch locked accounts")
+      const reponse = await fetch(`${API_URL}/api/Personnel/locked-accounts`)
+      if (!reponse.ok) {
+        throw new Error("Échec de la récupération des comptes bloqués")
       }
-      const data = await response.json()
-      setLockedAccounts(data || [])
-    } catch (error) {
-      console.error("Error fetching locked accounts:", error)
-      showToast(error.message, "error")
+      const donnees = await reponse.json()
+      setComptesBloques(donnees || [])
+    } catch (erreur) {
+      console.error("Erreur lors de la récupération des comptes bloqués:", erreur)
+      afficherToast(erreur.message, "error")
     } finally {
-      setIsLoading(false)
+      setChargement(false)
     }
   }
 
   useEffect(() => {
-    fetchLockedAccounts()
+    recupererComptesBloques()
   }, [])
 
-  // Unlock account
-  const handleUnlockAccount = async (matricule) => {
-    setUnlockingId(matricule)
+  // Déverrouiller un compte
+  const deverrouillerCompte = async (matricule) => {
+    setDeverouillageId(matricule)
     try {
       const token = localStorage.getItem("authToken")
       if (!token) {
-        showToast("Please login first", "error")
-        setUnlockingId(null)
+        afficherToast("Veuillez vous connecter d'abord", "error")
+        setDeverouillageId(null)
         return
       }
 
-      showToast("Unlocking account...", "info")
+      afficherToast("Déverrouillage du compte...", "info")
 
-      const response = await fetch(`${API_URL}/api/Personnel/unlock-account`, {
+      const reponse = await fetch(`${API_URL}/api/Personnel/unlock-account`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -100,109 +100,109 @@ const LockedAccounts = () => {
         body: JSON.stringify({ matricule }),
       })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Failed to unlock account")
+      if (!reponse.ok) {
+        const erreur = await reponse.json()
+        throw new Error(erreur.error || "Échec du déverrouillage du compte")
       }
 
-      const result = await response.json()
-      showToast(result.message, "success")
+      const resultat = await reponse.json()
+      afficherToast(resultat.message, "success")
 
-      // Update the local state instead of refetching
-      setLockedAccounts(prev => prev.filter(account => account.matricule !== matricule))
-    } catch (error) {
-      showToast(error.message, "error")
-      console.error("Error unlocking account:", error)
+      // Mettre à jour l'état local au lieu de recharger
+      setComptesBloques(prev => prev.filter(compte => compte.matricule !== matricule))
+    } catch (erreur) {
+      afficherToast(erreur.message, "error")
+      console.error("Erreur lors du déverrouillage du compte:", erreur)
     } finally {
-      setUnlockingId(null)
+      setDeverouillageId(null)
     }
   }
 
-  // Reset filters
-  const resetFilters = () => {
-    setFilterMatricule("")
-    setFilterName("")
-    setCurrentPage(1)
+  // Réinitialiser les filtres
+  const reinitialiserFiltres = () => {
+    setFiltreMatricule("")
+    setFiltreNom("")
+    setPageCourante(1)
   }
 
-  // Filter locked accounts
-  const filteredAccounts = lockedAccounts.filter((account) => {
-    const matchesMatricule =
-      filterMatricule === "" ||
-      (account.matricule && account.matricule.toLowerCase().includes(filterMatricule.toLowerCase()))
+  // Filtrer les comptes bloqués
+  const comptesFiltres = comptesBloques.filter((compte) => {
+    const correspondMatricule =
+      filtreMatricule === "" ||
+      (compte.matricule && compte.matricule.toLowerCase().includes(filtreMatricule.toLowerCase()))
 
-    const matchesName =
-      filterName === "" ||
-      (account.fullName && account.fullName.toLowerCase().includes(filterName.toLowerCase()))
+    const correspondNom =
+      filtreNom === "" ||
+      (compte.fullName && compte.fullName.toLowerCase().includes(filtreNom.toLowerCase()))
 
-    return matchesMatricule && matchesName
+    return correspondMatricule && correspondNom
   })
 
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAccounts.length / itemsPerPage)
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredAccounts.slice(indexOfFirstItem, indexOfLastItem)
+  // Logique de pagination
+  const pagesTotales = Math.ceil(comptesFiltres.length / elementsParPage)
+  const indexDernierElement = pageCourante * elementsParPage
+  const indexPremierElement = indexDernierElement - elementsParPage
+  const elementsCourants = comptesFiltres.slice(indexPremierElement, indexDernierElement)
 
-  // Change page
-  const paginate = (pageNumber) => setCurrentPage(pageNumber)
-  const nextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-  const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1))
+  // Changer de page
+  const paginer = (numeroPage) => setPageCourante(numeroPage)
+  const pageSuivante = () => setPageCourante((prev) => Math.min(prev + 1, pagesTotales))
+  const pagePrecedente = () => setPageCourante((prev) => Math.max(prev - 1, 1))
 
-  // Reset to page 1 when filters change
+  // Réinitialiser à la page 1 lorsque les filtres changent
   useEffect(() => {
-    setCurrentPage(1)
-  }, [filterMatricule, filterName])
+    setPageCourante(1)
+  }, [filtreMatricule, filtreNom])
 
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pageNumbers = []
-    const maxPagesToShow = 5
+  // Générer les numéros de page pour la pagination
+  const obtenirNumerosPage = () => {
+    const numerosPage = []
+    const pagesMaxAffichees = 5
 
-    if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i)
+    if (pagesTotales <= pagesMaxAffichees) {
+      for (let i = 1; i <= pagesTotales; i++) {
+        numerosPage.push(i)
       }
     } else {
-      pageNumbers.push(1)
+      numerosPage.push(1)
 
-      let startPage = Math.max(2, currentPage - 1)
-      let endPage = Math.min(totalPages - 1, currentPage + 1)
+      let pageDebut = Math.max(2, pageCourante - 1)
+      let pageFin = Math.min(pagesTotales - 1, pageCourante + 1)
 
-      if (currentPage <= 3) {
-        endPage = Math.min(totalPages - 1, 4)
+      if (pageCourante <= 3) {
+        pageFin = Math.min(pagesTotales - 1, 4)
       }
 
-      if (currentPage >= totalPages - 2) {
-        startPage = Math.max(2, totalPages - 3)
+      if (pageCourante >= pagesTotales - 2) {
+        pageDebut = Math.max(2, pagesTotales - 3)
       }
 
-      if (startPage > 2) {
-        pageNumbers.push("...")
+      if (pageDebut > 2) {
+        numerosPage.push("...")
       }
 
-      for (let i = startPage; i <= endPage; i++) {
-        pageNumbers.push(i)
+      for (let i = pageDebut; i <= pageFin; i++) {
+        numerosPage.push(i)
       }
 
-      if (endPage < totalPages - 1) {
-        pageNumbers.push("...")
+      if (pageFin < pagesTotales - 1) {
+        numerosPage.push("...")
       }
 
-      pageNumbers.push(totalPages)
+      numerosPage.push(pagesTotales)
     }
 
-    return pageNumbers
+    return numerosPage
   }
 
 
   return (
     <div className={`app-container ${theme}`}>
       <Sidebar theme={theme} />
-      <div className={`dashboard-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        <Navbar theme={theme} toggleTheme={toggleTheme} />
+      <div className={`dashboard-container ${sidebarReplie ? 'collapsed' : ''}`}>
+        <Navbar theme={theme} basculerTheme={basculerTheme} />
         <div className="dashboard-content">
-          {/* Toast Notification */}
+          {/* Notification Toast */}
           {toast.show && (
             <div className={`toast-notification ${toast.type}`}>
               <div className="toast-icon">
@@ -280,19 +280,19 @@ const LockedAccounts = () => {
           )}
 
           <div className="page-header">
-            <h2 className="page-title">Locked Accounts Management</h2>
+            <h2 className="page-title">Gestion des Comptes Bloqués</h2>
           </div>
 
-          {/* Statistics Card */}
+          {/* Carte de Statistiques */}
           <div className="stats-container">
             <div className="stat-card inactive">
-              <h3>Locked Accounts</h3>
-              <div className="stat-value">{lockedAccounts.length}</div>
-              <div className="stat-description">Accounts currently locked</div>
+              <h3>Comptes Bloqués</h3>
+              <div className="stat-value">{comptesBloques.length}</div>
+              <div className="stat-description">Comptes actuellement bloqués</div>
             </div>
           </div>
 
-          {/* Enhanced Filtration Section */}
+          {/* Section de Filtrage Améliorée */}
           <div className="filtration-section">
             <div className="filtration-header">
               <svg
@@ -308,12 +308,12 @@ const LockedAccounts = () => {
               >
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
               </svg>
-              <h3>Filter Locked Accounts</h3>
+              <h3>Filtrer les Comptes Bloqués</h3>
             </div>
             <div className="filtration-content">
               <div className="filtration-row">
                 <div className="filter-group">
-                  <label htmlFor="filterName">Name</label>
+                  <label htmlFor="filterName">Nom</label>
                   <div className="filter-input">
                     <svg
                       className="filter-icon"
@@ -331,9 +331,9 @@ const LockedAccounts = () => {
                     <input
                       id="filterName"
                       type="text"
-                      placeholder="Search by name..."
-                      value={filterName}
-                      onChange={(e) => setFilterName(e.target.value)}
+                      placeholder="Rechercher par nom..."
+                      value={filtreNom}
+                      onChange={(e) => setFiltreNom(e.target.value)}
                     />
                   </div>
                 </div>
@@ -358,15 +358,15 @@ const LockedAccounts = () => {
                     <input
                       id="filterMatricule"
                       type="text"
-                      placeholder="Search by matricule..."
-                      value={filterMatricule}
-                      onChange={(e) => setFilterMatricule(e.target.value)}
+                      placeholder="Rechercher par matricule..."
+                      value={filtreMatricule}
+                      onChange={(e) => setFiltreMatricule(e.target.value)}
                     />
                   </div>
                 </div>
               </div>
               <div className="filter-actions">
-                <button className="filter-button secondary" onClick={resetFilters}>
+                <button className="filter-button secondary" onClick={reinitialiserFiltres}>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="16"
@@ -387,57 +387,57 @@ const LockedAccounts = () => {
                     <path d="M16 4l-4 4-4-4"></path>
                     <path d="M8 20l4-4 4 4"></path>
                   </svg>
-                  Reset Filters
+                  Réinitialiser les Filtres
                 </button>
               </div>
             </div>
             <div className="filter-results">
               <div className="results-count">
-                Showing <strong>{indexOfFirstItem + 1}</strong> to{" "}
-                <strong>{Math.min(indexOfLastItem, filteredAccounts.length)}</strong> of{" "}
-                <strong>{filteredAccounts.length}</strong> locked accounts
+                Affichage de <strong>{indexPremierElement + 1}</strong> à{" "}
+                <strong>{Math.min(indexDernierElement, comptesFiltres.length)}</strong> sur{" "}
+                <strong>{comptesFiltres.length}</strong> comptes bloqués
               </div>
             </div>
           </div>
 
-          {isLoading ? (
+          {chargement ? (
             <div className="table-loading">
               <div className="loading-spinner"></div>
-              <p>Loading locked accounts...</p>
+              <p>Chargement des comptes bloqués...</p>
             </div>
-          ) : filteredAccounts.length > 0 ? (
+          ) : comptesFiltres.length > 0 ? (
             <div className="table-container">
               <table className="staff-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
+                    <th>Nom</th>
                     <th>Email</th>
                     <th>Matricule</th>
-                    <th>Lock Reason</th>
-                    <th>Failed Attempts</th>
-                    <th>Lock Time</th>
+                    <th>Raison du Blocage</th>
+                    <th>Tentatives Échouées</th>
+                    <th>Heure de Blocage</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((account) => (
-                    <tr key={account.matricule}>
-                      <td>{account.fullName}</td>
-                      <td>{account.email}</td>
-                      <td>{account.matricule}</td>
-                      <td>{account.lockReason || "Too many failed attempts"}</td>
-                      <td>{account.failedAttempts || "N/A"}</td>
+                  {elementsCourants.map((compte) => (
+                    <tr key={compte.matricule}>
+                      <td>{compte.fullName}</td>
+                      <td>{compte.email}</td>
+                      <td>{compte.matricule}</td>
+                      <td>{compte.lockReason || "Trop de tentatives échouées"}</td>
+                      <td>{compte.failedAttempts || "N/A"}</td>
                       <td>
-                        {account.lockTime ? new Date(account.lockTime).toLocaleString() : "N/A"}
+                        {compte.lockTime ? new Date(compte.lockTime).toLocaleString() : "N/A"}
                       </td>
             
                       <td>
                         <button
                           className="action-button activate"
-                          onClick={() => handleUnlockAccount(account.matricule)}
-                          disabled={unlockingId === account.matricule}
+                          onClick={() => deverrouillerCompte(compte.matricule)}
+                          disabled={deverouillageId === compte.matricule}
                         >
-                          {unlockingId === account.matricule ? (
+                          {deverouillageId === compte.matricule ? (
                             <span className="row-spinner"></span>
                           ) : (
                             <>
@@ -455,7 +455,7 @@ const LockedAccounts = () => {
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                               </svg>
-                              Unlock
+                              Déverrouiller
                             </>
                           )}
                         </button>
@@ -468,11 +468,11 @@ const LockedAccounts = () => {
               {/* Pagination */}
               <div className="pagination-container">
                 <div className="pagination-info">
-                  Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredAccounts.length)} of{" "}
-                  {filteredAccounts.length} entries
+                  Affichage de {indexPremierElement + 1} à {Math.min(indexDernierElement, comptesFiltres.length)} sur{" "}
+                  {comptesFiltres.length} entrées
                 </div>
                 <div className="pagination-controls">
-                  <button className="pagination-button" onClick={prevPage} disabled={currentPage === 1}>
+                  <button className="pagination-button" onClick={pagePrecedente} disabled={pageCourante === 1}>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -488,23 +488,23 @@ const LockedAccounts = () => {
                     </svg>
                   </button>
 
-                  {getPageNumbers().map((number, index) =>
-                    number === "..." ? (
+                  {obtenirNumerosPage().map((numero, index) =>
+                    numero === "..." ? (
                       <div key={`ellipsis-${index}`} className="pagination-ellipsis">
                         ...
                       </div>
                     ) : (
                       <button
-                        key={number}
-                        className={`pagination-button ${currentPage === number ? "active" : ""}`}
-                        onClick={() => paginate(number)}
+                        key={numero}
+                        className={`pagination-button ${pageCourante === numero ? "active" : ""}`}
+                        onClick={() => paginer(numero)}
                       >
-                        {number}
+                        {numero}
                       </button>
                     ),
                   )}
 
-                  <button className="pagination-button" onClick={nextPage} disabled={currentPage === totalPages}>
+                  <button className="pagination-button" onClick={pageSuivante} disabled={pageCourante === pagesTotales}>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="16"
@@ -538,10 +538,10 @@ const LockedAccounts = () => {
                 <line x1="8" y1="12" x2="16" y2="12"></line>
               </svg>
               <p className="empty-text">
-                No locked accounts found matching your filters. Try adjusting your search criteria or reset the filters.
+                Aucun compte bloqué trouvé correspondant à vos critères. Essayez d'ajuster vos critères de recherche ou réinitialisez les filtres.
               </p>
-              <button className="filter-button secondary" onClick={resetFilters}>
-                Reset Filters
+              <button className="filter-button secondary" onClick={reinitialiserFiltres}>
+                Réinitialiser les Filtres
               </button>
             </div>
           )}
@@ -551,4 +551,4 @@ const LockedAccounts = () => {
   )
 }
 
-export default LockedAccounts
+export default ComptesBloques

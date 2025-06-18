@@ -239,7 +239,7 @@ const ProfilePage = () => {
 
           <div className="profile-body">
             <div className="info-section">
-              <h2>Personal Information</h2>
+              <h2>Informations</h2>
               <div className="info-grid">
                 <div className="info-item">
                   <div className="info-label">
@@ -260,7 +260,7 @@ const ProfilePage = () => {
                 <div className="info-item">
                   <div className="info-label">
                     <FiBriefcase className="info-icon" />
-                    <span>Company Code</span>
+                    <span>Code de la société</span>
                   </div>
                   <div className="info-value">{userData.code_soc || "N/A"}</div>
                 </div>
@@ -268,7 +268,7 @@ const ProfilePage = () => {
                 <div className="info-item">
                   <div className="info-label">
                     <FiUsers className="info-icon" />
-                    <span>Phone</span>
+                    <span>Telephone</span>
                   </div>
                   <div className="info-value">{userData.telephone || "N/A"}</div>
                 </div>
@@ -276,7 +276,7 @@ const ProfilePage = () => {
                 <div className="info-item">
                   <div className="info-label">
                     <FiCalendar className="info-icon" />
-                    <span>Date of Birth</span>
+                    <span>Date De Naissance</span>
                   </div>
                   <div className="info-value">{formatDate(userData.date_naiss)}</div>
                 </div>
@@ -284,7 +284,7 @@ const ProfilePage = () => {
                 <div className="info-item">
                   <div className="info-label">
                     <FiUsers className="info-icon" />
-                    <span>Children</span>
+                    <span>Enfants</span>
                   </div>
                   <div className="info-value">{userData.nbr_enfants || "0"}</div>
                 </div>
@@ -292,10 +292,10 @@ const ProfilePage = () => {
             </div>
 
             <div className="info-section">
-              <h2>Account Status</h2>
+              <h2>Status</h2>
               <div className="status-grid">
                 <div className="status-item">
-                  <div className="status-label">Account Active</div>
+                  <div className="status-label">Active</div>
                   <div className={`status-badge ${userData.active ? "active" : "inactive"}`}>
                     {userData.active ? (
                       <>
@@ -310,15 +310,15 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="status-item">
-                  <div className="status-label">Account Locked</div>
+                  <div className="status-label">Compte Bloqué</div>
                   <div className={`status-badge ${userData.accountLocked ? "locked" : "unlocked"}`}>
                     {userData.accountLocked ? (
                       <>
-                        <FiLock className="status-icon" /> Locked
+                        <FiLock className="status-icon" /> Bloqué
                       </>
                     ) : (
                       <>
-                        <FiUnlock className="status-icon" /> Unlocked
+                        <FiUnlock className="status-icon" /> Débloquée
                       </>
                     )}
                   </div>
