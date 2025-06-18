@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { FiFileText, FiCalendar, FiUsers, FiClock, FiCheckCircle, FiXCircle, FiAlertCircle } from "react-icons/fi"
+import { FiFileText, FiCalendar,FiUser, FiUsers, FiClock, FiCheckCircle, FiXCircle, FiAlertCircle } from "react-icons/fi"
 import "../common-ui.css" 
 import "./Accueil.css"
 import Navbar from "../Components/Navbar/Navbar"
@@ -231,43 +231,34 @@ const Accueil = () => {
             </div>
 
             {/* Stats Card */}
-            <div className="content-card stats-card">
-              <div className="card-header">
-                <h2>Statistiques</h2>
-              </div>
-              <div className="card-content">
-                <div className="stats-grid">
-                  <div className="stat-box">
-                    <div className="stat-icon pending-icon">
-                      <FiClock />
-                    </div>
-                    <div className="stat-info">
-                      <span className="stat-label">En attente</span>
-                      <span className="stat-value">{stats.pendingRequests}</span>
-                    </div>
-                  </div>
-                  <div className="stat-box">
-                    <div className="stat-icon approved-icon">
-                      <FiCheckCircle />
-                    </div>
-                    <div className="stat-info">
-                      <span className="stat-label">Approuvées</span>
-                      <span className="stat-value">{stats.approvedRequests}</span>
-                    </div>
-                  </div>
-                  <div className="stat-box">
-                    <div className="stat-icon rejected-icon">
-                      <FiXCircle />
-                    </div>
-                    <div className="stat-info">
-                      <span className="stat-label">Rejetées</span>
-                      <span className="stat-value">{stats.rejectedRequests}</span>
-                    </div>
-                  </div>
-                 
-                </div>
-              </div>
-            </div>
+<div className="content-card contacts-card">
+  <div className="card-header">
+    <h2>Contacts RH</h2>
+  </div>
+  <div className="card-content">
+    <div className="contact-item">
+      <FiUser className="contact-icon" />
+      <div>
+        <h3>Service RH</h3>
+        <p>rh@entreprise.com</p>
+      </div>
+    </div>
+    <div className="contact-item">
+      <FiUser className="contact-icon" />
+      <div>
+        <h3>Mon manager</h3>
+        <p>manager@entreprise.com</p>
+      </div>
+    </div>
+    <div className="contact-item">
+      <FiUser className="contact-icon" />
+      <div>
+        <h3>Support IT</h3>
+        <p>support@entreprise.com</p>
+      </div>
+    </div>
+  </div>
+</div>
 
             {/* Quick Actions Card */}
             <div className="content-card">

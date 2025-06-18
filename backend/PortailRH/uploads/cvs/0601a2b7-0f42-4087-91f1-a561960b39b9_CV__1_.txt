@@ -1,0 +1,16 @@
+Extrait de CV – Compétences techniques
+🛠️ Compétences
+Langages : SQL, PL/SQL, MySQL, PostgreSQL
+
+Conteneurisation & DevOps : Docker (création et gestion d’images/containers, Docker Compose), Docker Hub
+
+Bases de données :
+
+Conception et optimisation de bases de données relationnelles
+
+Écriture de requêtes complexes, procédures stockées, vues et triggers
+
+Sauvegarde/restauration et gestion des performances
+
+Déploiement : Création d’environnements isolés avec Docker pour tester et déployer des applications multi-services (Node.js, Spring Boot, React…)
+

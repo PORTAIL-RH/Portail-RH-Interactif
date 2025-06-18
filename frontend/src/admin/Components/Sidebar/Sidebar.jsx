@@ -97,12 +97,12 @@ const Sidebar = ({ theme }) => {
             <ul className={`dropdown-menu ${isEmployesOpen ? "open" : ""}`}>
               <li className="dropdown-item">
                 <Link to="/Personnel" className="dropdown-link">
-                  Employés
+                  Personnels
                 </Link>
               </li>
               <li className="dropdown-item">
                 <Link to="/LockedPersonnel" className="dropdown-link">
-                  Locked Employés
+                  Personnels Verrouillés
                 </Link>
               </li>
             </ul>
@@ -117,7 +117,7 @@ const Sidebar = ({ theme }) => {
             <ul className={`dropdown-menu ${isDemandesOpen ? "open" : ""}`}>
               <li className="dropdown-item">
                 <Link to="/AjoutSociete" className="dropdown-link">
-                  Société
+                  Succursale_Société
                 </Link>
               </li>
               <li className="dropdown-item">

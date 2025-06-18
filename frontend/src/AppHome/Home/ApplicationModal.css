@@ -16,7 +16,13 @@
   padding: 1rem;
   overflow-y: auto;
 }
+.untouched {
+  border-color: var(--border-color) !important;
+}
 
+.untouched:focus {
+  border-color: var(--primary-color) !important;
+}
 .dark-theme .modal-overlay {
   background-color: rgba(0, 0, 0, 0.8);
 }

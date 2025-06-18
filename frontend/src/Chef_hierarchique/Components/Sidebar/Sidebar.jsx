@@ -88,7 +88,7 @@ const Sidebar = ({ theme }) => {
         <li className="sidebar-item">
           <Link to="/AccueilCHEF" className={`sidebar-link ${isActive("/AccueilCHEF") ? "active" : ""}`}>
             <MdDashboard className="sidebar-icon" />
-            <span className="sidebar-text">Dashboard</span>
+            <span className="sidebar-text">Tableau de bord</span>
           </Link>
         </li>
 
