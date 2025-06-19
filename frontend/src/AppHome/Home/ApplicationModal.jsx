@@ -31,11 +31,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
   const handleChange = (e) => {
     const { name, value } = e.target
 
-    // Mark field as touched
-    if (!touchedFields[name]) {
-      setTouchedFields((prev) => ({ ...prev, [name]: true }))
-    }
-
     // Format phone number as user types
     let formattedValue = value
     if (name === "numTel") {
@@ -49,11 +44,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
       } else {
         formattedValue = `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)}`
       }
-
-      // Validate phone number as user types
-      if (touchedFields.numTel) {
-        validatePhoneNumber(formattedValue)
-      }
     }
 
     setFormData((prev) => ({
@@ -61,7 +51,7 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
       [name]: formattedValue,
     }))
 
-    // Clear error for this field
+    // Clear error for this field when user types
     if (errors[name]) {
       setErrors((prev) => {
         const newErrors = { ...prev }
@@ -69,40 +59,17 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
         return newErrors
       })
     }
-
-    // Validate email on change if touched
-    if (name === "email" && touchedFields.email) {
-      validateEmail(value)
-    }
   }
 
   const validatePhoneNumber = (phoneNumber) => {
     const digits = phoneNumber.replace(/\D/g, "")
 
     if (digits.length === 0) {
-      setErrors((prev) => ({ ...prev, numTel: "Le numéro de téléphone est requis" }))
-      setValidFields((prev) => {
-        const newValid = { ...prev }
-        delete newValid.numTel
-        return newValid
-      })
-      return false
+      return { isValid: false, message: "Le numéro de téléphone est requis" }
     } else if (digits.length !== 8) {
-      setErrors((prev) => ({ ...prev, numTel: "Le numéro doit contenir 8 chiffres" }))
-      setValidFields((prev) => {
-        const newValid = { ...prev }
-        delete newValid.numTel
-        return newValid
-      })
-      return false
+      return { isValid: false, message: "Le numéro doit contenir 8 chiffres" }
     } else {
-      setErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.numTel
-        return newErrors
-      })
-      setValidFields((prev) => ({ ...prev, numTel: true }))
-      return true
+      return { isValid: true }
     }
   }
 
@@ -110,29 +77,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
     if (!email.trim()) {
-      setErrors((prev) => ({ ...prev, email: "L'email est requis" }))
-      setValidFields((prev) => {
-        const newValid = { ...prev }
-        delete newValid.email
-        return newValid
-      })
-      return false
+      return { isValid: false, message: "L'email est requis" }
     } else if (!emailRegex.test(email)) {
-      setErrors((prev) => ({ ...prev, email: "Format d'email invalide" }))
-      setValidFields((prev) => {
-        const newValid = { ...prev }
-        delete newValid.email
-        return newValid
-      })
-      return false
+      return { isValid: false, message: "Format d'email invalide" }
     } else {
-      setErrors((prev) => {
-        const newErrors = { ...prev }
-        delete newErrors.email
-        return newErrors
-      })
-      setValidFields((prev) => ({ ...prev, email: true }))
-      return true
+      return { isValid: true }
     }
   }
 
@@ -182,8 +131,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
           return newErrors
         })
       }
-
-      setValidFields((prev) => ({ ...prev, cv: true }))
     }
   }
 
@@ -209,31 +156,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
         newErrors.age = "Vous devez avoir au moins 18 ans pour postuler"
         isValid = false
       }
-    } else if (stepNumber === 2) {
-      // Only validate email if it's been touched or has content
-      if (formData.email.trim() || touchedFields.email) {
-        if (!validateEmail(formData.email)) {
-          isValid = false
-        }
-      } else {
-        newErrors.email = "L'email est requis"
-        isValid = false
-      }
-
-      // Only validate phone if it's been touched or has content
-      if (formData.numTel.trim() || touchedFields.numTel) {
-        if (!validatePhoneNumber(formData.numTel)) {
-          isValid = false
-        }
-      } else {
-        newErrors.numTel = "Le numéro de téléphone est requis"
-        isValid = false
-      }
-
-      if (!formData.cv) {
-        newErrors.cv = "Veuillez télécharger votre CV"
-        isValid = false
-      }
     }
 
     setErrors((prev) => ({ ...prev, ...newErrors }))
@@ -251,20 +173,10 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
   const nextStep = () => {
     if (validateStep(step)) {
       setStep((prev) => prev + 1)
-      // Clear errors for step 2 fields when moving to step 2
-      if (step === 1) {
-        setErrors((prev) => {
-          const newErrors = { ...prev }
-          delete newErrors.email
-          delete newErrors.numTel
-          delete newErrors.cv
-          return newErrors
-        })
-        setValidationMessage({
-          type: "info",
-          text: "Veuillez remplir vos informations de contact et télécharger votre CV",
-        })
-      }
+      setValidationMessage({
+        type: "info",
+        text: "Veuillez remplir vos informations de contact et télécharger votre CV",
+      })
     }
   }
 
@@ -273,31 +185,80 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
     setValidationMessage(null)
   }
 
+  const validateFinalStep = () => {
+    const newErrors = {}
+    let isValid = true
+
+    // Validate email
+    const emailValidation = validateEmail(formData.email)
+    if (!emailValidation.isValid) {
+      newErrors.email = emailValidation.message
+      isValid = false
+    }
+
+    // Validate phone
+    const phoneValidation = validatePhoneNumber(formData.numTel)
+    if (!phoneValidation.isValid) {
+      newErrors.numTel = phoneValidation.message
+      isValid = false
+    }
+
+    // Validate CV
+    if (!formData.cv) {
+      newErrors.cv = "Veuillez télécharger votre CV"
+      isValid = false
+    }
+
+    setErrors(newErrors)
+
+    if (!isValid) {
+      setValidationMessage({
+        type: "error",
+        text: "Veuillez corriger les erreurs avant de soumettre",
+      })
+    }
+
+    return isValid
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Mark all fields as touched before final validation
-    setTouchedFields({
-      email: true,
-      numTel: true,
-      cv: true,
-    })
-
-    if (validateStep(step)) {
-      setIsSubmitting(true)
-      try {
-        await onSubmit(formData)
-        onClose()
-        resetForm()
-      } catch (error) {
-        console.error("Error submitting form:", error)
-        setValidationMessage({
-          type: "error",
-          text: `Une erreur est survenue lors de la soumission: ${error.message || "Erreur inconnue"}`,
-        })
-      } finally {
-        setIsSubmitting(false)
+    // First validate step 1 fields if we're on step 2
+    if (step === 2) {
+      const step1Valid = validateStep(1)
+      if (!step1Valid) {
+        setStep(1)
+        return
       }
+    }
+
+    // Then validate current step (step 2) fields
+    if (step === totalSteps) {
+      if (!validateFinalStep()) {
+        return
+      }
+    } else {
+      if (!validateStep(step)) {
+        return
+      }
+      setStep((prev) => prev + 1)
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      await onSubmit(formData)
+      onClose()
+      resetForm()
+    } catch (error) {
+      console.error("Error submitting form:", error)
+      setValidationMessage({
+        type: "error",
+        text: `Une erreur est survenue lors de la soumission: ${error.message || "Erreur inconnue"}`,
+      })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -368,16 +329,7 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
             </div>
           )}
 
-          <form
-            onSubmit={
-              step === totalSteps
-                ? handleSubmit
-                : (e) => {
-                    e.preventDefault()
-                    nextStep()
-                  }
-            }
-          >
+          <form onSubmit={handleSubmit}>
             {step === 1 && (
               <div className="form-step">
                 <div className="form-group">
@@ -392,16 +344,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       name="nom"
                       value={formData.nom}
                       onChange={handleChange}
-                      className={errors.nom ? "error" : validFields.nom ? "valid-input" : ""}
+                      className={errors.nom ? "error" : ""}
                       placeholder="Entrez votre nom"
                       aria-invalid={!!errors.nom}
                       aria-describedby={errors.nom ? "nom-error" : undefined}
                     />
-                    {validFields.nom && (
-                      <span className="input-validation-icon">
-                        <Check size={16} color="var(--success-icon)" />
-                      </span>
-                    )}
                   </div>
                   {errors.nom && (
                     <span id="nom-error" className="error-message">
@@ -422,16 +369,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       name="prenom"
                       value={formData.prenom}
                       onChange={handleChange}
-                      className={errors.prenom ? "error" : validFields.prenom ? "valid-input" : ""}
+                      className={errors.prenom ? "error" : ""}
                       placeholder="Entrez votre prénom"
                       aria-invalid={!!errors.prenom}
                       aria-describedby={errors.prenom ? "prenom-error" : undefined}
                     />
-                    {validFields.prenom && (
-                      <span className="input-validation-icon">
-                        <Check size={16} color="var(--success-icon)" />
-                      </span>
-                    )}
                   </div>
                   {errors.prenom && (
                     <span id="prenom-error" className="error-message">
@@ -454,16 +396,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       onChange={handleChange}
                       min="18"
                       max="100"
-                      className={errors.age ? "error" : validFields.age ? "valid-input" : ""}
+                      className={errors.age ? "error" : ""}
                       placeholder="Entrez votre âge"
                       aria-invalid={!!errors.age}
                       aria-describedby={errors.age ? "age-error" : undefined}
                     />
-                    {validFields.age && (
-                      <span className="input-validation-icon">
-                        <Check size={16} color="var(--success-icon)" />
-                      </span>
-                    )}
                   </div>
                   {errors.age && (
                     <span id="age-error" className="error-message">
@@ -488,21 +425,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className={
-                        errors.email ? "error" : 
-                        validFields.email ? "valid-input" : 
-                        touchedFields.email ? "" : "untouched"
-                      }
+                      className={errors.email ? "error" : ""}
                       placeholder="exemple@domaine.com"
                       aria-invalid={!!errors.email}
                       aria-describedby={errors.email ? "email-error" : undefined}
-                      onBlur={() => setTouchedFields(prev => ({ ...prev, email: true }))}
                     />
-                    {validFields.email && (
-                      <span className="input-validation-icon">
-                        <Check size={16} color="var(--success-icon)" />
-                      </span>
-                    )}
                   </div>
                   {errors.email && (
                     <span id="email-error" className="error-message">
@@ -524,21 +451,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       value={formData.numTel}
                       onChange={handleChange}
                       placeholder="** *** ***"
-                      className={
-                        errors.numTel ? "error" : 
-                        validFields.numTel ? "valid-input" : 
-                        touchedFields.numTel ? "" : "untouched"
-                      }
+                      className={errors.numTel ? "error" : ""}
                       aria-invalid={!!errors.numTel}
                       aria-describedby={errors.numTel ? "numTel-error" : undefined}
                       maxLength="10" // XX XXX XXX
-                      onBlur={() => setTouchedFields(prev => ({ ...prev, numTel: true }))}
                     />
-                    {validFields.numTel && (
-                      <span className="input-validation-icon">
-                        <Check size={16} color="var(--success-icon)" />
-                      </span>
-                    )}
                   </div>
                   {errors.numTel && (
                     <span id="numTel-error" className="error-message">
@@ -566,7 +483,7 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                     />
                     <label
                       htmlFor="cv"
-                      className={`file-input-label ${errors.cv ? "error" : validFields.cv ? "valid-input" : ""}`}
+                      className={`file-input-label ${errors.cv ? "error" : ""}`}
                     >
                       <span>{cvFileName || "Choisir un fichier"}</span>
                       <span className="browse-button">
@@ -592,7 +509,7 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
               )}
 
               {step < totalSteps ? (
-                <button type="button" className="next-button" onClick={nextStep} disabled={isSubmitting}>
+                <button type="submit" className="next-button" disabled={isSubmitting}>
                   Suivant
                 </button>
               ) : (

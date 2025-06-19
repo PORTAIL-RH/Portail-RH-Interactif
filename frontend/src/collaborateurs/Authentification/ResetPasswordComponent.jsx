@@ -19,7 +19,7 @@ const ResetPasswordModal = ({ isOpen, onClose, theme }) => {
     setLoading(true);
 
     try {
-      const toastId = toast.loading("Sending reset link...");
+      const toastId = toast.loading("Envoi du lien de réinitialisation...");
 
       const response = await fetch(`${API_URL}/api/Personnel/request-password-reset`, {
         method: "POST",
@@ -31,11 +31,11 @@ const ResetPasswordModal = ({ isOpen, onClose, theme }) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to send reset link");
+        throw new Error(errorData.message || "Échec de l'envoi du lien de réinitialisation");
       }
 
       toast.update(toastId, {
-        render: "If an account exists, a reset link has been sent",
+        render: "Si un compte existe, un lien de réinitialisation a été envoyé",
         type: "success",
         isLoading: false,
         autoClose: 5000,
@@ -61,12 +61,12 @@ const ResetPasswordModal = ({ isOpen, onClose, theme }) => {
         </button>
 
         <div className="reset-modal-header">
-          <h2>Reset Password</h2>
+          <h2>Réinitialiser le mot de passe</h2>
         </div>
 
         <form className="reset-form" onSubmit={handleSubmit}>
           <div className="reset-input-group">
-            <label>Enter your email to receive a reset link</label>
+            <label>Entrez votre email pour recevoir un lien de réinitialisation</label>
             <div className="reset-input-wrapper">
               <FiMail className="reset-input-icon" />
               <input
@@ -87,7 +87,8 @@ const ResetPasswordModal = ({ isOpen, onClose, theme }) => {
             ) : (
               <>
                 <FiRefreshCw />
-                Send Reset Link
+                 
+                 Envoyer le lien de réinitialisation
               </>
             )}
           </button>
@@ -118,7 +119,7 @@ const ResetPasswordButton = ({ theme }) => {
         }}
       >
         <FiRefreshCw size={14} />
-        Forgot Password?
+        Mot de passe oublié?
       </button>
 
       <ResetPasswordModal
