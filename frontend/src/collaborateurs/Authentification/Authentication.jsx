@@ -280,6 +280,23 @@ const getStyles = (theme) => {
       opacity: isDark ? 1 : 0.9,
       filter: isDark ? "brightness(0) invert(1)" : "none",
     },
+    passwordStrength: {
+      display: "flex",
+      gap: "0.5rem",
+      marginBottom: "0.5rem"
+    },
+    strengthBar: {
+      flex: 1,
+      height: "4px",
+      borderRadius: "2px",
+      transition: "all 0.3s ease"
+    },
+    passwordHint: {
+      fontSize: "0.75rem",
+      color: isDark ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.5)",
+      fontStyle: "italic",
+      marginBottom: "1rem"
+    }
   }
 }
 
@@ -347,8 +364,54 @@ const Authentication = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  // Password validation function
+  const validatePassword = (password) => {
+    // At least 8 characters
+    if (password.length < 8) {
+      return { valid: false, message: "Le mot de passe doit contenir au moins 8 caractères" }
+    }
+    
+    // At least one uppercase letter
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: "Le mot de passe doit contenir au moins une lettre majuscule" }
+    }
+    
+    // At least one lowercase letter
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: "Le mot de passe doit contenir au moins une lettre minuscule" }
+    }
+    
+    // At least one number
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: "Le mot de passe doit contenir au moins un chiffre" }
+    }
+    
+    // At least one special character
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return { valid: false, message: "Le mot de passe doit contenir au moins un caractère spécial" }
+    }
+    
+    return { valid: true }
+  }
+
+  // Password strength calculation
+  const calculatePasswordStrength = (password) => {
+    let strength = 0
+    
+    // Length contributes up to 2 points
+    strength += Math.min(2, Math.floor(password.length / 4))
+    
+    // Add points for complexity
+    if (/[A-Z]/.test(password)) strength += 1
+    if (/[a-z]/.test(password)) strength += 1
+    if (/[0-9]/.test(password)) strength += 1
+    if (/[^A-Za-z0-9]/.test(password)) strength += 1
+    
+    return Math.min(4, strength)
+  }
+
   const handleSignUp = async () => {
-    setLoading(true);
+    setLoading(true)
   
     // Validate all required fields
     if (
@@ -359,41 +422,42 @@ const Authentication = () => {
       !formData.password ||
       !formData.confirmPassword
     ) {
-      toast.error("Tous les champs sont obligatoires");
-      setLoading(false);
-      return;
+      toast.error("Tous les champs sont obligatoires")
+      setLoading(false)
+      return
     }
   
     // Validate matricule format (5 digits)
     if (!formData.matricule.match(/^\d{5}$/)) {
-      toast.error("Le matricule doit être composé de 5 chiffres");
-      setLoading(false);
-      return;
+      toast.error("Le matricule doit être composé de 5 chiffres")
+      setLoading(false)
+      return
     }
   
     // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
-      toast.error("Veuillez entrer une adresse email valide");
-      setLoading(false);
-      return;
+      toast.error("Veuillez entrer une adresse email valide")
+      setLoading(false)
+      return
     }
   
     // Validate password strength
-    if (formData.password.length < 8) {
-      toast.error("Le mot de passe doit contenir au moins 8 caractères");
-      setLoading(false);
-      return;
+    const passwordValidation = validatePassword(formData.password)
+    if (!passwordValidation.valid) {
+      toast.error(passwordValidation.message)
+      setLoading(false)
+      return
     }
   
     if (formData.password !== formData.confirmPassword) {
-      toast.error("Les mots de passe ne correspondent pas");
-      setLoading(false);
-      return;
+      toast.error("Les mots de passe ne correspondent pas")
+      setLoading(false)
+      return
     }
   
     try {
-      const toastId = toast.loading("Enregistrement en cours...");
+      const toastId = toast.loading("Enregistrement en cours...")
   
       const response = await fetch(`${API_URL}/api/Personnel/register`, {
         method: "POST",
@@ -409,22 +473,22 @@ const Authentication = () => {
           confirmPassword: formData.confirmPassword.trim(),
         }),
         credentials: 'include' // Important for session cookies
-      });
+      })
   
-      const responseData = await response.json();
+      const responseData = await response.json()
   
       if (!response.ok) {
         // Handle account locked case
         if (response.status === 403 && responseData.error === "Account locked") {
-          const remainingTime = responseData.remainingTime || 0;
-          const minutes = Math.ceil(remainingTime / 60000);
+          const remainingTime = responseData.remainingTime || 0
+          const minutes = Math.ceil(remainingTime / 60000)
           
           toast.update(toastId, {
             render: `Compte verrouillé. Veuillez réessayer dans ${minutes} minute(s) ou contacter l'administrateur.`,
             type: "error",
             isLoading: false,
             autoClose: 10000,
-          });
+          })
         } 
         // Handle too many attempts (session-based)
         else if (response.status === 429) {
@@ -433,7 +497,7 @@ const Authentication = () => {
             type: "error",
             isLoading: false,
             autoClose: 5000,
-          });
+          })
         }
         // Handle existing user case
         else if (response.status === 400 && responseData.error === "Email cannot be changed for existing user") {
@@ -442,7 +506,7 @@ const Authentication = () => {
             type: "error",
             isLoading: false,
             autoClose: 5000,
-          });
+          })
         }
         // Handle email already in use
         else if (response.status === 400 && responseData.error === "Email already in use") {
@@ -451,7 +515,7 @@ const Authentication = () => {
             type: "error",
             isLoading: false,
             autoClose: 5000,
-          });
+          })
         }
         // Handle other errors
         else {
@@ -460,14 +524,14 @@ const Authentication = () => {
             type: "error",
             isLoading: false,
             autoClose: 5000,
-          });
+          })
         }
-        setLoading(false);
-        return;
+        setLoading(false)
+        return
       }
   
       // Success case - check if it's an update or new registration
-      const isUpdate = responseData.action === "update";
+      const isUpdate = responseData.action === "update"
       
       toast.update(toastId, {
         render: responseData.message || 
@@ -477,7 +541,7 @@ const Authentication = () => {
         type: "success",
         isLoading: false,
         autoClose: 5000,
-      });
+      })
   
       // Reset form if it was a new registration
       if (!isUpdate) {
@@ -488,156 +552,160 @@ const Authentication = () => {
           email: "",
           password: "",
           confirmPassword: "",
-        });
+        })
   
         // Switch to login view after successful registration
         setTimeout(() => {
-          setAction("Login");
-        }, 3000);
+          setAction("Login")
+        }, 3000)
       }
   
     } catch (error) {
-      console.error("Registration error:", error);
-      toast.error("Une erreur est survenue lors de la connexion au serveur");
+      console.error("Registration error:", error)
+      toast.error("Une erreur est survenue lors de la connexion au serveur")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-const handleLogin = async () => {
-  setLoading(true);
-
-  if (!formData.matricule || !formData.password) {
-    toast.error("Matricule and password are required");
-    setLoading(false);
-    return;
   }
 
-  try {
-    const toastId = toast.loading("Authenticating...", {
-      autoClose: false,
-      closeButton: false
-    });
+  const handleLogin = async () => {
+    setLoading(true)
 
-    // 1. First authenticate to get token
-    const authResponse = await fetch(`${API_URL}/api/Personnel/login`, {
-      method: "POST",
-      credentials: 'include', // Important for session cookies
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        matricule: formData.matricule.trim(),
-        password: formData.password.trim(),
-      }),
-    });
-
-    const authData = await authResponse.json();
-
-    if (!authResponse.ok) {
-      // Handle account locked case
-      if (authResponse.status === 401 && authData.error === "Account locked") {
-        toast.update(toastId, {
-          render: authData.message || "Account locked. Please try again later or contact support.",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
-      } 
-      // Handle invalid credentials with attempts left
-      else if (authData.attemptsLeft !== undefined) {
-        toast.update(toastId, {
-          render: `Invalid credentials. ${authData.attemptsLeft} attempt${authData.attemptsLeft !== 1 ? 's' : ''} remaining.`,
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
-      }
-      // Handle other errors
-      else {
-        toast.update(toastId, {
-          render: authData.message || "Login failed. Please try again.",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
-      }
-      setLoading(false);
-      return;
+    if (!formData.matricule || !formData.password) {
+      toast.error("Matricule and password are required")
+      setLoading(false)
+      return
     }
 
-    // 2. Successful authentication - get user details
-    const { token, user } = authData;
+    try {
+      const toastId = toast.loading("Authenticating...", {
+        autoClose: false,
+        closeButton: false
+      })
 
-    // Use the correct endpoint to fetch user details
-    const userDetailsResponse = await fetch(`${API_URL}/api/Personnel/matricule/${user.matricule}`, {
-      method: "GET",
-      credentials: 'include', // Important for session cookies
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      // 1. First authenticate to get token
+      const authResponse = await fetch(`${API_URL}/api/Personnel/login`, {
+        method: "POST",
+        credentials: 'include', // Important for session cookies
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          matricule: formData.matricule.trim(),
+          password: formData.password.trim(),
+        }),
+      })
 
-    if (!userDetailsResponse.ok) {
-      throw new Error(await userDetailsResponse.text());
-    }
+      const authData = await authResponse.json()
 
-    const userDetails = await userDetailsResponse.json();
+      if (!authResponse.ok) {
+        // Handle account locked case
+        if (authResponse.status === 401 && authData.error === "Account locked") {
+          toast.update(toastId, {
+            render: authData.message || "Account locked. Please try again later or contact support.",
+            type: "error",
+            isLoading: false,
+            autoClose: 5000,
+          })
+        } 
+        // Handle invalid credentials with attempts left
+        else if (authData.attemptsLeft !== undefined) {
+          toast.update(toastId, {
+            render: `Invalid credentials. ${authData.attemptsLeft} attempt${authData.attemptsLeft !== 1 ? 's' : ''} remaining.`,
+            type: "error",
+            isLoading: false,
+            autoClose: 5000,
+          })
+        }
+        // Handle other errors
+        else {
+          toast.update(toastId, {
+            render: authData.message || "Login failed. Please try again.",
+            type: "error",
+            isLoading: false,
+            autoClose: 5000,
+          })
+        }
+        setLoading(false)
+        return
+      }
 
-    // Verify account is active
-    if (!userDetails.active) {
+      // 2. Successful authentication - get user details
+      const { token, user } = authData
+
+      // Use the correct endpoint to fetch user details
+      const userDetailsResponse = await fetch(`${API_URL}/api/Personnel/matricule/${user.matricule}`, {
+        method: "GET",
+        credentials: 'include', // Important for session cookies
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (!userDetailsResponse.ok) {
+        throw new Error(await userDetailsResponse.text())
+      }
+
+      const userDetails = await userDetailsResponse.json()
+
+      // Verify account is active
+      if (!userDetails.active) {
+        toast.update(toastId, {
+          render: "Account not activated. Please contact administrator.",
+          type: "error",
+          isLoading: false,
+          autoClose: 5000,
+        })
+        setLoading(false)
+        return
+      }
+
+      // 3. Complete login process
+      login(token, userDetails)
+
       toast.update(toastId, {
-        render: "Account not activated. Please contact administrator.",
-        type: "error",
+        render: `Welcome, ${userDetails.prenom}!`,
+        type: "success",
         isLoading: false,
+        autoClose: 2000,
+      })
+
+      // Redirect based on role
+      setTimeout(() => {
+        switch (userDetails.role) {
+          case "collaborateur":
+            navigate("/AccueilCollaborateurs")
+            break
+          case "RH":
+            navigate("/AccueilRH")
+            break
+          case "Chef Hiérarchique":
+            navigate("/AccueilCHEF")
+            break
+          case "Admin":
+            navigate("/Accueil")
+            break
+          default:
+            navigate("/")
+        }
+      }, 1500)
+
+    } catch (error) {
+      console.error("Login error:", error)
+      toast.error(error.message || "An error occurred during login", {
         autoClose: 5000,
-      });
-      setLoading(false);
-      return;
+      })
+    } finally {
+      setLoading(false)
     }
-
-    // 3. Complete login process
-    login(token, userDetails);
-
-    toast.update(toastId, {
-      render: `Welcome, ${userDetails.prenom}!`,
-      type: "success",
-      isLoading: false,
-      autoClose: 2000,
-    });
-
-    // Redirect based on role
-    setTimeout(() => {
-      switch (userDetails.role) {
-        case "collaborateur":
-          navigate("/AccueilCollaborateurs");
-          break;
-        case "RH":
-          navigate("/AccueilRH");
-          break;
-        case "Chef Hiérarchique":
-          navigate("/AccueilCHEF");
-          break;
-        case "Admin":
-          navigate("/Accueil");
-          break;
-        default:
-          navigate("/");
-      }
-    }, 1500);
-
-  } catch (error) {
-    console.error("Login error:", error);
-    toast.error(error.message || "An error occurred during login", {
-      autoClose: 5000,
-    });
-  } finally {
-    setLoading(false);
   }
-};
+
   // Get styles based on current theme
   const styles = getStyles(theme)
+
+  // Get password strength level
+  const passwordStrength = calculatePasswordStrength(formData.password)
 
   return (
     <div style={styles.authContainer} className={`auth-container ${theme}`}>
@@ -796,6 +864,29 @@ const handleLogin = async () => {
                 required
               />
             </div>
+
+            {action === "Sign up" && (
+              <>
+                <div style={styles.passwordStrength}>
+                  {[1, 2, 3, 4].map((level) => (
+                    <div
+                      key={level}
+                      style={{
+                        ...styles.strengthBar,
+                        backgroundColor: level <= passwordStrength 
+                          ? getStrengthColor(level, theme)
+                          : theme === "dark" 
+                            ? "rgba(255,255,255,0.1)" 
+                            : "rgba(0,0,0,0.1)"
+                      }}
+                    />
+                  ))}
+                </div>
+                <div style={styles.passwordHint}>
+                  Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule, un chiffre et un caractère spécial
+                </div>
+              </>
+            )}
           </div>
 
           {action === "Sign up" && (
@@ -855,5 +946,15 @@ const handleLogin = async () => {
   )
 }
 
-export default Authentication
+// Helper function to get strength color
+const getStrengthColor = (level, theme) => {
+  const colors = {
+    1: "#ef4444", // red
+    2: "#f59e0b", // amber
+    3: "#3b82f6", // blue
+    4: "#10b981"  // emerald
+  }
+  return colors[level] || colors[1]
+}
 
+export default Authentication
