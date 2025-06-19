@@ -356,19 +356,14 @@ public class PersonnelController {
 
                     // Send WebSocket notification to admins
                     notificationService.createNotification(
-                            "Too many failed login attempts: " + personnel.getMatricule(),
+                            "Trop de tentatives de connexion infructueuses: " + personnel.getMatricule(),
                             "Admin",
                             null,
                             null,
                             null
                     );
 
-                    // Send SSE update for account lock
-                    sseController.sendUpdate("account_locked", Map.of(
-                            "matricule", personnel.getMatricule(),
-                            "reason", "Too many failed login attempts",
-                            "timestamp", new Date()
-                    ));
+
 
                     String lockSubject = "Account Locked Notification";
                     String lockBody = String.format(
@@ -848,7 +843,7 @@ public class PersonnelController {
                 resetLink = "http://localhost:8081/reset-password?token=" + resetToken;
             } else {
                 // Default to web
-                resetLink = "https://portail-rh.onrender.com/reset-password?token=" + resetToken;
+                resetLink = "http://localhost:3000/reset-password?token=" + resetToken;
             }
 
             String subject = "Réinitialisation de votre mot de passe";
