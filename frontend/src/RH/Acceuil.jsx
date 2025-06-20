@@ -423,59 +423,7 @@ const Accueil = () => {
               </div>
             </div>
 
-            {/* Upcoming Training Card */}
-            <div className="dashboard-card upcoming-formations">
-              <div className="card-header">
-                <h2>Formations à Venir</h2>
-              </div>
-              <div className="card-content">
-                {upcomingFormations.length > 0 ? (
-                  <div className="formations-list">
-                    {upcomingFormations.map((formation, index) => {
-                      const startDate = new Date(formation.dateDebut)
-                      const endDate = formation.dateFin ? new Date(formation.dateFin) : null
-                      
-                      return (
-                        <div key={index} className="formation-event">
-                          <div className="calendar-badge">
-                            <div className="calendar-month">
-                              {startDate.toLocaleString("fr-FR", { month: "short" }).toUpperCase()}
-                            </div>
-                            <div className="calendar-day">{startDate.getDate()}</div>
-                            <div className="calendar-weekday">
-                              {startDate.toLocaleString("fr-FR", { weekday: "short" })}
-                            </div>
-                          </div>
-                          <div className="formation-info">
-                            <h3 className="formation-title">
-                              {formation.theme?.name || formation.titre?.name || "Formation"}
-                            </h3>
-                            <div className="formation-meta">
-                              <span className="meta-item">
-                                <FiClock /> 
-                                {endDate 
-                                  ? `${Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24))} jours`
-                                  : "1 jour"}
-                              </span>
-                              {formation.lieu && (
-                                <span className="meta-item">
-                                  <FiMapPin /> {formation.lieu}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="no-formations">
-                    <FiClock className="no-data-icon" />
-                    <p>Aucune formation prévue</p>
-                  </div>
-                )}
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

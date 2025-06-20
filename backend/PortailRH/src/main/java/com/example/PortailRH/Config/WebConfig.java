@@ -26,7 +26,7 @@ public class WebConfig implements WebMvcConfigurer {
                 "http://172.20.10.2:8081", //islem-fifi
                 "http://192.168.43.70:8081",//orang
                 "http://192.168.0.156:8081",//home or5B
-                "http://192.168.188.175",//androidfida
+                "http://192.168.43.175",//androidfida
                 "https://portail-rh.onrender.com",
 
                 "http://172.20.10.7:8081",

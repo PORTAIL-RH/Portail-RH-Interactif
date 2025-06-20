@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react"
 import { X, Upload, User, Mail, Phone, Calendar, FileText, Info, Check, AlertCircle } from "lucide-react"
 import "./ApplicationModal.css"
@@ -19,7 +20,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
   const [step, setStep] = useState(1)
   const totalSteps = 2
   const [validationMessage, setValidationMessage] = useState(null)
-  const [touchedFields, setTouchedFields] = useState({})
 
   useEffect(() => {
     setFormData((prev) => ({
@@ -30,11 +30,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
-    // Mark field as touched
-    if (!touchedFields[name]) {
-      setTouchedFields((prev) => ({ ...prev, [name]: true }))
-    }
 
     // Format phone number as user types
     let formattedValue = value
@@ -51,9 +46,7 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
       }
 
       // Validate phone number as user types
-      if (touchedFields.numTel) {
-        validatePhoneNumber(formattedValue)
-      }
+      validatePhoneNumber(formattedValue)
     }
 
     setFormData((prev) => ({
@@ -70,8 +63,8 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
       })
     }
 
-    // Validate email on change if touched
-    if (name === "email" && touchedFields.email) {
+    // Validate email on change
+    if (name === "email" && value.trim()) {
       validateEmail(value)
     }
   }
@@ -210,23 +203,11 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
         isValid = false
       }
     } else if (stepNumber === 2) {
-      // Only validate email if it's been touched or has content
-      if (formData.email.trim() || touchedFields.email) {
-        if (!validateEmail(formData.email)) {
-          isValid = false
-        }
-      } else {
-        newErrors.email = "L'email est requis"
+      if (!validateEmail(formData.email)) {
         isValid = false
       }
 
-      // Only validate phone if it's been touched or has content
-      if (formData.numTel.trim() || touchedFields.numTel) {
-        if (!validatePhoneNumber(formData.numTel)) {
-          isValid = false
-        }
-      } else {
-        newErrors.numTel = "Le numéro de téléphone est requis"
+      if (!validatePhoneNumber(formData.numTel)) {
         isValid = false
       }
 
@@ -251,15 +232,8 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
   const nextStep = () => {
     if (validateStep(step)) {
       setStep((prev) => prev + 1)
-      // Clear errors for step 2 fields when moving to step 2
+      // Show info validation message when moving to step 2
       if (step === 1) {
-        setErrors((prev) => {
-          const newErrors = { ...prev }
-          delete newErrors.email
-          delete newErrors.numTel
-          delete newErrors.cv
-          return newErrors
-        })
         setValidationMessage({
           type: "info",
           text: "Veuillez remplir vos informations de contact et télécharger votre CV",
@@ -276,19 +250,13 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    // Mark all fields as touched before final validation
-    setTouchedFields({
-      email: true,
-      numTel: true,
-      cv: true,
-    })
-
     if (validateStep(step)) {
       setIsSubmitting(true)
       try {
         await onSubmit(formData)
         onClose()
         resetForm()
+        // Success message would be shown by the parent component
       } catch (error) {
         console.error("Error submitting form:", error)
         setValidationMessage({
@@ -314,7 +282,6 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
     setCvFileName("")
     setErrors({})
     setValidFields({})
-    setTouchedFields({})
     setStep(1)
     setValidationMessage(null)
   }
@@ -488,15 +455,10 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       name="email"
                       value={formData.email}
                       onChange={handleChange}
-                      className={
-                        errors.email ? "error" : 
-                        validFields.email ? "valid-input" : 
-                        touchedFields.email ? "" : "untouched"
-                      }
+                      className={errors.email ? "error" : validFields.email ? "valid-input" : ""}
                       placeholder="exemple@domaine.com"
                       aria-invalid={!!errors.email}
                       aria-describedby={errors.email ? "email-error" : undefined}
-                      onBlur={() => setTouchedFields(prev => ({ ...prev, email: true }))}
                     />
                     {validFields.email && (
                       <span className="input-validation-icon">
@@ -524,15 +486,10 @@ const ApplicationModal = ({ isOpen, onClose, candidatureId, onSubmit }) => {
                       value={formData.numTel}
                       onChange={handleChange}
                       placeholder="** *** ***"
-                      className={
-                        errors.numTel ? "error" : 
-                        validFields.numTel ? "valid-input" : 
-                        touchedFields.numTel ? "" : "untouched"
-                      }
+                      className={errors.numTel ? "error" : validFields.numTel ? "valid-input" : ""}
                       aria-invalid={!!errors.numTel}
                       aria-describedby={errors.numTel ? "numTel-error" : undefined}
                       maxLength="10" // XX XXX XXX
-                      onBlur={() => setTouchedFields(prev => ({ ...prev, numTel: true }))}
                     />
                     {validFields.numTel && (
                       <span className="input-validation-icon">
